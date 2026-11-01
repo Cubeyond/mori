@@ -14,7 +14,7 @@ FROM rust:1.99.0-bookworm AS server
 WORKDIR /src
 COPY server/ ./server/
 RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/src/server/target \
-    cargo build --manifest-path server/Cargo.toml --release --locked -j 2 && cp server/target/release/mori /usr/local/bin/mori
+    cargo build --manifest-path server/Cargo.toml --release --locked -j 1 && cp server/target/release/mori /usr/local/bin/mori
 
 # Ship no Node runtime, compiler, or video processing tools.
 FROM debian:bookworm-slim
