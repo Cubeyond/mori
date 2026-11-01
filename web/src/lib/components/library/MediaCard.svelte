@@ -10,6 +10,8 @@
   } from '@lucide/svelte';
   import type { MediaItem } from '#lib/api/client';
   import { shareValue } from '#lib/features/sharing';
+  import { preferences } from '#lib/features/preferences';
+  import { mediaStatus } from '#lib/features/media-status';
   import CopyButton from '../CopyButton.svelte';
   /** Cover selection and administrator actions remain independent click targets. */
   let {
@@ -28,9 +30,11 @@
   const shareable = $derived(
     video.visibility === 'public' && video.state === 'published',
   );
-  /** Incomplete uploads expose status rather than opening an unplayable screen. */
-  const ready = $derived(
-    ['ready', 'published', 'publishing', 'revoking'].includes(video.state),
+  /** Operational state is independent of deletion's forced-private access policy. */
+  const status = $derived(mediaStatus(video));
+  /** Fade only visual pixels, leaving actions, focus, and lifecycle labels fully visible. */
+  const thumbnailOpacity = $derived(
+    $preferences.translucentThumbnails ? $preferences.thumbnailOpacity : 1,
   );
   /** Format metadata duration without loading the original video. */
   const duration = $derived(
@@ -44,7 +48,7 @@
       revealed = true;
       return;
     }
-    if (ready) onopen();
+    if (status.ready) onopen();
   }
 </script>
 
@@ -53,25 +57,23 @@
     class="cover"
     aria-label={'Open ' + video.kind + ' ' + video.name}
     onclick={open}
-    disabled={!ready}
+    disabled={!status.ready}
   >
-    {#if video.poster_url !== null && !failedPoster && ready}<img
+    {#if video.poster_url !== null && !failedPoster && status.ready}<img
         src={video.poster_url}
         alt=""
         loading="lazy"
         decoding="async"
+        style:opacity={thumbnailOpacity}
         onerror={() => (failedPoster = true)}
       />
-    {:else}<span class="placeholder"
-        >{#if video.kind === 'image'}<ImageIcon size={28} />{:else}<VideoIcon
+    {:else}<span class="placeholder" style:opacity={thumbnailOpacity}>
+        {#if video.kind === 'image'}<ImageIcon size={28} />{:else}<VideoIcon
             size={28}
-          />{/if}{#if !ready}<span
-            >{video.state === 'failed'
-              ? 'Upload failed'
-              : video.state === 'deleting'
-                ? 'Deleting ' + video.kind + '…'
-                : 'Processing ' + video.kind + '…'}</span
-          >{/if}</span
+          />{/if}
+      </span>{/if}
+    {#if !status.ready}<span class="processing-status" role="status"
+        >{status.label}</span
       >{/if}
     <span class="play controls"
       >{#if video.kind === 'image'}<Expand size={24} />{:else}<Play
@@ -105,8 +107,9 @@
       >{/if}
   </div>
   <div class="details controls">
-    <span>{video.visibility === 'private' ? 'Private' : ''}</span
-    >{#if video.kind === 'video'}<span>{duration}</span>{/if}
+    <span>{status.visibility}</span>{#if video.kind === 'video'}<span
+        >{duration}</span
+      >{/if}
   </div>
 </div>
 
@@ -115,7 +118,7 @@
     position: relative;
     height: 100%;
     overflow: hidden;
-    background: #14151e;
+    background: transparent;
     isolation: isolate;
   }
   .cover {
@@ -141,7 +144,18 @@
     gap: 12px;
     height: 100%;
     color: #858593;
+    background: #14151e;
     font-size: 14px;
+  }
+  .processing-status {
+    position: absolute;
+    top: calc(50% + 24px);
+    inset-inline: 8px;
+    font-size: 14px;
+    color: #e4e4eb;
+    text-align: center;
+    text-shadow: 0 1px 3px #000;
+    pointer-events: none;
   }
   .card:focus-within {
     outline: 2px solid #a5b4fc;

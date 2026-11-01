@@ -6,7 +6,13 @@ import { parsePreferences } from '../src/lib/features/preferences.ts';
 void test('older browser settings retain choices and receive a 10 percent background default', () => {
   assert.deepEqual(
     parsePreferences({ density: 'compact', uploadVisibility: 'public' }),
-    { density: 'compact', uploadVisibility: 'public', backgroundOpacity: 0.1 },
+    {
+      density: 'compact',
+      uploadVisibility: 'public',
+      backgroundOpacity: 0.1,
+      translucentThumbnails: false,
+      thumbnailOpacity: 0.92,
+    },
   );
 });
 
@@ -22,4 +28,30 @@ void test('opacity accepts the full slider range and rejects malformed persisted
       0.1,
     );
   assert.equal(parsePreferences(null).backgroundOpacity, 0.1);
+});
+
+void test('thumbnail translucency requires explicit opt-in and preserves independent alpha', () => {
+  for (const value of [null, 'true', 1, false])
+    assert.equal(
+      parsePreferences({ translucentThumbnails: value }).translucentThumbnails,
+      false,
+    );
+  const selected = parsePreferences({
+    translucentThumbnails: true,
+    thumbnailOpacity: 0.63,
+    backgroundOpacity: 0.2,
+  });
+  assert.equal(selected.translucentThumbnails, true);
+  assert.equal(selected.thumbnailOpacity, 0.63);
+  assert.equal(selected.backgroundOpacity, 0.2);
+  for (const value of [0, 0.92, 1])
+    assert.equal(
+      parsePreferences({ thumbnailOpacity: value }).thumbnailOpacity,
+      value,
+    );
+  for (const value of [-1, 2, NaN, Infinity, '50', null])
+    assert.equal(
+      parsePreferences({ thumbnailOpacity: value }).thumbnailOpacity,
+      0.92,
+    );
 });

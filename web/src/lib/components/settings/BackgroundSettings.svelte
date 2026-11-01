@@ -1,8 +1,9 @@
 <script lang="ts">
   /** Background controls preview immediately while protecting the last saved image on failure. */
   import { onDestroy } from 'svelte';
-  import { ImagePlus, Trash, Check, RotateCcw } from '@lucide/svelte';
+  import { ImagePlus, Trash, Check } from '@lucide/svelte';
   import Button from '#lib/components/ui/button/button.svelte';
+  import OpacityControl from './OpacityControl.svelte';
   import {
     background,
     saveBackground,
@@ -131,45 +132,17 @@
 {#if $background !== null}<div class="setting-row">
     <div class="setting-content">
       <label for="background-opacity">Background opacity</label>
-      <div class="opacity-control">
-        <input
-          id="background-opacity"
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-          value={Math.round($preferences.backgroundOpacity * 100)}
-          aria-valuetext={String(
-            Math.round($preferences.backgroundOpacity * 100),
-          ) + ' percent'}
-          oninput={(event) => {
-            preferences.update((value) => ({
-              ...value,
-              backgroundOpacity: Number(event.currentTarget.value) / 100,
-            }));
-          }}
-          onchange={persistOpacity}
-        />
-        <output for="background-opacity"
-          >{Math.round($preferences.backgroundOpacity * 100)}%</output
-        >
-        <Button
-          variant="ghost"
-          size="icon"
-          type="button"
-          aria-label="Reset background opacity to 10 percent"
-          onclick={() => {
-            preferences.update((value) => ({
-              ...value,
-              backgroundOpacity: 0.1,
-            }));
-            persistOpacity();
-          }}
-          >{#if saved && changed === 'opacity'}<Check
-              size={17}
-            />{:else}<RotateCcw size={17} />{/if}</Button
-        >
-      </div>
+      <OpacityControl
+        id="background-opacity"
+        label="Background opacity"
+        value={$preferences.backgroundOpacity}
+        defaultValue={0.1}
+        saved={saved && changed === 'opacity'}
+        oninput={(backgroundOpacity: number) => {
+          preferences.update((value) => ({ ...value, backgroundOpacity }));
+        }}
+        oncommit={persistOpacity}
+      />
     </div>
   </div>{/if}
 {#if error}<p class="background-error" role="alert">{error}</p>{/if}
@@ -188,25 +161,6 @@
     object-fit: cover;
     border: 1px solid var(--border);
     border-radius: 6px;
-  }
-  .opacity-control {
-    display: grid;
-    grid-template-columns: minmax(100px, 240px) 48px 40px;
-    align-items: center;
-    gap: 12px;
-    margin-top: 0;
-  }
-  input[type='range'] {
-    width: 100%;
-    min-height: 44px;
-    accent-color: var(--primary);
-    cursor: pointer;
-  }
-  output {
-    font-size: 15px;
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-    color: var(--foreground);
   }
   .background-error {
     color: #fda4af;

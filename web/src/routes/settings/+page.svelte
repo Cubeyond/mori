@@ -8,6 +8,7 @@
   import { onDestroy } from 'svelte';
   import AccessGate from '#lib/components/AccessGate.svelte';
   import BackgroundSettings from '#lib/components/settings/BackgroundSettings.svelte';
+  import ThumbnailSettings from '#lib/components/settings/ThumbnailSettings.svelte';
   import {
     preferences,
     savePreferences,
@@ -41,99 +42,121 @@
   <Breadcrumbs items={[{ label: 'Preferences', href: resolve('/settings') }]} />
   <div class="page-heading"><h1>Preferences</h1></div>
   <AccessGate>
-    <section class="settings-group" aria-label="Preferences">
-      <BackgroundSettings />
-      <div class="setting-row">
-        <div class="setting-content">
-          <label for="preference-density">Gallery density</label>
-          <div class="setting-control preference-control">
-            <NativeSelect
-              id="preference-density"
-              value={$preferences.density}
-              onchange={(
-                event: Event & { currentTarget: HTMLSelectElement },
-              ) => {
-                update(
-                  'density',
-                  event.currentTarget.value === 'compact'
-                    ? 'compact'
-                    : 'comfortable',
-                );
-              }}
-              ><option value="comfortable">Comfortable</option><option
-                value="compact">Compact</option
-              ></NativeSelect
-            >
-            <span
-              class="setting-feedback"
-              class:temporary={!persisted &&
-                changed === 'density' &&
-                notice !== ''}
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-              title={changed === 'density' && notice !== ''
-                ? notice
-                : undefined}
-            >
-              {#if changed === 'density' && notice !== ''}{#if persisted}<Check
-                    size={20}
-                    aria-hidden="true"
-                  /><span class="sr-only">{notice}</span>{:else}<CircleAlert
-                    size={18}
-                    aria-hidden="true"
-                  /><span>{notice}</span>{/if}{/if}
-            </span>
+    <div class="preferences-groups">
+      <section class="settings-group" aria-labelledby="background-heading">
+        <header class="settings-group-heading">
+          <h2 id="background-heading">Background</h2>
+        </header>
+        <BackgroundSettings />
+      </section>
+      <section class="settings-group" aria-labelledby="gallery-heading">
+        <header class="settings-group-heading">
+          <h2 id="gallery-heading">Gallery</h2>
+        </header>
+        <div class="setting-row">
+          <div class="setting-content">
+            <label for="preference-density">Gallery density</label>
+            <div class="setting-control preference-control">
+              <NativeSelect
+                id="preference-density"
+                value={$preferences.density}
+                onchange={(
+                  event: Event & { currentTarget: HTMLSelectElement },
+                ) => {
+                  update(
+                    'density',
+                    event.currentTarget.value === 'compact'
+                      ? 'compact'
+                      : 'comfortable',
+                  );
+                }}
+                ><option value="comfortable">Comfortable</option><option
+                  value="compact">Compact</option
+                ></NativeSelect
+              >
+              <span
+                class="setting-feedback"
+                class:temporary={!persisted &&
+                  changed === 'density' &&
+                  notice !== ''}
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                title={changed === 'density' && notice !== ''
+                  ? notice
+                  : undefined}
+              >
+                {#if changed === 'density' && notice !== ''}{#if persisted}<Check
+                      size={20}
+                      aria-hidden="true"
+                    /><span class="sr-only">{notice}</span>{:else}<CircleAlert
+                      size={18}
+                      aria-hidden="true"
+                    /><span>{notice}</span>{/if}{/if}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="setting-row">
-        <div class="setting-content">
-          <label for="preference-visibility">New upload visibility</label>
-          <div class="setting-control preference-control">
-            <NativeSelect
-              id="preference-visibility"
-              value={$preferences.uploadVisibility}
-              onchange={(
-                event: Event & { currentTarget: HTMLSelectElement },
-              ) => {
-                update(
-                  'uploadVisibility',
-                  event.currentTarget.value === 'public' ? 'public' : 'private',
-                );
-              }}
-              ><option value="private">Private</option><option value="public"
-                >Public</option
-              ></NativeSelect
-            >
-            <span
-              class="setting-feedback"
-              class:temporary={!persisted &&
-                changed === 'uploadVisibility' &&
-                notice !== ''}
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-              title={changed === 'uploadVisibility' && notice !== ''
-                ? notice
-                : undefined}
-            >
-              {#if changed === 'uploadVisibility' && notice !== ''}{#if persisted}<Check
-                    size={20}
-                    aria-hidden="true"
-                  /><span class="sr-only">{notice}</span>{:else}<CircleAlert
-                    size={18}
-                    aria-hidden="true"
-                  /><span>{notice}</span>{/if}{/if}
-            </span>
+        <ThumbnailSettings />
+      </section>
+      <section class="settings-group" aria-labelledby="uploads-heading">
+        <header class="settings-group-heading">
+          <h2 id="uploads-heading">Uploads</h2>
+        </header>
+        <div class="setting-row">
+          <div class="setting-content">
+            <label for="preference-visibility">New upload visibility</label>
+            <div class="setting-control preference-control">
+              <NativeSelect
+                id="preference-visibility"
+                value={$preferences.uploadVisibility}
+                onchange={(
+                  event: Event & { currentTarget: HTMLSelectElement },
+                ) => {
+                  update(
+                    'uploadVisibility',
+                    event.currentTarget.value === 'public'
+                      ? 'public'
+                      : 'private',
+                  );
+                }}
+                ><option value="private">Private</option><option value="public"
+                  >Public</option
+                ></NativeSelect
+              >
+              <span
+                class="setting-feedback"
+                class:temporary={!persisted &&
+                  changed === 'uploadVisibility' &&
+                  notice !== ''}
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                title={changed === 'uploadVisibility' && notice !== ''
+                  ? notice
+                  : undefined}
+              >
+                {#if changed === 'uploadVisibility' && notice !== ''}{#if persisted}<Check
+                      size={20}
+                      aria-hidden="true"
+                    /><span class="sr-only">{notice}</span>{:else}<CircleAlert
+                      size={18}
+                      aria-hidden="true"
+                    /><span>{notice}</span>{/if}{/if}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   </AccessGate>
 </main>
 
 <style>
+  .preferences-groups {
+    display: grid;
+    gap: 24px;
+  }
   .preference-control {
     display: grid;
     grid-template-columns: minmax(0, 240px) 24px;

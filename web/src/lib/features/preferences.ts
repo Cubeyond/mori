@@ -2,16 +2,26 @@
 import { writable } from 'svelte/store';
 /** Explicitly supported local defaults without credentials or media metadata. */
 export interface Preferences {
+  /** Visibility applied only to new uploads. */
   uploadVisibility: 'private' | 'public';
+  /** Local spacing and width of masonry columns. */
   density: 'comfortable' | 'compact';
   /** Image alpha; a conservative default preserves the dark interface. */
   backgroundOpacity: number;
+  /** Explicit opt-in; original media viewing always remains fully opaque. */
+  translucentThumbnails: boolean;
+  /** Thumbnail alpha when translucency is enabled, independent of the wallpaper alpha. */
+  thumbnailOpacity: number;
 }
+/** Conservative starting alpha when thumbnail translucency is explicitly enabled. */
+export const DEFAULT_THUMBNAIL_OPACITY = 0.92;
 /** Safe defaults used when browser persistence is unavailable. */
 const defaults: Preferences = {
   uploadVisibility: 'private',
   density: 'comfortable',
   backgroundOpacity: 0.1,
+  translucentThumbnails: false,
+  thumbnailOpacity: DEFAULT_THUMBNAIL_OPACITY,
 };
 /** Reactive local preferences shared by settings, upload, and thumbnail layout. */
 export const preferences = writable<Preferences>({ ...defaults });
@@ -36,15 +46,24 @@ export function parsePreferences(raw: unknown): Preferences {
         : 'private',
     density:
       'density' in raw && raw.density === 'compact' ? 'compact' : 'comfortable',
-    backgroundOpacity:
-      'backgroundOpacity' in raw &&
-      typeof raw.backgroundOpacity === 'number' &&
-      Number.isFinite(raw.backgroundOpacity) &&
-      raw.backgroundOpacity >= 0 &&
-      raw.backgroundOpacity <= 1
-        ? raw.backgroundOpacity
-        : defaults.backgroundOpacity,
+    backgroundOpacity: opacity(raw, 'backgroundOpacity'),
+    translucentThumbnails:
+      'translucentThumbnails' in raw && raw.translucentThumbnails === true,
+    thumbnailOpacity: opacity(raw, 'thumbnailOpacity'),
   };
+}
+/** Accept finite normalized alpha values while migrating absent or damaged settings. */
+function opacity(
+  raw: object,
+  key: 'backgroundOpacity' | 'thumbnailOpacity',
+): number {
+  const value: unknown = key in raw ? Reflect.get(raw, key) : undefined;
+  return typeof value === 'number' &&
+    Number.isFinite(value) &&
+    value >= 0 &&
+    value <= 1
+    ? value
+    : defaults[key];
 }
 /** Apply in-memory defaults and report whether browser persistence succeeded. */
 export function savePreferences(value: Preferences): boolean {
