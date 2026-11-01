@@ -168,6 +168,7 @@ pub async fn create(
     let name = random_id();
     let video_id = random_id();
     let token = random_id();
+    let source_key = Storage::private(&token, &input.extension);
     let id = random_id();
     let expires_at = now() + 86400;
     // Reserve a slot transactionally before opening an S3 upload.
@@ -185,7 +186,7 @@ pub async fn create(
     }
     sqlx::query(
         r"INSERT INTO videos(id, token, album_id, name, visibility, state, size,
-created_at,extension,width,height,duration,media_prefix) VALUES(?, ?, ?, ?, ?, 'uploading', ?, ?, ?, ?, ?, ?, ?)",
+created_at,extension,width,height,duration,media_prefix,source_key) VALUES(?, ?, ?, ?, ?, 'uploading', ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&video_id)
     .bind(token)
@@ -199,6 +200,7 @@ created_at,extension,width,height,duration,media_prefix) VALUES(?, ?, ?, ?, ?, '
     .bind(input.height)
     .bind(input.duration)
     .bind(&prefix)
+    .bind(&source_key)
     .execute(&mut *tx)
     .await?;
     sqlx::query("INSERT INTO media_aliases(video_id,prefix) VALUES(?,?)")
@@ -207,7 +209,7 @@ created_at,extension,width,height,duration,media_prefix) VALUES(?, ?, ?, ?, ?, '
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
-    let upload_id = match storage.begin(&video_id).await {
+    let upload_id = match storage.begin(&source_key).await {
         Ok(v) => v,
         Err(e) => {
             sqlx::query("UPDATE videos SET state='failed' WHERE id=?")
@@ -226,7 +228,7 @@ created_at,extension,width,height,duration,media_prefix) VALUES(?, ?, ?, ?, ?, '
             .execute(&s.db)
             .await
     {
-        let _ = storage.abort(&video_id, &upload_id).await;
+        let _ = storage.abort(&source_key, &upload_id).await;
         return Err(e.into());
     }
     Ok((
@@ -282,7 +284,7 @@ pub async fn part(
         url: s
             .storage
             .get()?
-            .part(&r.video_id, &r.upload_id, part, &input.checksum)
+            .part(&v.private_source(), &r.upload_id, part, &input.checksum)
             .await?,
     }))
 }
@@ -335,6 +337,7 @@ pub async fn complete(
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
+    s.job_wakeup.notify_one();
     Ok((StatusCode::ACCEPTED, Json(Accepted { job_id: Some(job) })))
 }
 /// Stop a resumable multipart upload and persist cancellation progress.
@@ -370,7 +373,11 @@ pub async fn cancel(
     {
         return Err(Error(StatusCode::CONFLICT, "Upload changed"));
     }
-    s.storage.get()?.abort(&r.video_id, &r.upload_id).await?;
+    let v = videos::get(&s, &r.video_id).await?;
+    s.storage
+        .get()?
+        .abort(&v.private_source(), &r.upload_id)
+        .await?;
     sqlx::query("UPDATE videos SET state='failed' WHERE id=?")
         .bind(&r.video_id)
         .execute(&s.db)
@@ -415,7 +422,7 @@ pub async fn poster(
         .s3
         .put_object()
         .bucket(&s.storage.get()?.bucket)
-        .key(Storage::poster(&id))
+        .key(v.private_poster())
         .content_type("image/jpeg")
         .body(aws_sdk_s3::primitives::ByteStream::from(body))
         .send()
@@ -455,7 +462,7 @@ pub async fn status(
         .s3
         .list_parts()
         .bucket(&s.storage.get()?.bucket)
-        .key(Storage::source(&r.video_id))
+        .key(v.private_source())
         .upload_id(&r.upload_id)
         .max_parts(128)
         .send()

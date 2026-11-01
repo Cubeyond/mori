@@ -98,7 +98,7 @@ async fn current_schema_is_repeatable_and_indexed() {
     sqlx::migrate!().run(&pool).await.unwrap();
     for (query, index) in [
         (
-            "EXPLAIN QUERY PLAN SELECT * FROM videos WHERE state!='deleted' ORDER BY created_at DESC,id DESC LIMIT 31",
+            "EXPLAIN QUERY PLAN SELECT * FROM videos WHERE state!='deleted' AND state NOT IN ('failed','uploading','verifying') ORDER BY created_at DESC,id DESC LIMIT 31",
             "videos_library_order",
         ),
         (

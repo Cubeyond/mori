@@ -166,6 +166,7 @@ revision=revision+1, last_error=NULL WHERE id=? AND revision=? AND state=?",
         None
     };
     tx.commit().await?;
+    s.job_wakeup.notify_one();
     Ok((StatusCode::ACCEPTED, Json(Accepted { job_id })))
 }
 /// Schedule revision-guarded deletion and confirmed withdrawal of any public copies.
@@ -189,5 +190,6 @@ pub async fn delete(
     let mut tx = s.db.begin_with("BEGIN IMMEDIATE").await?;
     let job = deletion::enqueue(&mut tx, &id).await?;
     tx.commit().await?;
+    s.job_wakeup.notify_one();
     Ok((StatusCode::ACCEPTED, Json(Accepted { job_id: Some(job) })))
 }

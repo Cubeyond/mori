@@ -13,6 +13,47 @@ use serde_json::{Value, json};
 use std::sync::Arc;
 use tower::ServiceExt;
 
+#[tokio::test]
+/// Publishing moves the source instead of retaining a second full-size private object.
+async fn publication_releases_private_objects_and_restores_them_on_withdrawal() {
+    let media = Media::new(false).await;
+    let private = media.ready().await;
+    let published = media.visibility(&private, "public").await;
+    assert!(
+        media
+            .exists(Storage::public(&published.token, &published.extension))
+            .await
+    );
+    assert!(!media.exists(Storage::source(&published.id)).await);
+    assert!(!media.exists(Storage::poster(&published.id)).await);
+    assert!(!media.exists(published.private_source()).await);
+    assert!(!media.exists(published.private_poster()).await);
+    let private = media.visibility(&published, "private").await;
+    assert_eq!(
+        private.private_source().strip_prefix("private/"),
+        Storage::public(&private.token, &private.extension).strip_prefix("public/")
+    );
+    assert!(media.exists(private.private_source()).await);
+    assert!(
+        !media
+            .exists(Storage::public(&private.token, &private.extension))
+            .await
+    );
+    assert_eq!(
+        media
+            .content(
+                &format!("/v1/admin/videos/{}/content", private.id),
+                Some("bytes=0-15")
+            )
+            .await
+            .status(),
+        StatusCode::PARTIAL_CONTENT
+    );
+    let published = media.visibility(&private, "public").await;
+    assert!(!media.exists(Storage::source(&published.id)).await);
+    assert!(!media.exists(published.private_source()).await);
+}
+
 /// Use the fixture through the real storage constructor, leaving `CloudFront` unconfigured.
 async fn without_cdn() -> (
     mori::app::AppState,
@@ -216,7 +257,7 @@ async fn s3_revocation_and_republication() {
         );
     }
     assert!(!media.exists(Storage::public(&video.token, "webm")).await);
-    assert!(media.exists(Storage::source(&video.id)).await);
+    assert!(media.exists(video.private_source()).await);
     assert_eq!(media.visibility(&video, "public").await.state, "published");
     let invalidations: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM jobs WHERE invalidation_id IS NOT NULL")

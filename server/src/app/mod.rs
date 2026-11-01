@@ -140,6 +140,8 @@ pub struct AppState {
     pub script_csp: Arc<String>,
     /// Bounded login-failure count and earliest permitted retry timestamp.
     pub login_backoff: Arc<tokio::sync::Mutex<(u32, i64)>>,
+    /// Wake the single storage worker when an HTTP mutation schedules new work.
+    pub job_wakeup: Arc<tokio::sync::Notify>,
 }
 
 impl AppState {
@@ -179,6 +181,7 @@ impl AppState {
             poster_slots: Arc::new(Semaphore::new(4)),
             origin_secret,
             login_backoff: Arc::new(tokio::sync::Mutex::new((0, 0))),
+            job_wakeup: Arc::new(tokio::sync::Notify::new()),
         })
     }
 }

@@ -10,6 +10,8 @@ mod bootstrap;
 mod delivery;
 /// Migrations behavior.
 mod migrations;
+/// Restart-safe object relocation and legacy layout upgrades.
+mod objects;
 /// Openapi behavior.
 mod openapi;
 /// Privacy behavior.

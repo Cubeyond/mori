@@ -6,12 +6,20 @@
   import { untrack } from 'svelte';
   import { page } from '$app/state';
   import { takeInitialPage } from '#lib/api/bootstrap';
-  import { api, apiData, type Video, type Album } from '#lib/api/client';
+  import {
+    api,
+    apiData,
+    session,
+    type Video,
+    type Album,
+  } from '#lib/api/client';
   import Gallery from '#lib/components/Gallery.svelte';
   /** Public collection data is visibility-filtered by Rust before the first render. */
   const initial = untrack(
     () => takeInitialPage(page.url.pathname)?.album_page ?? null,
   );
+  /** Seed authorization must match the current session before it can be reused. */
+  const initialAuthenticated = untrack(() => $session.authenticated);
   /** Re-entering a collection later must use a fresh request. */
   let seeded = false;
   /** Publicly readable metadata only, cleared on route changes or failed access checks. */
@@ -54,10 +62,17 @@
   }
   $effect(() => {
     const slug = page.params.slug;
+    // Session changes must discard owner-only metadata, including after logout.
+    const authenticated = $session.authenticated;
     const lifecycle = new AbortController();
     controller = lifecycle;
     untrack(() => {
-      if (!seeded && initial !== null && initial.album.slug === slug) {
+      if (
+        !seeded &&
+        initial !== null &&
+        initial.album.slug === slug &&
+        authenticated === initialAuthenticated
+      ) {
         seeded = true;
         return;
       }

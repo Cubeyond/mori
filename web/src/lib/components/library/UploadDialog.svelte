@@ -9,6 +9,7 @@
   import Modal from '../Modal.svelte';
   import type { Album, UploadPolicy } from '#lib/api/client';
   import { message } from '#lib/api/client';
+  import { runUploadQueue } from '#lib/features/upload-queue';
   import {
     uploadVideo,
     savedUpload,
@@ -44,7 +45,9 @@
     onalbums: () => void;
   } = $props();
   /** Local file selection is never used as the video's server-generated display name. */
-  let file = $state<File | null>(null);
+  let files = $state<File[]>([]);
+  /** The first remaining entry is also the file used when resuming a paused session. */
+  const file = $derived(files[0] ?? null);
   /** Optional explicit album membership and safe default access policy. */
   let albumId = $state(''),
     visibility = $state('private');
@@ -75,31 +78,35 @@
   });
 
   /** Validate the selected local file before opening a multipart upload session. */
-  function selectFile(selected: File | null): void {
+  function selectFiles(selected: File[]): void {
     error = '';
     if (
-      selected !== null &&
+      selected.length > 0 &&
       (policy === null ||
-        selected.size > policy.max_upload_bytes ||
-        !policy.allowed_extensions.includes(
-          selected.name.split('.').at(-1)?.toLowerCase() ?? '',
+        selected.some(
+          (file) =>
+            file.size < 16 ||
+            file.size > policy.max_upload_bytes ||
+            !policy.allowed_extensions.includes(
+              file.name.split('.').at(-1)?.toLowerCase() ?? '',
+            ),
         ))
     ) {
       error =
         policy === null
           ? 'Upload settings are loading.'
           : 'Choose an enabled video format within the upload limit.';
-      file = null;
+      files = [];
       if (input !== undefined) input.value = '';
       return;
     }
-    file = selected;
+    files = selected;
   }
   /** Accept a dropped file using the same validation and transfer path as the file picker. */
   function dropFile(event: DragEvent): void {
     event.preventDefault();
     dragging = false;
-    if (!busy) selectFile(event.dataTransfer?.files[0] ?? null);
+    if (!busy) selectFiles(Array.from(event.dataTransfer?.files ?? []));
   }
   /** Upload checksummed parts and keep the transfer alive when the modal closes. */
   async function submit(event: SubmitEvent): Promise<void> {
@@ -111,37 +118,58 @@
     phase = 'Preparing upload';
     onstatus({ progress, phase });
     controller = new AbortController();
+    const signal = controller.signal;
+    const count = files.length;
     try {
-      await uploadVideo(
-        file,
-        albumId || null,
-        visibility,
-        (value, label) => {
-          progress = value;
-          phase = label;
-          onstatus({ progress: value, phase: label });
+      await runUploadQueue(
+        files,
+        async (entry, position, total) => {
+          await uploadVideo(
+            entry,
+            albumId || null,
+            visibility,
+            (value, label) => {
+              progress = value;
+              phase =
+                total > 1
+                  ? `${String(position)} of ${String(total)} · ${label}`
+                  : label;
+              onstatus({ progress: value, phase });
+            },
+            signal,
+            pending,
+          );
+          pending = null;
+          void oncomplete().catch((failure: unknown) => {
+            onnotice(message(failure));
+          });
         },
-        controller.signal,
-        pending,
+        signal,
       );
-      pending = null;
-      file = null;
       if (input !== undefined) input.value = '';
       onclose();
-      onnotice('Video uploaded. Finishing verification.');
+      onnotice(
+        count === 1 ? 'Video uploaded.' : `${String(count)} videos uploaded.`,
+      );
       await oncomplete();
     } catch (failure) {
-      error = controller.signal.aborted
-        ? 'Upload paused. Choose the same file to continue.'
+      error = signal.aborted
+        ? savedUpload() === null
+          ? 'Upload queue paused.'
+          : 'Upload paused. Choose the same file to continue.'
         : message(failure);
       pending = savedUpload();
       if (!open) onnotice('Upload interrupted. Open Upload to continue.');
     } finally {
       busy = false;
       onstatus(
-        pending === null
+        pending === null && files.length === 0
           ? null
-          : { progress, phase: 'Resume upload', paused: true },
+          : {
+              progress,
+              phase: pending === null ? 'Continue uploads' : 'Resume upload',
+              paused: true,
+            },
       );
     }
   }
@@ -150,6 +178,7 @@
     try {
       await cancelUpload();
       pending = null;
+      files.shift();
       onstatus(null);
       error = '';
       await oncomplete();
@@ -159,7 +188,7 @@
   }
 </script>
 
-<Modal {open} title="Upload a video" {onclose} closeLabel="Close upload">
+<Modal {open} title="Upload videos" {onclose} closeLabel="Close upload">
   {#if storageConfigured === null}
     <p class="storage-setup muted" role="status">Loading upload settings…</p>
   {:else if !storageConfigured}
@@ -188,13 +217,14 @@
         <input
           bind:this={input}
           type="file"
+          multiple
           accept={policy?.allowed_extensions
             .map((extension) => '.' + extension)
             .join(',') ?? 'video/*'}
-          aria-label="Video file"
+          aria-label="Video files"
           disabled={busy || policy === null}
           onchange={(event) => {
-            selectFile(event.currentTarget.files?.[0] ?? null);
+            selectFiles(Array.from(event.currentTarget.files ?? []));
           }}
           ondragover={(event) => {
             event.preventDefault();
@@ -207,11 +237,17 @@
             size={28}
             strokeWidth={1.25}
           />{/if}
-        <strong>{file?.name ?? 'Drop a video here'}</strong>
+        <strong
+          >{busy
+            ? file?.name
+            : files.length > 1
+              ? `${String(files.length)} videos selected`
+              : (file?.name ?? 'Drop videos here')}</strong
+        >
         <span
           >{file !== null
-            ? `${(file.size / 1_048_576).toFixed(1)} MiB · Click to choose another`
-            : 'or click to choose a file'}</span
+            ? `${(files.reduce((bytes, file) => bytes + file.size, 0) / 1_048_576).toFixed(1)} MiB · ${busy ? 'Uploading in order' : 'Click to change selection'}`
+            : 'or click to choose files'}</span
         >
         <small
           >{policy === null
@@ -286,7 +322,9 @@
             disabled={file === null || policy === null}
             ><ArrowUp size={17} />{pending !== null
               ? 'Resume upload'
-              : 'Upload video'}</Button
+              : files.length > 1
+                ? 'Upload videos'
+                : 'Upload video'}</Button
           >{/if}
       </footer>
     </form>

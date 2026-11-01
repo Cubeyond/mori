@@ -107,11 +107,14 @@ impl Media {
             .await
             .unwrap();
         let storage = self.state.storage.get().unwrap();
+        let video = videos::get(&self.state, upload["video_id"].as_str().unwrap())
+            .await
+            .unwrap();
         storage
             .s3
             .upload_part()
             .bucket(&storage.bucket)
-            .key(Storage::source(upload["video_id"].as_str().unwrap()))
+            .key(video.private_source())
             .upload_id(upload_id)
             .part_number(1)
             .checksum_sha256(checksum)

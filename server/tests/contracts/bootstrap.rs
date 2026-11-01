@@ -19,12 +19,19 @@ async fn document_seed_privacy_contract() {
         .await
         .unwrap();
     let (cookie, csrf) = login(&router).await;
-    for (path, authenticated, count) in [
-        ("/albums/collection", true, Some(2)),
-        ("/albums/collection", false, None),
-        ("/nature", true, Some(1)),
-        ("/nature", false, Some(1)),
+    for (path, authenticated, count, visibility) in [
+        ("/albums/collection", true, Some(2), "public"),
+        ("/albums/collection", false, None, "public"),
+        ("/nature", true, Some(2), "public"),
+        ("/nature", false, Some(1), "public"),
+        ("/nature", true, Some(2), "private"),
+        ("/nature", false, None, "private"),
     ] {
+        sqlx::query("UPDATE albums SET visibility=? WHERE id='collection'")
+            .bind(visibility)
+            .execute(&state.db)
+            .await
+            .unwrap();
         let mut request = Request::builder().uri(path);
         if authenticated {
             request = request.header("cookie", &cookie);

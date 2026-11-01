@@ -86,6 +86,8 @@ async fn upload_assigns_random_display_name() {
     let upload = media.begin("private", bytes.len(), "webm").await;
     assert!(mori::app::valid_token(upload["name"].as_str().unwrap()));
     assert_ne!(upload["name"], upload["video_id"]);
+    let library = media.request("GET", "/v1/admin/videos", Value::Null).await;
+    assert_eq!(library.body["videos"], json!([]));
 }
 
 #[tokio::test]
@@ -200,7 +202,7 @@ async fn cloudfront_revocation_survives_worker_restart() {
             .unwrap();
     assert!(invalidation.is_some());
     assert!(!media.exists(Storage::public(&video.token, "webm")).await);
-    assert!(media.exists(Storage::source(&video.id)).await);
+    assert!(media.exists(video.private_source()).await);
 }
 
 #[tokio::test]
@@ -217,4 +219,6 @@ async fn wrong_upload_size_is_not_retried_forever() {
         .unwrap();
     assert_eq!(video.state, "failed");
     assert!(video.last_error.is_some());
+    let library = media.request("GET", "/v1/admin/videos", Value::Null).await;
+    assert_eq!(library.body["videos"], json!([]));
 }

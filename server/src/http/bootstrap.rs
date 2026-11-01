@@ -71,6 +71,7 @@ pub(super) async fn document(state: &AppState, headers: &HeaderMap, path: &str) 
         Some(
             albums::public(
                 State(state.clone()),
+                headers.clone(),
                 Path(slug.into()),
                 Query(Page::default()),
             )

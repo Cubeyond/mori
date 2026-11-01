@@ -36,6 +36,42 @@ async fn library() -> (mori::app::AppState, axum::Router, tempfile::TempDir) {
 }
 
 #[tokio::test]
+/// A shared album address respects the current owner session, including logout.
+async fn private_album_address_authorizes_its_owner() {
+    let (_state, router, _directory) = library().await;
+    let owner = Client::admin(&router).await;
+    let path = "/v1/albums/nature";
+    let page = owner.request("GET", path, Value::Null).await;
+    assert_eq!(page.status, StatusCode::OK);
+    assert_eq!(page.body["videos"].as_array().unwrap().len(), 3);
+    let private = page.body["videos"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|video| video["visibility"] == "private")
+        .unwrap();
+    assert!(
+        private["media_url"]
+            .as_str()
+            .unwrap()
+            .starts_with("/v1/admin/videos/")
+    );
+    assert_eq!(
+        owner
+            .request("POST", "/v1/auth/logout", Value::Null)
+            .await
+            .status,
+        StatusCode::NO_CONTENT
+    );
+    for caller in [&owner, &Client::visitor(&router)] {
+        assert_eq!(
+            caller.request("GET", path, Value::Null).await.status,
+            StatusCode::NOT_FOUND
+        );
+    }
+}
+
+#[tokio::test]
 /// Creation normalizes unique slugs, rejects system paths, and requires CSRF.
 async fn album_creation_validates_slug_and_csrf() {
     let (_state, router, _directory) = setup().await;

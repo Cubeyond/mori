@@ -40,10 +40,12 @@ pub async fn collection(state: &AppState, scope: Collection<'_>, page: &Page) ->
     let mut query = QueryBuilder::<Sqlite>::new("SELECT * FROM videos WHERE ");
     match scope {
         Collection::Library => {
-            query.push("state!='deleted'");
+            query.push("state!='deleted' AND state NOT IN ('failed','uploading','verifying')");
         }
         Collection::Album(id) => {
-            query.push("state!='deleted' AND album_id=").push_bind(id);
+            query
+                .push("state!='deleted' AND state NOT IN ('failed','uploading','verifying') AND album_id=")
+                .push_bind(id);
         }
         Collection::PublicAlbum(id) => {
             query

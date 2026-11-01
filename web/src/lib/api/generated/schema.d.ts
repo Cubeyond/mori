@@ -347,9 +347,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Return a public album with published public members, including an empty collection.
+         * Return album members authorized by the current administrator session or public visibility.
          * @description # Errors
-         *     Returns 404 for private, missing, or deleted albums, or a database error.
+         *     Returns 404 for inaccessible or missing albums, or an authentication/database error.
          */
         get: operations["get_v1_albums_slug"];
         put?: never;

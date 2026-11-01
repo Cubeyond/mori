@@ -1,6 +1,7 @@
 //! Video contracts and context-dependent links, independent of HTTP handlers.
 
 use crate::app::AppState;
+use crate::infra::storage::Storage;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use utoipa::ToSchema;
@@ -35,6 +36,9 @@ pub struct Video {
     /// Current public URL namespace, stored separately from the display name.
     #[serde(skip_serializing)]
     pub media_prefix: String,
+    /// Private object location; absent values retain the pre-migration source convention.
+    #[serde(skip_serializing)]
+    pub source_key: Option<String>,
     /// Optional explicit album membership; absent means standalone.
     #[schema(required = true)]
     pub album_id: Option<String>,
@@ -70,6 +74,22 @@ pub struct Video {
     pub poster_url: Option<String>,
 }
 impl Video {
+    /// Resolve private storage without invalidating unfinished legacy multipart sessions.
+    #[must_use]
+    pub fn private_source(&self) -> String {
+        self.source_key
+            .clone()
+            .unwrap_or_else(|| Storage::source(&self.id))
+    }
+    /// Resolve the poster using the same storage generation as its private video.
+    #[must_use]
+    pub fn private_poster(&self) -> String {
+        if self.source_key.is_some() {
+            Storage::private_poster(&self.token)
+        } else {
+            Storage::poster(&self.id)
+        }
+    }
     /// Attach context-appropriate media and stable sharing URLs.
     #[must_use]
     pub fn links(mut self, s: &AppState, admin: bool) -> Self {

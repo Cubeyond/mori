@@ -58,7 +58,11 @@ pub(super) fn handle(
 fn read(store: &Store, method: &str, path: &str, headers: &HeaderMap) -> Response {
     let Some(object) = store.objects.get(path) else {
         return xml(
-            StatusCode::NOT_FOUND,
+            if method == "HEAD" {
+                StatusCode::FORBIDDEN
+            } else {
+                StatusCode::NOT_FOUND
+            },
             "<Error><Code>NoSuchKey</Code></Error>".into(),
         );
     };

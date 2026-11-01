@@ -1,5 +1,8 @@
 //! Durable publication, verified revocation, retries, and orphan cleanup.
 
+/// Object migration and verified relocation remain independent of job scheduling.
+mod objects;
+
 use crate::{
     app::{AppState, now, random_id},
     features::{uploads::PART_SIZE, videos},
@@ -72,24 +75,33 @@ pub async fn run(s: AppState) {
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(3));
     let mut ticks = 0;
     loop {
-        interval.tick().await;
+        tokio::select! {
+            _ = interval.tick() => {},
+            () = s.job_wakeup.notified() => {},
+        }
         ticks = (ticks + 1) % 20;
-        let next = sqlx::query_as::<_, Job>(
-            r"SELECT * FROM jobs WHERE state='pending' AND next_at<=?
+        // Drain a bounded batch without inserting a polling delay between verification and publication.
+        for _ in 0..8 {
+            let next = sqlx::query_as::<_, Job>(
+                r"SELECT * FROM jobs WHERE state='pending' AND next_at<=?
 ORDER BY created_at,id LIMIT 1",
-        )
-        .bind(now())
-        .fetch_optional(&s.db)
-        .await;
-        match next {
-            Ok(Some(job)) => {
-                if step(&s, &job).await.is_err() {
-                    tracing::warn!(kind=%job.kind,"background storage task failed; will retry");
-                    let _ = schedule_retry(&s, &job).await;
+            )
+            .bind(now())
+            .fetch_optional(&s.db)
+            .await;
+            match next {
+                Ok(Some(job)) => {
+                    if step(&s, &job).await.is_err() {
+                        tracing::warn!(kind=%job.kind,"background storage task failed; will retry");
+                        let _ = schedule_retry(&s, &job).await;
+                    }
+                }
+                Ok(None) => break,
+                Err(_) => {
+                    tracing::warn!("could not query background tasks");
+                    break;
                 }
             }
-            Ok(None) => {}
-            Err(_) => tracing::warn!("could not query background tasks"),
         }
         if ticks == 0 {
             let _ = cleanup(&s).await;
@@ -140,6 +152,7 @@ async fn step(s: &AppState, job: &Job) -> anyhow::Result<()> {
     match job.kind.as_str() {
         "verify" => verify(s, job, &v).await,
         "publish" => publish(s, job, &v).await,
+        "normalize" => objects::normalize(s, job, &v).await,
         "revoke" | "delete" | "delete_private" => withdraw(s, job, &v).await,
         _ => anyhow::bail!("unsupported persisted job kind"),
     }
@@ -158,7 +171,15 @@ state='uploading') OR state='canceling'",
     .fetch_all(&s.db)
     .await?;
     for (id, video, upload) in rows {
-        if s.storage.get()?.abort(&video, &upload).await.is_ok() {
+        let v = videos::get(s, &video)
+            .await
+            .map_err(|_| anyhow::anyhow!("Upload video unavailable"))?;
+        if s.storage
+            .get()?
+            .abort(&v.private_source(), &upload)
+            .await
+            .is_ok()
+        {
             sqlx::query("UPDATE uploads SET state='canceled' WHERE id=?")
                 .bind(id)
                 .execute(&s.db)
@@ -169,18 +190,20 @@ state='uploading') OR state='canceling'",
                 .await?;
         }
     }
-    let failed: Vec<String> =
-        sqlx::query_scalar("SELECT id FROM videos WHERE state='failed' LIMIT 16")
+    let failed: Vec<videos::Video> =
+        sqlx::query_as("SELECT * FROM videos WHERE state='failed' LIMIT 16")
             .fetch_all(&s.db)
             .await?;
-    for id in failed {
-        let _ = s.storage.get()?.delete(Storage::source(&id)).await;
-        let _ = s.storage.get()?.delete(Storage::poster(&id)).await;
+    for v in failed {
+        let _ = s.storage.get()?.delete(v.private_source()).await;
+        let _ = s.storage.get()?.delete(v.private_poster()).await;
     }
     sqlx::query("DELETE FROM sessions WHERE expires_at<=?")
         .bind(now())
         .execute(&s.db)
         .await?;
+    sqlx::query("INSERT INTO jobs(id,video_id,kind,revision,created_at) SELECT lower(hex(randomblob(16))),v.id,'normalize',v.revision,? FROM videos v WHERE v.source_key IS NULL AND v.state IN ('ready','published') AND NOT EXISTS(SELECT 1 FROM jobs j WHERE j.video_id=v.id AND j.revision=v.revision AND j.kind='normalize' AND j.state='pending') LIMIT 16")
+        .bind(now()).execute(&s.db).await?;
     // Recover reservations left by a process crash before an upload session was persisted.
     sqlx::query(
         r"UPDATE videos SET state='failed' WHERE state='uploading' AND created_at<? AND
@@ -199,17 +222,17 @@ NOT EXISTS(SELECT 1 FROM uploads WHERE uploads.video_id=videos.id)",
 async fn fail_verification(
     s: &AppState,
     job: &Job,
-    video: &str,
+    video: &videos::Video,
     message: &str,
 ) -> anyhow::Result<()> {
     let mut tx = s.db.begin().await?;
     sqlx::query("UPDATE videos SET state='failed',last_error=? WHERE id=?")
         .bind(message)
-        .bind(video)
+        .bind(&video.id)
         .execute(&mut *tx)
         .await?;
     sqlx::query("UPDATE uploads SET state='failed' WHERE video_id=?")
-        .bind(video)
+        .bind(&video.id)
         .execute(&mut *tx)
         .await?;
     sqlx::query("UPDATE jobs SET state='failed',error=? WHERE id=?")
@@ -218,8 +241,8 @@ async fn fail_verification(
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
-    let _ = s.storage.get()?.delete(Storage::source(video)).await;
-    let _ = s.storage.get()?.delete(Storage::poster(video)).await;
+    let _ = s.storage.get()?.delete(video.private_source()).await;
+    let _ = s.storage.get()?.delete(video.private_poster()).await;
     Ok(())
 }
 
@@ -241,7 +264,7 @@ async fn verify(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<()
             .s3
             .head_object()
             .bucket(&s.storage.get()?.bucket)
-            .key(Storage::source(&v.id))
+            .key(v.private_source())
             .send()
             .await;
         if !exists
@@ -250,7 +273,7 @@ async fn verify(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<()
             && let Err(error) = s
                 .storage
                 .get()?
-                .complete(&v.id, &upload_id, v.size, PART_SIZE)
+                .complete(&v.private_source(), &upload_id, v.size, PART_SIZE)
                 .await
         {
             if error
@@ -260,11 +283,15 @@ async fn verify(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<()
                 fail_verification(
                     s,
                     job,
-                    &v.id,
+                    v,
                     "Upload parts do not match the declared file size; upload again",
                 )
                 .await?;
-                let _ = s.storage.get()?.abort(&v.id, &upload_id).await;
+                let _ = s
+                    .storage
+                    .get()?
+                    .abort(&v.private_source(), &upload_id)
+                    .await;
                 return Ok(());
             }
             return Err(error);
@@ -280,11 +307,11 @@ async fn verify(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<()
         .s3
         .head_object()
         .bucket(&s.storage.get()?.bucket)
-        .key(Storage::source(&v.id))
+        .key(v.private_source())
         .send()
         .await?;
     if stored.content_length != Some(v.size) {
-        fail_verification(s, job, &v.id, "Stored file size does not match the upload").await?;
+        fail_verification(s, job, v, "Stored file size does not match the upload").await?;
         return Ok(());
     }
     let public = v.visibility == "public";
@@ -317,31 +344,42 @@ async fn verify(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<()
     Ok(())
 }
 
-/// Copy verified canonical objects and atomically expose the published record.
+/// Relocate verified objects and expose publication only after private duplicates are removed.
 ///
 /// # Errors
 /// Returns storage or transaction errors, leaving the durable job available for retry.
 async fn publish(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<()> {
     s.storage
         .get()?
-        .copy(
-            Storage::source(&v.id),
+        .copy_verified(
+            v.private_source(),
             Storage::public(&v.token, &v.extension),
             videos::content_type(&v.extension),
+            Some(v.size),
         )
         .await?;
     if v.poster != 0 {
         s.storage
             .get()?
-            .copy(
-                Storage::poster(&v.id),
+            .copy_verified(
+                v.private_poster(),
                 Storage::public_poster(&v.token),
                 "image/jpeg",
+                None,
             )
             .await?;
     }
+    let storage = s.storage.get()?;
+    storage.delete(v.private_source()).await?;
+    storage.delete(v.private_poster()).await?;
+    objects::remove_legacy(&storage, v).await?;
+    storage
+        .delete(Storage::private(&v.token, &v.extension))
+        .await?;
+    storage.delete(Storage::private_poster(&v.token)).await?;
     let mut tx = s.db.begin().await?;
-    sqlx::query("UPDATE videos SET state='published',last_error=NULL WHERE id=? AND revision=?")
+    sqlx::query("UPDATE videos SET state='published',source_key=?,last_error=NULL WHERE id=? AND revision=?")
+        .bind(Storage::private(&v.token, &v.extension))
         .bind(&v.id)
         .bind(v.revision)
         .execute(&mut *tx)
@@ -359,6 +397,9 @@ async fn publish(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<(
 /// # Errors
 /// Returns storage or transaction errors, leaving the durable job available for retry.
 async fn withdraw(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<()> {
+    if job.kind == "revoke" {
+        objects::restore_private(s, v).await?;
+    }
     s.storage
         .get()?
         .delete(Storage::public(&v.token, &v.extension))
@@ -372,12 +413,18 @@ async fn withdraw(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<
     }
 
     if matches!(job.kind.as_str(), "delete" | "delete_private") {
-        s.storage.get()?.delete(Storage::source(&v.id)).await?;
-        s.storage.get()?.delete(Storage::poster(&v.id)).await?;
+        let storage = s.storage.get()?;
+        storage.delete(v.private_source()).await?;
+        storage.delete(v.private_poster()).await?;
+        storage
+            .delete(Storage::private(&v.token, &v.extension))
+            .await?;
+        storage.delete(Storage::private_poster(&v.token)).await?;
+        objects::remove_legacy(&storage, v).await?;
     }
     let mut tx = s.db.begin().await?;
     sqlx::query(
-        "UPDATE videos SET state=?,visibility='private',last_error=NULL WHERE id=? AND revision=?",
+        "UPDATE videos SET state=?,visibility='private',source_key=?,last_error=NULL WHERE id=? AND revision=?",
     )
     .bind(
         if matches!(job.kind.as_str(), "delete" | "delete_private") {
@@ -386,6 +433,7 @@ async fn withdraw(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<
             "ready"
         },
     )
+    .bind(Storage::private(&v.token, &v.extension))
     .bind(&v.id)
     .bind(v.revision)
     .execute(&mut *tx)

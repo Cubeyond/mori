@@ -136,9 +136,17 @@ async fn stream(
     }
     let permit = stream_permit(&s, poster).await?;
     let key = if poster {
-        Storage::poster(&id)
+        if v.state == "published" {
+            Storage::public_poster(&v.token)
+        } else {
+            v.private_poster()
+        }
     } else {
-        Storage::source(&id)
+        if v.state == "published" {
+            Storage::public(&v.token, &v.extension)
+        } else {
+            v.private_source()
+        }
     };
     let head = s
         .storage

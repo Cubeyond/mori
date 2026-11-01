@@ -2,6 +2,8 @@
 
 /// Short-lived public-object signatures and browser delivery origins.
 mod delivery;
+/// Verified, restart-safe object relocation within the configured bucket.
+mod relocation;
 
 use crate::{app::Config, infra::storage_settings::config::StorageSettings};
 use anyhow::{Context, Result, ensure};
@@ -137,15 +139,25 @@ impl Storage {
         cleaned?;
         Ok(())
     }
-    /// Build the private canonical-source key from an internal random identifier.
+    /// Retain the legacy source key while old records and multipart sessions are upgraded.
     #[must_use]
     pub fn source(id: &str) -> String {
         format!("private/{id}/source.mp4")
     }
-    /// Build the private poster key from an internal video identifier.
+    /// Retain the legacy poster key until the matching source has been upgraded.
     #[must_use]
     pub fn poster(id: &str) -> String {
         format!("private/{id}/poster.jpg")
+    }
+    /// Build a private video key with the same immutable filename as its public location.
+    #[must_use]
+    pub fn private(token: &str, extension: &str) -> String {
+        format!("private/files/{token}.{extension}")
+    }
+    /// Build a private poster key with the same immutable filename as its public location.
+    #[must_use]
+    pub fn private_poster(token: &str) -> String {
+        format!("private/files/{token}.jpg")
     }
     /// Build the published media key from the immutable sharing token.
     #[must_use]
@@ -161,11 +173,11 @@ impl Storage {
     ///
     /// # Errors
     /// Returns an SDK, transport, or object-integrity error; partial operations remain retryable.
-    pub async fn begin(&self, id: &str) -> Result<String> {
+    pub async fn begin(&self, key: &str) -> Result<String> {
         self.s3
             .create_multipart_upload()
             .bucket(&self.bucket)
-            .key(Self::source(id))
+            .key(key)
             .content_type("application/octet-stream")
             .checksum_algorithm(aws_sdk_s3::types::ChecksumAlgorithm::Sha256)
             .send()
@@ -177,12 +189,12 @@ impl Storage {
     ///
     /// # Errors
     /// Returns an SDK, transport, or object-integrity error; partial operations remain retryable.
-    pub async fn part(&self, id: &str, upload: &str, part: i32, checksum: &str) -> Result<String> {
+    pub async fn part(&self, key: &str, upload: &str, part: i32, checksum: &str) -> Result<String> {
         Ok(self
             .s3
             .upload_part()
             .bucket(&self.bucket)
-            .key(Self::source(id))
+            .key(key)
             .upload_id(upload)
             .part_number(part)
             .checksum_sha256(checksum)
@@ -195,12 +207,12 @@ impl Storage {
     ///
     /// # Errors
     /// Returns an SDK, transport, or object-integrity error; partial operations remain retryable.
-    pub async fn abort(&self, id: &str, upload: &str) -> Result<()> {
+    pub async fn abort(&self, key: &str, upload: &str) -> Result<()> {
         match self
             .s3
             .abort_multipart_upload()
             .bucket(&self.bucket)
-            .key(Self::source(id))
+            .key(key)
             .upload_id(upload)
             .send()
             .await
@@ -221,7 +233,7 @@ impl Storage {
     /// Returns an SDK, transport, or object-integrity error; partial operations remain retryable.
     pub async fn complete(
         &self,
-        id: &str,
+        key: &str,
         upload: &str,
         expected: i64,
         part_size: i64,
@@ -234,7 +246,7 @@ impl Storage {
                 .s3
                 .list_parts()
                 .bucket(&self.bucket)
-                .key(Self::source(id))
+                .key(key)
                 .upload_id(upload)
                 .set_part_number_marker(marker)
                 .send()
@@ -273,7 +285,7 @@ impl Storage {
         self.s3
             .complete_multipart_upload()
             .bucket(&self.bucket)
-            .key(Self::source(id))
+            .key(key)
             .upload_id(upload)
             .multipart_upload(
                 CompletedMultipartUpload::builder()
@@ -286,7 +298,7 @@ impl Storage {
             .s3
             .head_object()
             .bucket(&self.bucket)
-            .key(Self::source(id))
+            .key(key)
             .send()
             .await?;
         ensure!(

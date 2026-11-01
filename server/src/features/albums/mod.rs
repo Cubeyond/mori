@@ -319,16 +319,17 @@ pub async fn delete(
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
+    s.job_wakeup.notify_one();
     Ok(if input.delete_media {
         (StatusCode::ACCEPTED, Json(AlbumDeletion { job_ids })).into_response()
     } else {
         StatusCode::NO_CONTENT.into_response()
     })
 }
-/// Return a public album with published public members, including an empty collection.
+/// Return album members authorized by the current administrator session or public visibility.
 ///
 /// # Errors
-/// Returns 404 for private, missing, or deleted albums, or a database error.
+/// Returns 404 for inaccessible or missing albums, or an authentication/database error.
 #[utoipa::path(
     get,
     path = "/v1/albums/{slug}",
@@ -337,17 +338,25 @@ pub async fn delete(
 )]
 pub async fn public(
     State(s): State<AppState>,
+    h: HeaderMap,
     Path(slug): Path<String>,
     Query(page): Query<Page>,
 ) -> Result<Json<AlbumPage>> {
+    let owner = auth::session(State(s.clone()), h).await?.0.authenticated;
     let album: Album = sqlx::query_as(
-        r"SELECT id,name,slug,visibility,created_at FROM albums WHERE slug=? AND visibility='public'",
+        r"SELECT id,name,slug,visibility,created_at FROM albums WHERE slug=? AND (visibility='public' OR ?)",
     )
     .bind(slug)
+    .bind(owner)
     .fetch_optional(&s.db)
     .await?
     .ok_or_else(missing)?;
-    let page = collection(&s, Collection::PublicAlbum(&album.id), &page).await?;
+    let scope = if owner {
+        Collection::Album(&album.id)
+    } else {
+        Collection::PublicAlbum(&album.id)
+    };
+    let page = collection(&s, scope, &page).await?;
     Ok(Json(AlbumPage {
         album,
         videos: page.videos,
