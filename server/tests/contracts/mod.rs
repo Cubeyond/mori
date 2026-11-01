@@ -1,0 +1,22 @@
+//! Focused integration contracts share fixtures but never mutable test state.
+
+/// Albums behavior.
+mod albums;
+/// Auth behavior.
+mod auth;
+/// Bootstrap behavior.
+mod bootstrap;
+/// Delivery behavior.
+mod delivery;
+/// Migrations behavior.
+mod migrations;
+/// Openapi behavior.
+mod openapi;
+/// Privacy behavior.
+mod privacy;
+/// Security behavior.
+mod security;
+/// Storage behavior.
+mod storage;
+/// Uploads behavior.
+mod uploads;

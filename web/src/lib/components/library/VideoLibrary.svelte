@@ -1,0 +1,283 @@
+<script lang="ts">
+  import { pageTitle } from '#lib/features/page-title';
+  import Button from '#lib/components/ui/button/button.svelte';
+  import Input from '#lib/components/ui/input/input.svelte';
+  import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
+  /** Authenticated gallery orchestration; administration never enters its document flow. */
+  import { resolve } from '$app/paths';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/state';
+  import { onMount } from 'svelte';
+  import { X, ArrowUpRight, Plus, Search } from '@lucide/svelte';
+  import {
+    api,
+    apiData,
+    message,
+    loadSession,
+    session,
+    type Video,
+    type Album,
+  } from '#lib/api/client';
+  import Gallery from '#lib/components/Gallery.svelte';
+  import { openUploader } from '#lib/features/upload';
+  import VideoDialog from '#lib/components/library/VideoDialog.svelte';
+
+  /** Local text filter applies to the currently loaded page. */
+  let query = $state('');
+  /** Metadata only; the gallery loads no video source before playback intent. */
+  let videos = $state<Video[]>([]),
+    albums = $state<Album[]>([]);
+  /** Filter metadata without loading any video sources. */
+  const visible = $derived(
+    videos.filter((video) =>
+      video.name.toLowerCase().includes(query.trim().toLowerCase()),
+    ),
+  );
+  /** Session discovery, pagination, and scoped floating feedback. */
+  let loaded = $state(false),
+    more = $state(false),
+    error = $state(''),
+    notice = $state('');
+  /** A single top-layer operation can be active while the gallery remains mounted. */
+  let editing = $state<Video | null>(null);
+  /** Avoid overlapping polling and user-triggered refresh responses. */
+  let refreshing = false;
+
+  /** Refresh the visible metadata window, retaining already loaded pagination depth. */
+  async function refresh(append = false): Promise<void> {
+    if (refreshing) return;
+    refreshing = true;
+    try {
+      const target = append ? 30 : Math.max(30, videos.length);
+      const rows: Video[] = [];
+      let offset = append ? videos.length : 0;
+      let hasMore = false;
+      do {
+        const limit = Math.min(60, target - rows.length);
+        const list = await apiData(
+          api.GET('/v1/admin/videos', { params: { query: { offset, limit } } }),
+        );
+        rows.push(...list.videos);
+        offset += list.videos.length;
+        hasMore = list.has_more;
+      } while (hasMore && rows.length < target);
+      videos = append ? [...videos, ...rows] : rows;
+      more = hasMore;
+      albums = await apiData(api.GET('/v1/admin/albums'));
+    } catch (failure) {
+      error = message(failure);
+    } finally {
+      refreshing = false;
+    }
+  }
+  /** Refresh mounted metadata after a background upload or album mutation. */
+  function syncLibrary(): void {
+    void refresh();
+  }
+  /** The video's own menu is the sole entry point for editing and sharing. */
+  function edit(video: Video): void {
+    editing = video;
+  }
+  /** Keep selected metadata current after publication completes inside the menu. */
+  function updateSelected(video: Video): void {
+    editing = video;
+  }
+  /** Keep successful action feedback outside the gallery's layout. */
+  function notify(value: string): void {
+    notice = value;
+  }
+
+  $effect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => (notice = ''), 6000);
+    return () => {
+      clearTimeout(timer);
+    };
+  });
+  onMount(() => {
+    const lifecycle = new AbortController();
+    void (async () => {
+      try {
+        await loadSession();
+        if (!lifecycle.signal.aborted && $session.authenticated) {
+          await refresh();
+          if (page.url.searchParams.has('upload')) openUploader();
+
+          if (
+            page.url.searchParams.has('upload') ||
+            page.url.searchParams.has('manage')
+          )
+            await goto(resolve('/videos'), {
+              state: page.state,
+              shallow: true,
+              replace: true,
+            });
+        }
+      } catch (failure) {
+        error = message(failure);
+      } finally {
+        loaded = true;
+      }
+    })();
+    window.addEventListener('mori:library-changed', syncLibrary);
+
+    const timer = setInterval(() => {
+      if ($session.authenticated && editing === null) void refresh();
+    }, 10000);
+    return () => {
+      lifecycle.abort();
+      clearInterval(timer);
+      window.removeEventListener('mori:library-changed', syncLibrary);
+    };
+  });
+</script>
+
+<svelte:head><title>{pageTitle('Videos')}</title></svelte:head>
+<main>
+  <Breadcrumbs items={[{ label: 'Videos', href: resolve('/videos') }]} />
+  <div class="page-heading">
+    <h1>Videos</h1>
+    {#if loaded && $session.authenticated}<Button
+        variant="default"
+        type="submit"
+        class="button primary"
+        onclick={() => {
+          openUploader();
+        }}><Plus size={16} />Upload video</Button
+      >{/if}
+  </div>
+  {#if loaded && $session.authenticated && videos.length > 0}<div
+      class="collection-toolbar"
+    >
+      <label class="search-field"
+        ><Search size={17} /><span class="sr-only">Search loaded videos</span
+        ><Input
+          type="search"
+          placeholder="Search this page…"
+          bind:value={query}
+        /></label
+      ><span class="collection-count"
+        >{visible.length} {visible.length === 1 ? 'video' : 'videos'}</span
+      >
+    </div>{/if}
+  {#if !loaded}<p class="empty muted" role="status">Opening your library…</p>
+  {:else if !$session.authenticated}<div class="empty">
+      <h2>Your private library.</h2>
+      <Button variant="ghost" class="text-action" href={resolve('/login')}
+        >Log in to continue<ArrowUpRight size={17} /></Button
+      >
+    </div>
+  {:else if videos.length > 0}{#if visible.length > 0}<Gallery
+        videos={visible}
+        onmanage={edit}
+      />{:else}<div class="empty-state">
+        <h2>No matching videos</h2>
+        <p>Try another name or load more videos.</p>
+      </div>{/if}
+    {#if more}<div class="more">
+        <Button
+          variant="ghost"
+          type="submit"
+          class="text-action"
+          onclick={() => refresh(true)}>Load more videos</Button
+        >
+      </div>{/if}
+  {:else}<div class="empty">
+      <h2>Your library is empty.</h2>
+      <p>Upload a video to get started. Albums are optional.</p>
+    </div>{/if}
+</main>
+
+{#if loaded && $session.authenticated}
+  {#if editing !== null}<VideoDialog
+      video={editing}
+      {albums}
+      onclose={() => (editing = null)}
+      oncomplete={refresh}
+      onnotice={notify}
+      onupdate={updateSelected}
+    />{/if}
+{/if}
+
+<div class="feedback">
+  {#if notice}<div class="toast">
+      <p role="status">{notice}</p>
+      <Button
+        variant="ghost"
+        size="icon"
+        type="submit"
+        class="icon-button"
+        aria-label="Dismiss notification"
+        onclick={() => (notice = '')}><X size={16} /></Button
+      >
+    </div>{/if}
+  {#if error}<div class="toast failure">
+      <p role="alert">{error}</p>
+      <Button
+        variant="ghost"
+        size="icon"
+        type="submit"
+        class="icon-button"
+        aria-label="Dismiss error"
+        onclick={() => (error = '')}><X size={16} /></Button
+      >
+    </div>{/if}
+</div>
+
+<style>
+  .empty {
+    min-height: 55svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 20px;
+    color: #999d92;
+    text-align: center;
+    font-size: 14px;
+  }
+  .empty h2 {
+    color: #dedbd2;
+    font-size: 24px;
+  }
+  .more {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+  }
+  .feedback {
+    position: fixed;
+    z-index: 10;
+    bottom: 22px;
+    right: 22px;
+    max-width: min(420px, calc(100% - 32px));
+    display: grid;
+    gap: 10px;
+  }
+  .toast {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #171823f5;
+    border: 1px solid #ffffff25;
+    box-shadow: 0 6px 30px #0004;
+    border-radius: 6px;
+    padding: 2px 5px 2px 16px;
+    color: #e4e4eb;
+    font-size: 13px;
+  }
+  .toast p {
+    flex: 1;
+    line-height: 1.6;
+  }
+  .toast.failure {
+    color: #e9afa5;
+  }
+  @media (max-width: 480px) {
+    .feedback {
+      right: 16px;
+      bottom: 16px;
+    }
+  }
+</style>

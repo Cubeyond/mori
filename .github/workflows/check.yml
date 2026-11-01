@@ -1,0 +1,31 @@
+name: Check
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: {components: 'rustfmt, clippy'}
+      - uses: Swatinem/rust-cache@v2
+        with: {workspaces: server}
+      - uses: pnpm/action-setup@v4
+        with: {version: '12.16.1'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml}
+      - run: cargo fmt --manifest-path server/Cargo.toml --check
+      - run: cargo clippy --manifest-path server/Cargo.toml --locked --all-targets -- -D warnings
+      - run: RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path server/Cargo.toml --locked --no-deps --document-private-items
+      - run: cargo test --manifest-path server/Cargo.toml --locked
+      - run: cargo run --manifest-path server/Cargo.toml --locked -- openapi --output api/openapi.yml
+      - run: pnpm --dir web install --frozen-lockfile
+      - run: pnpm --dir web run generate:api
+      - run: git diff --exit-code -- api/openapi.yml web/src/lib/api/generated/schema.d.ts
+      - run: pnpm --dir web run check
+      - run: pnpm --dir web run lint
+      - run: pnpm --dir web run test
+      - run: pnpm --dir web run format:check
+      - run: pnpm --dir web run build
+      - run: docker compose --env-file .env.example config --quiet

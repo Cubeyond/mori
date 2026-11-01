@@ -1,0 +1,19 @@
+# Shared whitespace rules; language formatters remain authoritative.
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.rs]
+indent_size = 4
+max_line_length = 100
+
+[*.py]
+indent_size = 4
+
+[*.{ts,js,svelte,css,json,yml}]
+indent_size = 2

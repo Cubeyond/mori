@@ -1,0 +1,1245 @@
+openapi: 3.1.0
+info:
+  title: Mori API
+  description: Administrative requests require a session cookie. Mutations require the exact MORI_PUBLIC_URL Origin and X-CSRF-Token from the session response. HTTPS uses __Host-mori; localhost development uses mori_dev. Private and missing public targets both return 404. Visibility changes and deletion return asynchronous job IDs; private completion waits for public-object deletion and, when configured, confirmed CloudFront revocation.
+  version: 0.1.0
+paths:
+  /v1/admin/albums:
+    get:
+      summary: List active albums for the administrator, including albums with no public videos.
+      description: |-
+        # Errors
+        Returns authentication or database errors.
+      operationId: get_v1_admin_albums
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Album'
+      security:
+      - session: []
+    post:
+      summary: Create an album while atomically reserving its normalized slug.
+      description: |-
+        # Errors
+        Returns authentication, CSRF, invalid label/slug, duplicate-slug, or database errors.
+      operationId: post_v1_admin_albums
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlbum'
+        required: true
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+        '409':
+          description: Slug already used
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/albums/{id}:
+    get:
+      summary: Return one administrator-visible collection, including private members and empty albums.
+      description: |-
+        # Errors
+        Returns authentication, missing album, pagination, or database errors.
+      operationId: get_v1_admin_albums_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: offset
+        in: query
+        description: Optional pagination offset clamped to the supported range.
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: limit
+        in: query
+        description: Optional page size clamped to the configured response budget.
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumPage'
+        '404':
+          description: Not found
+      security:
+      - session: []
+    delete:
+      summary: Delete a confirmed album, retaining its videos unless media deletion was explicitly requested.
+      description: |-
+        # Errors
+        Returns authentication, confirmation, active media-operation, or database errors.
+      operationId: delete_v1_admin_albums_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAlbum'
+        required: true
+      responses:
+        '202':
+          description: Album removed; video deletion jobs queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumDeletion'
+        '204':
+          description: Album removed; videos retained without album membership
+        '400':
+          description: Confirmation does not match
+        '404':
+          description: Album not found
+        '409':
+          description: A member video has an operation in progress
+      security:
+      - csrf: []
+        origin: []
+        session: []
+    patch:
+      summary: Update album label and page visibility without changing member-video access policies.
+      description: |-
+        # Errors
+        Returns authentication, CSRF, invalid label/visibility, missing album, or database errors.
+      operationId: patch_v1_admin_albums_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditAlbum'
+        required: true
+      responses:
+        '204':
+          description: Album updated
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/jobs/{id}:
+    get:
+      summary: Return authenticated progress for a durable upload or background job.
+      description: |-
+        # Errors
+        Returns a database error while preserving the persisted operation state.
+      operationId: get_v1_admin_jobs_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+      security:
+      - session: []
+  /v1/admin/storage:
+    get:
+      summary: Return only non-secret configured fields and credential-presence indicators.
+      description: |-
+        # Errors
+        Returns authentication or metadata errors.
+      operationId: get_v1_admin_storage
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageInfo'
+      security:
+      - session: []
+    put:
+      summary: Verify and persist settings before atomically activating the new client.
+      description: |-
+        # Errors
+        Returns authentication, invalid fields, unsafe target change, connection, encryption, or database errors.
+      operationId: put_v1_admin_storage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageInput'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageInfo'
+        '409':
+          description: Existing media locks the storage location
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/storage/test:
+    post:
+      summary: Check the candidate against S3 without persisting or activating it.
+      description: |-
+        # Errors
+        Returns authentication, invalid fields, or failed object-permission checks.
+      operationId: post_v1_admin_storage_test
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StorageInput'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionCheck'
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/upload-policy:
+    get:
+      summary: Return environment-configured limits for the authenticated upload interface.
+      description: |-
+        # Errors
+        Returns authentication or database errors.
+      operationId: get_v1_admin_upload_policy
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadPolicy'
+      security:
+      - session: []
+  /v1/admin/uploads:
+    post:
+      summary: Create a private multipart session with independent random name and URL token.
+      description: |-
+        # Errors
+        Returns authentication, CSRF, upload-limit, membership, delivery, S3, or database errors.
+      operationId: post_v1_admin_uploads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUpload'
+        required: true
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Upload'
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/uploads/{id}:
+    get:
+      summary: Return authenticated progress for a durable upload or background job.
+      description: |-
+        # Errors
+        Returns authentication, expired/nonresumable-session, S3, or database errors.
+      operationId: get_v1_admin_uploads_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Upload'
+      security:
+      - session: []
+    delete:
+      summary: Stop a resumable multipart upload and persist cancellation progress.
+      description: |-
+        # Errors
+        Returns authentication, CSRF, state-conflict, S3-abort, or database errors.
+      operationId: delete_v1_admin_uploads_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Aborted
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/uploads/{id}/complete:
+    post:
+      summary: Validate multipart state and schedule verification or complete the S3 object.
+      description: |-
+        # Errors
+        Returns authentication, CSRF, expired-session, state-conflict, or database errors.
+      operationId: post_v1_admin_uploads_id_complete
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accepted'
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/uploads/{id}/parts/{part}:
+    post:
+      summary: Issue a short-lived signature for one checksummed multipart part.
+      description: |-
+        # Errors
+        Returns authentication, CSRF, checksum, part-number, expired-session, S3, or database errors.
+      operationId: post_v1_admin_uploads_id_parts_part
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: part
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartInput'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartUrl'
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/videos:
+    get:
+      summary: Return a bounded collection visible to the authenticated administrator.
+      description: |-
+        # Errors
+        Returns authentication, page-bound conversion, or database errors.
+      operationId: get_v1_admin_videos
+      parameters:
+      - name: offset
+        in: query
+        description: Optional pagination offset clamped to the supported range.
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: limit
+        in: query
+        description: Optional page size clamped to the configured response budget.
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoPage'
+      security:
+      - session: []
+  /v1/admin/videos/{id}:
+    delete:
+      summary: Schedule revision-guarded deletion and confirmed withdrawal of any public copies.
+      description: |-
+        # Errors
+        Returns authentication, CSRF, state/revision conflict, delivery-configuration, or database
+        errors.
+      operationId: delete_v1_admin_videos_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accepted'
+      security:
+      - csrf: []
+        origin: []
+        session: []
+    patch:
+      summary: Apply metadata changes and atomically schedule visibility transitions.
+      description: |-
+        # Errors
+        Returns authentication, CSRF, metadata, membership, delivery-configuration, or revision errors.
+      operationId: patch_v1_admin_videos_id
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditVideo'
+        required: true
+      responses:
+        '202':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Accepted'
+        '409':
+          description: Operation in progress
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/videos/{id}/content:
+    get:
+      summary: Serve authenticated private video bytes with HEAD and Range support.
+      description: |-
+        # Errors
+        Returns authentication, inaccessible-video, concurrency-limit, S3, or response-building errors.
+      operationId: get_v1_admin_videos_id_content
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Authenticated video stream
+        '206':
+          description: Partial video
+        '416':
+          description: Unsatisfiable range
+      security:
+      - session: []
+    head:
+      summary: Serve authenticated private video bytes with HEAD and Range support.
+      description: |-
+        # Errors
+        Returns authentication, inaccessible-video, concurrency-limit, S3, or response-building errors.
+      operationId: head_v1_admin_videos_id_content
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Authenticated video stream
+        '206':
+          description: Partial video
+        '416':
+          description: Unsatisfiable range
+      security:
+      - session: []
+  /v1/admin/videos/{id}/poster:
+    get:
+      summary: Serve or store a bounded authenticated JPEG poster.
+      description: |-
+        # Errors
+        Returns authentication, inaccessible-poster, concurrency-limit, S3, or response-building errors.
+      operationId: get_v1_admin_videos_id_poster
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Authenticated poster
+      security:
+      - session: []
+    put:
+      summary: Serve or store a bounded authenticated JPEG poster.
+      description: |-
+        # Errors
+        Returns authentication, CSRF, state-conflict, JPEG-limit, S3, or database errors.
+      operationId: put_v1_admin_videos_id_poster
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+        required: true
+      responses:
+        '204':
+          description: Poster saved
+      security:
+      - csrf: []
+        origin: []
+        session: []
+    head:
+      summary: Serve or store a bounded authenticated JPEG poster.
+      description: |-
+        # Errors
+        Returns authentication, inaccessible-poster, concurrency-limit, S3, or response-building errors.
+      operationId: head_v1_admin_videos_id_poster
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Authenticated poster
+      security:
+      - session: []
+  /v1/albums/{slug}:
+    get:
+      summary: Return a public album with published public members, including an empty collection.
+      description: |-
+        # Errors
+        Returns 404 for private, missing, or deleted albums, or a database error.
+      operationId: get_v1_albums_slug
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: offset
+        in: query
+        description: Optional pagination offset clamped to the supported range.
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: limit
+        in: query
+        description: Optional page size clamped to the configured response budget.
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumPage'
+        '404':
+          description: Not found
+  /v1/auth/login:
+    post:
+      summary: Verify the administrator password and establish a revocable session.
+      description: |-
+        # Errors
+        Returns authentication, rate-limit, bootstrap, header, password-worker, or database errors.
+      operationId: post_v1_auth_login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          description: Invalid password
+        '429':
+          description: Try later
+      security:
+      - origin: []
+  /v1/auth/logout:
+    post:
+      summary: Revoke the current session and expire its browser cookie.
+      description: |-
+        # Errors
+        Returns authentication, Origin, CSRF, cookie-header, or database errors.
+      operationId: post_v1_auth_logout
+      responses:
+        '204':
+          description: Session revoked
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/auth/session:
+    get:
+      summary: Report session validity and its associated CSRF token.
+      description: |-
+        # Errors
+        Returns a database error; absent or expired sessions produce an unauthenticated response.
+      operationId: get_v1_auth_session
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+  /v1/videos/{token}:
+    get:
+      summary: Return only published public content, hiding private and missing targets alike.
+      description: |-
+        # Errors
+        Returns 404 for invalid, private, unpublished, or missing tokens, or a database error.
+      operationId: get_v1_videos_token
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+        '404':
+          description: Not public
+components:
+  schemas:
+    Accepted:
+      type: object
+      description: Mutation acknowledgement with an optional durable background job.
+      required:
+      - job_id
+      properties:
+        job_id:
+          type:
+          - string
+          - 'null'
+          description: Optional durable task identifier for an asynchronous transition.
+    Album:
+      type: object
+      description: Explicitly created album with an editable URL slug and display label.
+      required:
+      - id
+      - name
+      - slug
+      - visibility
+      - created_at
+      properties:
+        created_at:
+          type: integer
+          format: int64
+          description: Creation timestamp in Unix seconds.
+        id:
+          type: string
+          description: Stable internal identifier for this record.
+        name:
+          type: string
+          description: Administrator-chosen album display label, independent of its slug.
+        slug:
+          type: string
+          description: Unique editable album URL component.
+        visibility:
+          type: string
+          description: Whether the album page can be visited anonymously, independent of member videos.
+    AlbumDeletion:
+      type: object
+      description: Durable video deletions queued by an explicitly destructive album removal.
+      required:
+      - job_ids
+      properties:
+        job_ids:
+          type: array
+          items:
+            type: string
+          description: Job identifiers whose completion confirms source and public-copy removal.
+    AlbumPage:
+      type: object
+      description: Album metadata and a bounded page of videos filtered for the caller.
+      required:
+      - album
+      - videos
+      - has_more
+      properties:
+        album:
+          $ref: '#/components/schemas/Album'
+          description: Album metadata visible to the caller.
+        has_more:
+          type: boolean
+          description: Whether another result page is available.
+        videos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Video'
+          description: Visibility-filtered page of video records.
+    ConnectionCheck:
+      type: object
+      description: Successful S3 write/read/delete probe, independent of `CloudFront` setup.
+      required:
+      - verified
+      - mode
+      properties:
+        mode:
+          $ref: '#/components/schemas/StorageMode'
+          description: Provider actually checked, so a local fixture cannot be reported as a real AWS connection.
+        verified:
+          type: boolean
+          description: The supplied S3 configuration passed the required object-permission checks.
+    CreateAlbum:
+      type: object
+      description: Administrator-supplied album label and separately validated slug.
+      required:
+      - name
+      - slug
+      properties:
+        name:
+          type: string
+          description: Administrator-chosen album display label, independent of its slug.
+        slug:
+          type: string
+          description: Unique editable album URL component.
+        visibility:
+          type: string
+          description: Album-page visibility; omitted values default to private.
+    CreateUpload:
+      type: object
+      description: Upload parameters; initial display names are always generated by the server.
+      required:
+      - size
+      - visibility
+      properties:
+        album_id:
+          type:
+          - string
+          - 'null'
+          description: Optional explicit album membership; absent means standalone.
+        duration:
+          type: number
+          format: double
+          description: Browser-probed duration in seconds; zero means unavailable.
+        extension:
+          type: string
+          description: Container extension, independent of the randomized display name.
+        height:
+          type: integer
+          format: int64
+          description: Browser-probed display height; zero means unavailable.
+        size:
+          type: integer
+          format: int64
+          description: Expected or validated object length in bytes.
+        visibility:
+          type: string
+          description: Requested public or private access policy.
+        width:
+          type: integer
+          format: int64
+          description: Browser-probed display width; zero means unavailable.
+      additionalProperties: false
+    DeleteAlbum:
+      type: object
+      description: Explicit destructive confirmation and optional deletion of contained media.
+      required:
+      - confirmation
+      properties:
+        confirmation:
+          type: string
+          description: Exact current album display name, required for both deletion modes.
+        delete_media:
+          type: boolean
+          description: Queue deletion of every member; false retains and detaches the videos.
+      additionalProperties: false
+    DeliveryChange:
+      type: string
+      description: Whether changing the optional CDN is safe for the current publication lifecycle.
+      enum:
+      - available
+      - requires_revocation
+    EditAlbum:
+      type: object
+      description: Editable album label, optional URL slug, and page visibility.
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          description: Administrator-chosen album display label, independent of its slug.
+        slug:
+          type:
+          - string
+          - 'null'
+          description: Requested normalized URL slug; omission retains the current address.
+        visibility:
+          type:
+          - string
+          - 'null'
+          description: Requested album-page visibility; omission preserves its current value.
+    EditVideo:
+      type: object
+      description: Editable metadata, optional album membership, and requested visibility.
+      required:
+      - name
+      - visibility
+      properties:
+        album_id:
+          type:
+          - string
+          - 'null'
+          description: Optional explicit album membership; absent means standalone.
+        name:
+          type: string
+          description: Display name; uploads receive a fresh server-generated hash.
+        visibility:
+          type: string
+          description: Requested public or private access policy.
+    Job:
+      type: object
+      description: Persisted storage operation with revision guards, retry state, and CDN progress.
+      required:
+      - id
+      - video_id
+      - kind
+      - revision
+      - state
+      - invalidation_id
+      - attempts
+      - next_at
+      - error
+      - created_at
+      properties:
+        attempts:
+          type: integer
+          format: int64
+          description: Number of failed storage attempts for backoff calculation.
+        created_at:
+          type: integer
+          format: int64
+          description: Creation timestamp in Unix seconds.
+        error:
+          type:
+          - string
+          - 'null'
+          description: Sanitized explanatory message safe to return to the caller.
+        id:
+          type: string
+          description: Stable internal identifier for this record.
+        invalidation_id:
+          type:
+          - string
+          - 'null'
+          description: '`CloudFront` invalidation being monitored before confirming withdrawal.'
+        kind:
+          type: string
+          description: Persisted publication, verification, revocation, or deletion operation.
+        next_at:
+          type: integer
+          format: int64
+          description: Earliest timestamp at which this job may be retried.
+        revision:
+          type: integer
+          format: int64
+          description: Monotonic version guarding obsolete asynchronous operations.
+        state:
+          type: string
+          description: Persisted progress or terminal state of the operation.
+        video_id:
+          type: string
+          description: Identifier of the associated video record.
+    Login:
+      type: object
+      description: Password submitted to establish the single administrator session.
+      required:
+      - password
+      properties:
+        password:
+          type: string
+          description: Administrator password; never persisted or logged in plaintext.
+        username:
+          type: string
+          description: Configured administrator name; omitted legacy requests use root.
+    PartInput:
+      type: object
+      description: Checksum required to authorize a single multipart part.
+      required:
+      - checksum
+      properties:
+        checksum:
+          type: string
+          description: Base64 SHA-256 checksum of a single uploaded part.
+    PartUrl:
+      type: object
+      description: Temporary S3 upload authorization scoped to one numbered part.
+      required:
+      - url
+      properties:
+        url:
+          type: string
+          description: Short-lived presigned URL scoped to one upload part.
+    Session:
+      type: object
+      description: Session discovery response, including CSRF only for authenticated callers.
+      required:
+      - authenticated
+      - csrf
+      properties:
+        authenticated:
+          type: boolean
+          description: Whether the supplied administrator session is valid.
+        csrf:
+          type:
+          - string
+          - 'null'
+          description: Session-bound CSRF value returned only to its authenticated browser.
+    StorageInfo:
+      type: object
+      description: Safe storage summary; credential values are never returned.
+      required:
+      - configured
+      - mode
+      - bucket
+      - region
+      - distribution_id
+      - access_key_hint
+      - has_session_token
+      - location_locked
+      - delivery_change
+      properties:
+        access_key_hint:
+          type:
+          - string
+          - 'null'
+          description: Last four characters identifying the saved access key, never its complete value.
+        bucket:
+          type: string
+          description: Existing bucket or an empty value before setup.
+        configured:
+          type: boolean
+          description: Whether a validated client is installed.
+        delivery_change:
+          $ref: '#/components/schemas/DeliveryChange'
+          description: Public or withdrawing media prevents changing the delivery mode before revocation.
+        distribution_id:
+          type:
+          - string
+          - 'null'
+          description: Optional public-delivery distribution.
+        has_session_token:
+          type: boolean
+          description: Whether a temporary token is stored, without revealing it.
+        location_locked:
+          type: boolean
+          description: Existing video records prevent moving to an unrelated bucket or region.
+        mode:
+          $ref: '#/components/schemas/StorageMode'
+          description: Provider identity; a test client must never be presented as a real AWS connection.
+        region:
+          type: string
+          description: Bucket region, defaulting to the setup example.
+    StorageInput:
+      type: object
+      description: Storage fields entered explicitly by the administrator; blank credentials retain saved values.
+      required:
+      - bucket
+      - region
+      properties:
+        access_key_id:
+          type:
+          - string
+          - 'null'
+          description: Replacement key identifier; omission retains the saved credential.
+          writeOnly: true
+        bucket:
+          type: string
+          description: Private Amazon S3 bucket.
+        distribution_id:
+          type:
+          - string
+          - 'null'
+          description: Optional distribution; omission selects direct, signed S3 playback.
+        region:
+          type: string
+          description: AWS region hosting the bucket.
+        secret_access_key:
+          type:
+          - string
+          - 'null'
+          description: Replacement secret; never included in a response.
+          writeOnly: true
+        session_token:
+          type:
+          - string
+          - 'null'
+          description: Replacement temporary token; an empty string clears it and omission retains it.
+          writeOnly: true
+      additionalProperties: false
+    StorageMode:
+      type: string
+      description: Installed provider, distinguishing local protocol fixtures from Amazon S3.
+      enum:
+      - unconfigured
+      - amazon_s3
+      - test
+    Upload:
+      type: object
+      description: Resumable upload details with the server-assigned display hash.
+      required:
+      - id
+      - video_id
+      - name
+      - part_size
+      - part_count
+      - expires_at
+      - parts
+      properties:
+        expires_at:
+          type: integer
+          format: int64
+          description: Absolute expiry timestamp in Unix seconds.
+        id:
+          type: string
+          description: Stable internal identifier for this record.
+        name:
+          type: string
+          description: Display name; uploads receive a fresh server-generated hash.
+        part_count:
+          type: integer
+          format: int32
+          description: Number of parts required by the declared file size.
+        part_size:
+          type: integer
+          format: int64
+          description: Planned non-final part size in bytes.
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/UploadedPart'
+          description: Verified uploaded parts available for resumable transfer.
+        video_id:
+          type: string
+          description: Identifier of the associated video record.
+    UploadPolicy:
+      type: object
+      description: Safe upload limits exposed without credentials or storage configuration.
+      required:
+      - max_upload_bytes
+      - allowed_extensions
+      properties:
+        allowed_extensions:
+          type: array
+          items:
+            type: string
+          description: Enabled lowercase container extensions.
+        max_upload_bytes:
+          type: integer
+          format: int64
+          description: Maximum accepted file length in bytes.
+    UploadedPart:
+      type: object
+      description: S3-confirmed part metadata used to resume an interrupted upload.
+      required:
+      - number
+      - size
+      - checksum
+      properties:
+        checksum:
+          type:
+          - string
+          - 'null'
+          description: Base64 SHA-256 checksum of a single uploaded part.
+        number:
+          type: integer
+          format: int32
+          description: One-based S3 multipart part number.
+        size:
+          type: integer
+          format: int64
+          description: Expected or validated object length in bytes.
+    Video:
+      type: object
+      description: Video metadata and visibility-dependent delivery URLs.
+      required:
+      - id
+      - token
+      - extension
+      - album_id
+      - name
+      - visibility
+      - state
+      - size
+      - duration
+      - width
+      - height
+      - poster
+      - created_at
+      - revision
+      - last_error
+      - media_url
+      - poster_url
+      properties:
+        album_id:
+          type:
+          - string
+          - 'null'
+          description: Optional explicit album membership; absent means standalone.
+        created_at:
+          type: integer
+          format: int64
+          description: Creation timestamp in Unix seconds.
+        duration:
+          type: number
+          format: double
+          description: Validated movie duration in seconds.
+        extension:
+          type: string
+          description: Immutable original container extension used in public resource URLs.
+        height:
+          type: integer
+          format: int64
+          description: Displayed video height after track rotation is accounted for.
+        id:
+          type: string
+          description: Stable internal identifier for this record.
+        last_error:
+          type:
+          - string
+          - 'null'
+          description: Sanitized actionable failure shown in administrator management.
+        media_url:
+          type: string
+          description: Public direct URL or authenticated private content endpoint.
+        name:
+          type: string
+          description: Display name; uploads receive a fresh server-generated hash.
+        poster:
+          type: integer
+          format: int64
+          description: Whether a JPEG poster has been stored.
+        poster_url:
+          type:
+          - string
+          - 'null'
+          description: Optional public or authenticated poster endpoint.
+        revision:
+          type: integer
+          format: int64
+          description: Monotonic version guarding obsolete asynchronous operations.
+        size:
+          type: integer
+          format: int64
+          description: Expected or validated object length in bytes.
+        state:
+          type: string
+          description: Persisted progress or terminal state of the operation.
+        token:
+          type: string
+          description: Unpredictable public video identifier independent of display names.
+        visibility:
+          type: string
+          description: Requested public or private access policy.
+        width:
+          type: integer
+          format: int64
+          description: Displayed video width after track rotation is accounted for.
+    VideoPage:
+      type: object
+      description: Bounded video collection with continuation information.
+      required:
+      - videos
+      - has_more
+      properties:
+        has_more:
+          type: boolean
+          description: Whether another result page is available.
+        videos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Video'
+          description: Visibility-filtered page of video records.
+  securitySchemes:
+    csrf:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+    origin:
+      type: apiKey
+      in: header
+      name: Origin
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-mori

@@ -1,0 +1,76 @@
+/** Mori's control sizing keeps the upstream Nova palette and interaction states. */
+.style-nova {
+  .cn-button {
+    font-size: 15px;
+    line-height: 22px;
+  }
+  .cn-button-size-default {
+    height: 40px;
+    padding-inline: 14px;
+    gap: 8px;
+  }
+  .cn-button-size-sm {
+    height: 36px;
+    padding-inline: 12px;
+    font-size: 14px;
+  }
+  .cn-button-size-xs {
+    height: 32px;
+    font-size: 13px;
+  }
+  .cn-button-size-lg {
+    height: 44px;
+    padding-inline: 18px;
+  }
+  .cn-button-size-icon {
+    width: 40px;
+    height: 40px;
+  }
+  .cn-button-size-icon-sm {
+    width: 36px;
+    height: 36px;
+  }
+  .cn-button-size-icon-lg {
+    width: 44px;
+    height: 44px;
+  }
+  .cn-button svg:not([class*='size-']) {
+    width: 18px;
+    height: 18px;
+  }
+  .cn-input,
+  .cn-native-select {
+    height: 40px;
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .cn-input {
+    padding-inline: 12px;
+  }
+  .cn-native-select {
+    padding-left: 12px;
+    padding-right: 40px;
+  }
+  .cn-native-select-icon {
+    width: 18px;
+    height: 18px;
+    right: 12px;
+  }
+  .cn-textarea {
+    padding: 12px;
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .cn-dialog-content {
+    font-size: 15px;
+    line-height: 24px;
+  }
+}
+
+/** Touch controls remain comfortably operable even in dense gallery overlays. */
+@media (pointer: coarse) {
+  .style-nova .cn-button-size-icon {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

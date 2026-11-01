@@ -1,0 +1,31 @@
+services:
+  mori:
+    image: ${MORI_IMAGE:-mori:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    read_only: true
+    user: "10001:10001"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    pids_limit: 64
+    ports: ["${MORI_BIND_ADDRESS:-127.0.0.1}:${MORI_PORT:-3000}:3000"]
+    environment:
+      MORI_PUBLIC_URL: ${MORI_PUBLIC_URL:-https://media.laplacian.net}
+      MORI_ADMIN_USERNAME: ${MORI_ADMIN_USERNAME:-root}
+      MORI_ADMIN_PASSWORD: ${MORI_ADMIN_PASSWORD:?Set MORI_ADMIN_PASSWORD}
+      MORI_MAX_UPLOAD_BYTES: ${MORI_MAX_UPLOAD_BYTES:-1000000000}
+      MORI_VIDEO_EXTENSIONS: ${MORI_VIDEO_EXTENSIONS:-mp4,m4v,mov,webm,mkv,avi,ogv,mpeg,mpg,ts,mts,m2ts,3gp,wmv,flv}
+    volumes: [metadata:/data]
+    tmpfs: ["/tmp:size=8m,noexec,nosuid"]
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+volumes:
+  metadata:
+networks:
+  default:
+    name: ${MORI_NETWORK:-mori}

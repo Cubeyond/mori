@@ -1,0 +1,6 @@
+# Embedded SQL checksums must be identical on every developer platform.
+* text=auto eol=lf
+*.mp4 binary
+*.webm binary
+*.woff2 binary
+*.ttf binary
