@@ -1,5 +1,6 @@
 //! Authorize every stable public address before selecting S3 or optional CDN delivery.
 
+use super::Video;
 use crate::{
     app::{AppState, valid_token},
     http::error::{Result, missing},
@@ -60,7 +61,7 @@ pub async fn public_file(
         return Err(missing());
     }
     let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM videos WHERE token=? AND visibility='public' AND state='published' AND (extension=? OR (?='jpg' AND poster!=0)))",
+        "SELECT EXISTS(SELECT 1 FROM videos WHERE token=? AND visibility='public' AND state='published' AND (extension=? OR (?='jpg' AND poster!=0 AND poster_key IS NULL)))",
     ).bind(token).bind(extension).bind(extension).fetch_one(&s.db).await?;
     if !exists {
         return Err(missing());
@@ -68,6 +69,29 @@ pub async fn public_file(
     Ok(Redirect::temporary(
         &storage
             .public_url(token, extension, method == Method::HEAD)
+            .await?,
+    ))
+}
+
+/// Deliver a published JPEG derivative without confusing it with a JPEG original.
+///
+/// # Errors
+/// Returns 404 for an inaccessible/missing preview, or storage and database errors.
+pub async fn public_preview(
+    State(s): State<AppState>,
+    Path(filename): Path<String>,
+    method: Method,
+) -> Result<Redirect> {
+    let token = filename
+        .strip_suffix(".jpg")
+        .filter(|token| valid_token(token))
+        .ok_or_else(missing)?;
+    let media: Video = sqlx::query_as("SELECT * FROM videos WHERE token=? AND visibility='public' AND state='published' AND poster!=0 AND poster_key IS NOT NULL")
+        .bind(token).fetch_optional(&s.db).await?.ok_or_else(missing)?;
+    Ok(Redirect::temporary(
+        &s.storage
+            .get()?
+            .published_url(media.public_poster(), method == Method::HEAD)
             .await?,
     ))
 }

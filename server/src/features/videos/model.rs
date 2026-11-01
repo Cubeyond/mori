@@ -1,32 +1,17 @@
 //! Video contracts and context-dependent links, independent of HTTP handlers.
 
+use super::MediaKind;
 use crate::app::AppState;
 use crate::infra::storage::Storage;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use utoipa::ToSchema;
 
-/// Select a safe Content-Type from a container extension without enforcing a video codec.
-#[must_use]
-pub fn content_type(extension: &str) -> &'static str {
-    match extension {
-        "mp4" | "m4v" => "video/mp4",
-        "mov" => "video/quicktime",
-        "webm" => "video/webm",
-        "mkv" => "video/x-matroska",
-        "avi" => "video/x-msvideo",
-        "ogv" => "video/ogg",
-        "mpeg" | "mpg" => "video/mpeg",
-        "ts" | "mts" | "m2ts" => "video/mp2t",
-        "3gp" => "video/3gpp",
-        "wmv" => "video/x-ms-wmv",
-        "flv" => "video/x-flv",
-        _ => "application/octet-stream",
-    }
-}
-/// Video metadata and visibility-dependent delivery URLs.
+/// Image/video metadata; the legacy DTO name and API routes preserve existing integrations.
 #[derive(Serialize, FromRow, ToSchema)]
 pub struct Video {
+    /// Original media category, independent of extension or browser codec support.
+    pub kind: MediaKind,
     /// Stable internal identifier for this record.
     pub id: String,
     /// Unpredictable public video identifier independent of display names.
@@ -39,6 +24,9 @@ pub struct Video {
     /// Private object location; absent values retain the pre-migration source convention.
     #[serde(skip_serializing)]
     pub source_key: Option<String>,
+    /// Private preview location; absent values preserve historical video poster paths.
+    #[serde(skip_serializing)]
+    pub poster_key: Option<String>,
     /// Optional explicit album membership; absent means standalone.
     #[schema(required = true)]
     pub album_id: Option<String>,
@@ -74,6 +62,16 @@ pub struct Video {
     pub poster_url: Option<String>,
 }
 impl Video {
+    /// Select the current original or derivative after the caller has authorized access.
+    #[must_use]
+    pub(crate) fn content_key(&self, poster: bool) -> String {
+        match (self.state.as_str(), poster) {
+            ("published", true) => self.public_poster(),
+            ("published", false) => Storage::public(&self.token, &self.extension),
+            (_, true) => self.private_poster(),
+            (_, false) => self.private_source(),
+        }
+    }
     /// Resolve private storage without invalidating unfinished legacy multipart sessions.
     #[must_use]
     pub fn private_source(&self) -> String {
@@ -84,10 +82,22 @@ impl Video {
     /// Resolve the poster using the same storage generation as its private video.
     #[must_use]
     pub fn private_poster(&self) -> String {
+        if let Some(key) = &self.poster_key {
+            return key.clone();
+        }
         if self.source_key.is_some() {
             Storage::private_poster(&self.token)
         } else {
             Storage::poster(&self.id)
+        }
+    }
+    /// Published preview key remains distinct from JPEG image originals and legacy posters.
+    #[must_use]
+    pub fn public_poster(&self) -> String {
+        if self.poster_key.is_some() {
+            Storage::published_preview(&self.token)
+        } else {
+            Storage::public_poster(&self.token)
         }
     }
     /// Attach context-appropriate media and stable sharing URLs.
@@ -105,7 +115,16 @@ impl Video {
             self.poster_url = Some(if admin && self.state != "published" {
                 format!("/v1/admin/videos/{}/poster", self.id)
             } else {
-                format!("{}/files/{}.jpg", s.config.public_url, self.token)
+                format!(
+                    "{}/{}/{}.jpg",
+                    s.config.public_url,
+                    if self.poster_key.is_some() {
+                        "posters"
+                    } else {
+                        "files"
+                    },
+                    self.token
+                )
             });
         }
         self

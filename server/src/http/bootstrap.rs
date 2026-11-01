@@ -115,7 +115,7 @@ pub(super) async fn document(state: &AppState, headers: &HeaderMap, path: &str) 
 fn page_title(path: &str, album: Option<&AlbumPage>) -> String {
     let label = match path {
         "/login" => Some("Login"),
-        "/videos" => Some("Videos"),
+        "/videos" | "/gallery" => Some("Gallery"),
         "/albums" => Some("Albums"),
         "/settings" => Some("Preferences"),
         "/settings/storage" => Some("Storage"),

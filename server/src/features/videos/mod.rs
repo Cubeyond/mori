@@ -1,5 +1,7 @@
 //! Video metadata, stable sharing links, and persisted visibility transitions.
 
+/// Image/video categories and original-file delivery types.
+mod format;
 /// Shared video contracts and naming conventions.
 mod model;
 /// Scoped metadata queries and deterministic collection pagination.
@@ -24,8 +26,9 @@ use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
 };
-pub use delivery::{public_file, shared_resource};
-pub use model::{Accepted, EditVideo, Video, VideoPage, content_type};
+pub use delivery::{public_file, public_preview, shared_resource};
+pub use format::{MediaKind, content_type};
+pub use model::{Accepted, EditVideo, Video, VideoPage};
 pub use preview::*;
 pub use repository::get;
 pub(crate) use repository::{Collection, collection};

@@ -17,5 +17,9 @@ export function shareValue(video: Video, kind: ShareKind): string {
     video.width > 0 && video.height > 0
       ? `${String(video.width)} / ${String(video.height)}`
       : '16 / 9';
-  return `<iframe src="${attribute(video.media_url)}" title="${attribute(video.name)}" style="width:100%;height:auto;aspect-ratio:${ratio};border:0" allow="fullscreen *; picture-in-picture *" allowfullscreen loading="lazy" referrerpolicy="no-referrer"></iframe>`;
+  const sandbox =
+    video.kind === 'image'
+      ? ' sandbox="allow-same-origin allow-downloads"'
+      : '';
+  return `<iframe src="${attribute(video.media_url)}" title="${attribute(video.name)}" style="width:100%;height:auto;aspect-ratio:${ratio};border:0"${sandbox} allow="fullscreen *; picture-in-picture *" allowfullscreen loading="lazy" referrerpolicy="no-referrer"></iframe>`;
 }

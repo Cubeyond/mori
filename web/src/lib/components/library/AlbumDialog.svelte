@@ -32,7 +32,7 @@
   closeLabel="Back to upload"
 >
   <div class="album-heading">
-    <p class="muted text-sm">Organize your videos.</p>
+    <p class="muted text-sm">Organize your images and videos.</p>
     <Button
       variant="ghost"
       onclick={() => (editor = { album: null, removing: false })}

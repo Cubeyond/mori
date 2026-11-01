@@ -18,7 +18,7 @@
   import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
   import Gallery from '#lib/components/Gallery.svelte';
   import AlbumEditor from '#lib/components/library/AlbumEditor.svelte';
-  import VideoDialog from '#lib/components/library/VideoDialog.svelte';
+  import MediaDialog from '#lib/components/library/MediaDialog.svelte';
   import { takeInitialPage } from '#lib/api/bootstrap';
   import { openUploader } from '#lib/features/upload';
   /** The document already contains fresh metadata for this exact initial route. */
@@ -167,7 +167,7 @@
             class="button primary"
             onclick={() => {
               openUploader(album?.id ?? null);
-            }}><Plus size={16} />Upload video</Button
+            }}><Plus size={16} />Upload media</Button
           >
         </div>{/if}
     </div>
@@ -180,7 +180,7 @@
         Loading album…
       </p>{:else if album !== null}<div class="empty-state">
         <h2>This album is empty</h2>
-        <p>Upload a video to get started.</p>
+        <p>Upload an image or video to get started.</p>
       </div>{/if}
     {#if more}<div class="py-6 text-center">
         <Button
@@ -198,7 +198,7 @@
     onclose={() => (editingAlbum = false)}
     oncomplete={refresh}
   />{/if}
-{#if editingVideo !== null}<VideoDialog
+{#if editingVideo !== null}<MediaDialog
     video={editingVideo}
     {albums}
     onclose={() => (editingVideo = null)}

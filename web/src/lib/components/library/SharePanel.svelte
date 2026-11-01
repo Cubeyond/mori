@@ -8,10 +8,13 @@
   /** Only fully published video metadata is provided by the parent. */
   let { video }: { video: Video } = $props();
   /** Sharing exposes a direct video resource and fullscreen-capable iframe markup. */
-  const fields: { kind: ShareKind; label: string }[] = [
-    { kind: 'media', label: 'Direct video link' },
+  const fields: { kind: ShareKind; label: string }[] = $derived([
+    {
+      kind: 'media',
+      label: video.kind === 'image' ? 'Direct image link' : 'Direct video link',
+    },
     { kind: 'iframe', label: 'Iframe embed code' },
-  ];
+  ]);
 </script>
 
 <div class="sharing-fields">

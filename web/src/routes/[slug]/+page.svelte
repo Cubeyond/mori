@@ -106,11 +106,11 @@
     {#if videos.length > 0}<Gallery {videos} />{:else if !busy}<div
         class="empty-state"
       >
-        <h2>No public videos yet</h2>
-        <p>Public videos shared in this album will appear here.</p>
+        <h2>No public media yet</h2>
+        <p>Shared images and videos will appear here.</p>
       </div>{/if}
     {#if busy}<p class="muted py-6 text-center text-sm" role="status">
-        Loading videos…
+        Loading media…
       </p>{:else if more}<div class="py-6 text-center">
         <Button variant="outline" type="submit" class="button" onclick={next}
           >Load more</Button

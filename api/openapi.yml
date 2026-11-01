@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Mori API
-  description: Administrative requests require a session cookie. Mutations require the exact MORI_PUBLIC_URL Origin and X-CSRF-Token from the session response. HTTPS uses __Host-mori; localhost development uses mori_dev. Private and missing public targets both return 404. Visibility changes and deletion return asynchronous job IDs; private completion waits for public-object deletion and, when configured, confirmed CloudFront revocation.
+  description: Images and videos share the historical /videos endpoints; kind identifies the media category. Administrative requests require a session cookie. Mutations require the exact MORI_PUBLIC_URL Origin and X-CSRF-Token from the session response. HTTPS uses __Host-mori; localhost development uses mori_dev. Private and missing public targets both return 404. Visibility changes and deletion return asynchronous job IDs; private completion waits for public-object deletion and, when configured, confirmed CloudFront revocation.
   version: 0.1.0
 paths:
   /v1/admin/albums:
@@ -932,6 +932,12 @@ components:
         username:
           type: string
           description: Configured administrator name; omitted legacy requests use root.
+    MediaKind:
+      type: string
+      description: Media category independent of its container and browser decoding support.
+      enum:
+      - image
+      - video
     PartInput:
       type: object
       description: Checksum required to authorize a single multipart part.
@@ -1098,12 +1104,18 @@ components:
       required:
       - max_upload_bytes
       - allowed_extensions
+      - image_extensions
       properties:
         allowed_extensions:
           type: array
           items:
             type: string
           description: Enabled lowercase container extensions.
+        image_extensions:
+          type: array
+          items:
+            type: string
+          description: Image containers used by clients to choose image metadata and preview generation.
         max_upload_bytes:
           type: integer
           format: int64
@@ -1131,8 +1143,9 @@ components:
           description: Expected or validated object length in bytes.
     Video:
       type: object
-      description: Video metadata and visibility-dependent delivery URLs.
+      description: Image/video metadata; the legacy DTO name and API routes preserve existing integrations.
       required:
+      - kind
       - id
       - token
       - extension
@@ -1174,6 +1187,9 @@ components:
         id:
           type: string
           description: Stable internal identifier for this record.
+        kind:
+          $ref: '#/components/schemas/MediaKind'
+          description: Original media category, independent of extension or browser codec support.
         last_error:
           type:
           - string

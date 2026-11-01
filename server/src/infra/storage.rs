@@ -159,6 +159,16 @@ impl Storage {
     pub fn private_poster(token: &str) -> String {
         format!("private/files/{token}.jpg")
     }
+    /// Store derivatives separately so a JPEG original can never overwrite its own preview.
+    #[must_use]
+    pub fn private_preview(token: &str) -> String {
+        format!("private/posters/{token}.jpg")
+    }
+    /// Build the matching public derivative key without colliding with original filenames.
+    #[must_use]
+    pub fn published_preview(token: &str) -> String {
+        format!("public/posters/{token}.jpg")
+    }
     /// Build the published media key from the immutable sharing token.
     #[must_use]
     pub fn public(token: &str, extension: &str) -> String {

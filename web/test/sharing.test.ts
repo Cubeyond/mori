@@ -6,6 +6,7 @@ import type { Video } from '../src/lib/api/client';
 
 /** Full DTO fixture keeps sharing tests aligned with the generated API schema. */
 const video: Video = {
+  kind: 'video',
   id: 'a'.repeat(32),
   token: 'b'.repeat(32),
   extension: 'mp4',
@@ -57,4 +58,20 @@ void test('edited display names cannot inject markup or iframe attributes', () =
   assert.ok(!iframe.includes('<script>'));
   assert.equal(iframe.match(/<iframe /g)?.length, 1);
   assert.equal(iframe.match(/<\/iframe>/g)?.length, 1);
+});
+
+void test('image iframe keeps the original image address and portrait aspect ratio', () => {
+  const image: Video = {
+    ...video,
+    kind: 'image',
+    extension: 'jpg',
+    width: 800,
+    height: 1200,
+    media_url: 'https://media.laplacian.net/nature/' + video.token + '.jpg',
+  };
+  assert.equal(shareValue(image, 'media'), image.media_url);
+  const iframe = shareValue(image, 'iframe');
+  assert.ok(iframe.includes(`src="${image.media_url}"`));
+  assert.ok(iframe.includes('aspect-ratio:800 / 1200'));
+  assert.ok(iframe.includes('sandbox="allow-same-origin allow-downloads"'));
 });

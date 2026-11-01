@@ -7,6 +7,7 @@ import type { Video } from '../src/lib/api/client';
 function videoFixture(index: number): Video {
   const id = String(index).padStart(32, '0');
   return {
+    kind: 'video',
     id,
     token: id,
     extension: 'mp4',
@@ -85,4 +86,24 @@ void test('empty and unmeasured galleries reserve no phantom black panel', () =>
   assert.equal(arrangeGallery([], 1096).height, 0);
   for (const width of [0, -100, Number.NaN, Number.POSITIVE_INFINITY])
     assert.equal(arrangeGallery([videoFixture(1)], width).items.length, 0);
+});
+
+void test('images and videos share masonry order without changing their native metadata', () => {
+  const image: Video = {
+    ...videoFixture(2),
+    kind: 'image',
+    extension: 'jpg',
+    duration: 0,
+    width: 800,
+    height: 1200,
+  };
+  const video = videoFixture(3);
+  const mixed = [image, video];
+  const snapshot = structuredClone(mixed);
+  const layout = arrangeGallery(mixed, 880);
+  assert.deepEqual(
+    layout.items.map((item) => item.video.kind),
+    ['image', 'video'],
+  );
+  assert.deepEqual(mixed, snapshot);
 });

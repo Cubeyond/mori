@@ -27,7 +27,7 @@
         ),
       );
       password = '';
-      await goto(resolve('/videos'));
+      await goto(resolve('/gallery'));
     } catch (e) {
       error = message(e);
     } finally {
@@ -46,7 +46,7 @@
   {#if $session.authenticated}<p class="muted mb-5 text-sm">
       You are signed in as the administrator.
     </p>
-    <Button variant="default" class="button primary" href={resolve('/videos')}
+    <Button variant="default" class="button primary" href={resolve('/gallery')}
       >Open videos</Button
     >{:else}<form onsubmit={submit}>
       <label class="field"

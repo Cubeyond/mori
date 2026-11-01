@@ -97,7 +97,7 @@ pub fn normalize_slug(input: &str) -> Result<String> {
     let reserved = [
         "login", "logout", "api", "v1", "manage", "admin", "embed", "watch", "files", "assets",
         "fonts", "health", "_app", "favicon", "robots", "openapi", "videos", "albums", "settings",
-        "users", "file", "storage",
+        "users", "file", "storage", "posters", "gallery",
     ];
     if !(3..=64).contains(&slug.len())
         || reserved.contains(&slug.as_str())

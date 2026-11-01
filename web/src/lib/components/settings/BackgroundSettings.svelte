@@ -1,0 +1,227 @@
+<script lang="ts">
+  /** Background controls preview immediately while protecting the last saved image on failure. */
+  import { onDestroy } from 'svelte';
+  import { ImagePlus, Trash, Check, RotateCcw } from '@lucide/svelte';
+  import Button from '#lib/components/ui/button/button.svelte';
+  import {
+    background,
+    saveBackground,
+    removeBackground,
+  } from '#lib/features/background';
+  import { preferences, savePreferences } from '#lib/features/preferences';
+  import { message } from '#lib/api/client';
+  /** Hidden native picker preserves normal file permissions and keyboard activation. */
+  let picker: HTMLInputElement;
+  /** Saving an image does not disable navigation or change the current backdrop prematurely. */
+  let busy = $state(false),
+    error = $state(''),
+    saved = $state(false);
+  /** Success replaces the relevant action icon without adding a tag or shifting the row. */
+  let changed = $state<'image' | 'opacity'>('image');
+  /** A dismissed settings page cancels an unfinished local decode. */
+  let controller: AbortController | undefined;
+  /** One short acknowledgement replaces previous save feedback. */
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  onDestroy(() => {
+    controller?.abort();
+    if (timer !== undefined) clearTimeout(timer);
+  });
+  /** Acknowledge a completed write beside these controls. */
+  function acknowledge(field: 'image' | 'opacity'): void {
+    changed = field;
+    saved = true;
+    if (timer !== undefined) clearTimeout(timer);
+    timer = setTimeout(() => {
+      saved = false;
+    }, 2400);
+  }
+  /** Decode and persist only this browser's selected background. */
+  async function select(
+    event: Event & { currentTarget: HTMLInputElement },
+  ): Promise<void> {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    if (file === undefined) return;
+    controller?.abort();
+    controller = new AbortController();
+    busy = true;
+    saved = false;
+    error = '';
+    try {
+      await saveBackground(file, controller.signal);
+      acknowledge('image');
+    } catch (failure) {
+      if (!controller.signal.aborted) error = message(failure);
+    } finally {
+      busy = false;
+    }
+  }
+  /** Delete both the stored image and its live local URL. */
+  async function remove(): Promise<void> {
+    busy = true;
+    saved = false;
+    error = '';
+    try {
+      await removeBackground();
+      acknowledge('image');
+    } catch (failure) {
+      error = message(failure);
+    } finally {
+      busy = false;
+    }
+  }
+  /** Persist opacity after a slider gesture, retaining smooth local previews during dragging. */
+  function persistOpacity(): void {
+    error = '';
+    saved = false;
+    if (savePreferences($preferences)) acknowledge('opacity');
+    else
+      error = 'Opacity applied for this visit. Browser storage is unavailable.';
+  }
+</script>
+
+<div class="setting-row">
+  <div class="setting-content">
+    <label for="background-image">Background image</label>
+    <div class="background-controls" class:has-image={$background !== null}>
+      {#if $background !== null}<img
+          class="thumbnail"
+          src={$background}
+          alt="Current background"
+        />{/if}
+      <input
+        bind:this={picker}
+        id="background-image"
+        class="sr-only"
+        type="file"
+        accept="image/*"
+        onchange={select}
+        disabled={busy}
+      />
+      <Button
+        variant="outline"
+        type="button"
+        disabled={busy}
+        onclick={() => {
+          picker.click();
+        }}
+        >{#if saved && changed === 'image'}<Check
+            size={18}
+            class="text-[#b7ebcf]"
+          />{:else}<ImagePlus size={18} />{/if}{busy
+          ? 'Saving…'
+          : $background === null
+            ? 'Choose image'
+            : 'Change'}</Button
+      >
+      {#if $background !== null}<Button
+          variant="ghost"
+          size="icon"
+          type="button"
+          aria-label="Remove background image"
+          disabled={busy}
+          onclick={remove}><Trash size={19} /></Button
+        >{/if}
+      <span class="sr-only" role="status" aria-live="polite"
+        >{saved ? 'Saved' : ''}</span
+      >
+    </div>
+  </div>
+</div>
+{#if $background !== null}<div class="setting-row">
+    <div class="setting-content">
+      <label for="background-opacity">Background opacity</label>
+      <div class="opacity-control">
+        <input
+          id="background-opacity"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          value={Math.round($preferences.backgroundOpacity * 100)}
+          aria-valuetext={String(
+            Math.round($preferences.backgroundOpacity * 100),
+          ) + ' percent'}
+          oninput={(event) => {
+            preferences.update((value) => ({
+              ...value,
+              backgroundOpacity: Number(event.currentTarget.value) / 100,
+            }));
+          }}
+          onchange={persistOpacity}
+        />
+        <output for="background-opacity"
+          >{Math.round($preferences.backgroundOpacity * 100)}%</output
+        >
+        <Button
+          variant="ghost"
+          size="icon"
+          type="button"
+          aria-label="Reset background opacity to 10 percent"
+          onclick={() => {
+            preferences.update((value) => ({
+              ...value,
+              backgroundOpacity: 0.1,
+            }));
+            persistOpacity();
+          }}
+          >{#if saved && changed === 'opacity'}<Check
+              size={17}
+            />{:else}<RotateCcw size={17} />{/if}</Button
+        >
+      </div>
+    </div>
+  </div>{/if}
+{#if error}<p class="background-error" role="alert">{error}</p>{/if}
+
+<style>
+  .background-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 0;
+  }
+  .thumbnail {
+    width: 80px;
+    height: 52px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .opacity-control {
+    display: grid;
+    grid-template-columns: minmax(100px, 240px) 48px 40px;
+    align-items: center;
+    gap: 12px;
+    margin-top: 0;
+  }
+  input[type='range'] {
+    width: 100%;
+    min-height: 44px;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+  output {
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--foreground);
+  }
+  .background-error {
+    color: #fda4af;
+    font-size: 15px;
+    margin-block: 16px;
+  }
+  @media (max-width: 600px) {
+    .background-controls.has-image {
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr) 40px;
+      gap: 8px;
+    }
+    .thumbnail {
+      width: 56px;
+      height: 44px;
+    }
+  }
+</style>

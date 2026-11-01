@@ -1,8 +1,14 @@
 <script lang="ts">
   import Button from '#lib/components/ui/button/button.svelte';
   /** Cropped cover with hover, keyboard, and touch actions; no video bytes are loaded. */
-  import { Play, Ellipsis, Video as VideoIcon } from '@lucide/svelte';
-  import type { Video } from '#lib/api/client';
+  import {
+    Play,
+    Ellipsis,
+    Video as VideoIcon,
+    Image as ImageIcon,
+    Expand,
+  } from '@lucide/svelte';
+  import type { MediaItem } from '#lib/api/client';
   import { shareValue } from '#lib/features/sharing';
   import CopyButton from '../CopyButton.svelte';
   /** Cover selection and administrator actions remain independent click targets. */
@@ -11,9 +17,9 @@
     onopen,
     onmanage,
   }: {
-    video: Video;
+    video: MediaItem;
     onopen: () => void;
-    onmanage?: ((video: Video) => void) | undefined;
+    onmanage?: ((video: MediaItem) => void) | undefined;
   } = $props();
   /** Touch reveals actions first; the next tap opens the player. */
   let revealed = $state(false),
@@ -45,7 +51,7 @@
 <div class="card" class:revealed role="group" aria-label={video.name}>
   <button
     class="cover"
-    aria-label={'Open video ' + video.name}
+    aria-label={'Open ' + video.kind + ' ' + video.name}
     onclick={open}
     disabled={!ready}
   >
@@ -57,20 +63,26 @@
         onerror={() => (failedPoster = true)}
       />
     {:else}<span class="placeholder"
-        ><VideoIcon size={28} />{#if !ready}<span
+        >{#if video.kind === 'image'}<ImageIcon size={28} />{:else}<VideoIcon
+            size={28}
+          />{/if}{#if !ready}<span
             >{video.state === 'failed'
               ? 'Upload failed'
               : 'Processing video…'}</span
           >{/if}</span
       >{/if}
     <span class="play controls"
-      ><Play size={24} fill="currentColor" strokeWidth={1.5} /></span
+      >{#if video.kind === 'image'}<Expand size={24} />{:else}<Play
+          size={24}
+          fill="currentColor"
+          strokeWidth={1.5}
+        />{/if}</span
     >
   </button>
   <div class="actions controls">
     {#if shareable}<CopyButton
         value={shareValue(video, 'media')}
-        label="Copy video link"
+        label={video.kind === 'image' ? 'Copy image link' : 'Copy video link'}
         icon="link"
       /><CopyButton
         value={shareValue(video, 'iframe')}
@@ -82,8 +94,8 @@
         size="icon"
         type="submit"
         class="icon-button"
-        aria-label="Video options"
-        title="Share or edit video"
+        aria-label="Media options"
+        title="Share or edit"
         disabled={!['ready', 'published', 'failed'].includes(video.state)}
         onclick={() => {
           onmanage(video);
@@ -91,9 +103,8 @@
       >{/if}
   </div>
   <div class="details controls">
-    <span>{video.visibility === 'private' ? 'Private' : ''}</span><span
-      >{duration}</span
-    >
+    <span>{video.visibility === 'private' ? 'Private' : ''}</span
+    >{#if video.kind === 'video'}<span>{duration}</span>{/if}
   </div>
 </div>
 

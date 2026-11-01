@@ -15,17 +15,17 @@
     message,
     loadSession,
     session,
-    type Video,
+    type MediaItem,
     type Album,
   } from '#lib/api/client';
   import Gallery from '#lib/components/Gallery.svelte';
   import { openUploader } from '#lib/features/upload';
-  import VideoDialog from '#lib/components/library/VideoDialog.svelte';
+  import MediaDialog from '#lib/components/library/MediaDialog.svelte';
 
   /** Local text filter applies to the currently loaded page. */
   let query = $state('');
   /** Metadata only; the gallery loads no video source before playback intent. */
-  let videos = $state<Video[]>([]),
+  let videos = $state<MediaItem[]>([]),
     albums = $state<Album[]>([]);
   /** Filter metadata without loading any video sources. */
   const visible = $derived(
@@ -39,7 +39,7 @@
     error = $state(''),
     notice = $state('');
   /** A single top-layer operation can be active while the gallery remains mounted. */
-  let editing = $state<Video | null>(null);
+  let editing = $state<MediaItem | null>(null);
   /** Avoid overlapping polling and user-triggered refresh responses. */
   let refreshing = false;
 
@@ -49,7 +49,7 @@
     refreshing = true;
     try {
       const target = append ? 30 : Math.max(30, videos.length);
-      const rows: Video[] = [];
+      const rows: MediaItem[] = [];
       let offset = append ? videos.length : 0;
       let hasMore = false;
       do {
@@ -75,11 +75,11 @@
     void refresh();
   }
   /** The video's own menu is the sole entry point for editing and sharing. */
-  function edit(video: Video): void {
+  function edit(video: MediaItem): void {
     editing = video;
   }
   /** Keep selected metadata current after publication completes inside the menu. */
-  function updateSelected(video: Video): void {
+  function updateSelected(video: MediaItem): void {
     editing = video;
   }
   /** Keep successful action feedback outside the gallery's layout. */
@@ -107,7 +107,7 @@
             page.url.searchParams.has('upload') ||
             page.url.searchParams.has('manage')
           )
-            await goto(resolve('/videos'), {
+            await goto(resolve('/gallery'), {
               state: page.state,
               shallow: true,
               replace: true,
@@ -132,32 +132,31 @@
   });
 </script>
 
-<svelte:head><title>{pageTitle('Videos')}</title></svelte:head>
+<svelte:head><title>{pageTitle('Gallery')}</title></svelte:head>
 <main>
-  <Breadcrumbs items={[{ label: 'Videos', href: resolve('/videos') }]} />
+  <Breadcrumbs items={[{ label: 'Gallery', href: resolve('/gallery') }]} />
   <div class="page-heading">
-    <h1>Videos</h1>
+    <h1>Gallery</h1>
     {#if loaded && $session.authenticated}<Button
         variant="default"
         type="submit"
         class="button primary"
         onclick={() => {
           openUploader();
-        }}><Plus size={16} />Upload video</Button
+        }}><Plus size={16} />Upload media</Button
       >{/if}
   </div>
   {#if loaded && $session.authenticated && videos.length > 0}<div
       class="collection-toolbar"
     >
       <label class="search-field"
-        ><Search size={17} /><span class="sr-only">Search loaded videos</span
-        ><Input
+        ><Search size={17} /><span class="sr-only">Search gallery</span><Input
           type="search"
           placeholder="Search this page…"
           bind:value={query}
         /></label
       ><span class="collection-count"
-        >{visible.length} {visible.length === 1 ? 'video' : 'videos'}</span
+        >{visible.length} {visible.length === 1 ? 'item' : 'items'}</span
       >
     </div>{/if}
   {#if !loaded}<p class="empty muted" role="status">Opening your library…</p>
@@ -171,25 +170,25 @@
         videos={visible}
         onmanage={edit}
       />{:else}<div class="empty-state">
-        <h2>No matching videos</h2>
-        <p>Try another name or load more videos.</p>
+        <h2>No matching media</h2>
+        <p>Try another name or load more items.</p>
       </div>{/if}
     {#if more}<div class="more">
         <Button
           variant="ghost"
           type="submit"
           class="text-action"
-          onclick={() => refresh(true)}>Load more videos</Button
+          onclick={() => refresh(true)}>Load more</Button
         >
       </div>{/if}
   {:else}<div class="empty">
       <h2>Your library is empty.</h2>
-      <p>Upload a video to get started. Albums are optional.</p>
+      <p>Upload an image or video to get started. Albums are optional.</p>
     </div>{/if}
 </main>
 
 {#if loaded && $session.authenticated}
-  {#if editing !== null}<VideoDialog
+  {#if editing !== null}<MediaDialog
       video={editing}
       {albums}
       onclose={() => (editing = null)}

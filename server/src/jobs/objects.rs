@@ -34,8 +34,11 @@ pub(super) async fn restore_private(state: &AppState, video: &Video) -> anyhow::
     if video.poster != 0 {
         storage
             .copy_verified(
-                Storage::public_poster(&video.token),
-                Storage::private_poster(&video.token),
+                video.public_poster(),
+                video
+                    .poster_key
+                    .clone()
+                    .unwrap_or_else(|| Storage::private_poster(&video.token)),
                 "image/jpeg",
                 None,
             )
@@ -62,7 +65,7 @@ pub(super) async fn normalize(state: &AppState, job: &Job, video: &Video) -> any
         Storage::private(&video.token, &video.extension)
     };
     let poster = if public {
-        Storage::public_poster(&video.token)
+        video.public_poster()
     } else {
         Storage::private_poster(&video.token)
     };

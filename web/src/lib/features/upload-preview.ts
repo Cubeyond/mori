@@ -1,4 +1,6 @@
 /** Browser metadata is independent of optional, bounded cover generation. */
+import { prepareImagePreview } from '#lib/features/image-preview';
+/** Shared image/video dimensions; unknown values never prevent preserving an original. */
 export interface MediaMetadata {
   /** Native pixel width; zero means the browser cannot decode the container. */
   width: number;
@@ -20,7 +22,9 @@ export interface UploadPreview {
 export function prepareUploadPreview(
   file: File,
   signal: AbortSignal,
+  kind: 'image' | 'video' = 'video',
 ): UploadPreview {
+  if (kind === 'image') return prepareImagePreview(file, signal);
   const video = document.createElement('video');
   const url = URL.createObjectURL(file);
   const metadata = { width: 0, height: 0, duration: 0 };

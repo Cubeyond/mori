@@ -18,7 +18,7 @@ use axum::{
     extract::{OriginalUri, Path, Request, State},
     http::{HeaderMap, HeaderValue, StatusCode, header},
     middleware::{self, Next},
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Redirect, Response},
     routing::get,
 };
 use tower_http::services::ServeDir;
@@ -53,6 +53,7 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
     spec.info = utoipa::openapi::Info::new("Mori API", env!("CARGO_PKG_VERSION"));
     spec.info.description = Some(
         concat!(
+            "Images and videos share the historical /videos endpoints; kind identifies the media category. ",
             "Administrative requests require a session cookie. Mutations require the ",
             "exact MORI_PUBLIC_URL Origin and X-CSRF-Token from the session response. ",
             "HTTPS uses __Host-mori; localhost development uses mori_dev. Private and ",
@@ -155,12 +156,14 @@ pub fn router(s: AppState) -> Router {
     .route("/health", get(|| async { StatusCode::NO_CONTENT }))
     .route("/", get(index))
     .route("/login", get(index))
-    .route("/videos", get(index))
+    .route("/gallery", get(index))
+    .route("/videos", get(legacy_gallery))
     .route("/albums", get(index))
     .route("/albums/{id}", get(index))
     .route("/settings", get(index))
     .route("/settings/storage", get(index))
     .route("/files/{filename}", get(videos::public_file))
+    .route("/posters/{filename}", get(videos::public_preview))
     .route("/{prefix}/{filename}", get(videos::shared_resource))
     .route("/{slug}", get(album_page))
     .nest_service("/_app", ServeDir::new(assets))
@@ -191,6 +194,13 @@ async fn index(State(s): State<AppState>, h: HeaderMap, OriginalUri(uri): Origin
             .into_response(),
         Err(error) => error.into_response(),
     }
+}
+/// Preserve existing library bookmarks without retaining a video-only page title.
+async fn legacy_gallery(OriginalUri(uri): OriginalUri) -> Redirect {
+    let query = uri
+        .query()
+        .map_or_else(String::new, |query| format!("?{query}"));
+    Redirect::permanent(&format!("/gallery{query}"))
 }
 /// Serve a valid public album-shaped page without disclosing private collection data.
 async fn album_page(
@@ -273,9 +283,7 @@ async fn security(State(s): State<AppState>, request: Request, next: Next) -> Re
     );
     let script_csp = &s.script_csp;
     let media = s.storage.current().map_or_else(String::new, |storage| {
-        if storage.distribution_id.is_some() {
-            String::new()
-        } else if s.config.s3_endpoint.is_some() {
+        if s.config.s3_endpoint.is_some() {
             connect.clone()
         } else {
             storage.browser_sources()
@@ -295,7 +303,7 @@ async fn security(State(s): State<AppState>, request: Request, next: Next) -> Re
         ancestors = ancestors,
     );
     if let Ok(value) = csp.parse() {
-        h.insert("content-security-policy", value);
+        h.append("content-security-policy", value);
     }
     h.entry(header::CACHE_CONTROL)
         .or_insert(HeaderValue::from_static(if assets {

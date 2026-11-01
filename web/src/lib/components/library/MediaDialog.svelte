@@ -11,7 +11,7 @@
     api,
     apiData,
     message,
-    type Video,
+    type MediaItem,
     type Album,
   } from '#lib/api/client';
   import { waitForJob } from '#lib/features/jobs';
@@ -25,12 +25,12 @@
     onnotice,
     onupdate,
   }: {
-    video: Video;
+    video: MediaItem;
     albums: Album[];
     onclose: () => void;
     oncomplete: () => Promise<void>;
     onnotice: (notice: string) => void;
-    onupdate: (video: Video) => void;
+    onupdate: (video: MediaItem) => void;
   } = $props();
   /** Sharing is the primary action; editing remains one tab away in the same menu. */
   let tab = $state<'share' | 'edit'>('share');
@@ -122,7 +122,7 @@
         }),
       );
       onclose();
-      onnotice('Video deletion started.');
+      onnotice('Deletion started.');
       await oncomplete();
     } catch (failure) {
       error = message(failure);
@@ -134,14 +134,14 @@
 
 <Modal
   open
-  title={deleting ? 'Delete this video?' : 'Video options'}
+  title={deleting ? 'Delete this media?' : 'Media options'}
   {onclose}
-  closeLabel="Close video options"
+  closeLabel="Close media options"
 >
   {#if deleting}
     <p class="delete-name">{video.name}</p>
     <p class="hint mb-6">
-      The video and its public copies will be removed. This cannot be undone.
+      The media and its public copies will be removed. This cannot be undone.
     </p>
     {#if error}<p class="error mb-4" role="alert">{error}</p>{/if}
     <footer>
@@ -149,17 +149,17 @@
         variant="ghost"
         type="submit"
         class="text-action"
-        onclick={() => (deleting = false)}>Keep video</Button
+        onclick={() => (deleting = false)}>Keep media</Button
       ><Button
         variant="destructive"
         type="submit"
         class="button danger"
         disabled={saving}
-        onclick={remove}>Delete video</Button
+        onclick={remove}>Delete media</Button
       >
     </footer>
   {:else}
-    <div class="tabs" aria-label="Video actions">
+    <div class="tabs" aria-label="Media actions">
       <button
         aria-pressed={tab === 'share'}
         class:active={tab === 'share'}
@@ -186,12 +186,12 @@
           <h3 class="serif">
             {publishing || video.state === 'publishing'
               ? 'Preparing your links…'
-              : 'Share this video'}
+              : 'Share this media'}
           </h3>
           <p class="hint">
             {publishing || video.state === 'publishing'
               ? 'Publication continues in the background if you close this window.'
-              : 'This video is private. Make it public to share a direct video link or iframe.'}
+              : 'This media is private. Make it public to share a direct link or iframe.'}
           </p>
           <Button
             variant="default"
@@ -240,7 +240,7 @@
             onclick={() => {
               deleting = true;
               error = '';
-            }}>Delete video</Button
+            }}>Delete media</Button
           ><Button
             variant="default"
             type="submit"

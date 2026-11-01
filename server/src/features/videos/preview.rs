@@ -5,7 +5,6 @@ use crate::{
     app::AppState,
     features::auth,
     http::error::{Error, Result, bad},
-    infra::storage::Storage,
 };
 use axum::{
     body::Body,
@@ -135,19 +134,7 @@ async fn stream(
         return Err(crate::http::error::missing());
     }
     let permit = stream_permit(&s, poster).await?;
-    let key = if poster {
-        if v.state == "published" {
-            Storage::public_poster(&v.token)
-        } else {
-            v.private_poster()
-        }
-    } else {
-        if v.state == "published" {
-            Storage::public(&v.token, &v.extension)
-        } else {
-            v.private_source()
-        }
-    };
+    let key = v.content_key(poster);
     let head = s
         .storage
         .get()?
@@ -172,6 +159,12 @@ async fn stream(
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CACHE_CONTROL, "private, no-store")
         .header("x-content-type-options", "nosniff");
+    if !poster && v.extension == "svg" {
+        builder = builder.header(
+            header::CONTENT_SECURITY_POLICY,
+            "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'",
+        );
+    }
     if let Some(etag) = &head.e_tag {
         builder = builder.header(header::ETAG, etag);
     }

@@ -103,13 +103,15 @@ async fn legacy_object_layout_is_upgraded_without_losing_media() {
                 .await
                 .unwrap();
         }
-        sqlx::query("UPDATE videos SET source_key=NULL,state=?,visibility=? WHERE id=?")
-            .bind(if public { "published" } else { "ready" })
-            .bind(if public { "public" } else { "private" })
-            .bind(&video.id)
-            .execute(&media.state.db)
-            .await
-            .unwrap();
+        sqlx::query(
+            "UPDATE videos SET source_key=NULL,poster_key=NULL,state=?,visibility=? WHERE id=?",
+        )
+        .bind(if public { "published" } else { "ready" })
+        .bind(if public { "public" } else { "private" })
+        .bind(&video.id)
+        .execute(&media.state.db)
+        .await
+        .unwrap();
         let job = random_id();
         sqlx::query(
             "INSERT INTO jobs(id,video_id,kind,revision,created_at) VALUES(?,?,'normalize',0,1)",

@@ -5,7 +5,7 @@
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { preferences } from '#lib/features/preferences';
-  import { Video, Check, ArrowUp, Pause, FolderCog } from '@lucide/svelte';
+  import { Images, Check, ArrowUp, Pause, FolderCog } from '@lucide/svelte';
   import Modal from '../Modal.svelte';
   import type { Album, UploadPolicy } from '#lib/api/client';
   import { message } from '#lib/api/client';
@@ -95,7 +95,7 @@
       error =
         policy === null
           ? 'Upload settings are loading.'
-          : 'Choose an enabled video format within the upload limit.';
+          : 'Choose an enabled image or video format within the upload limit.';
       files = [];
       if (input !== undefined) input.value = '';
       return;
@@ -138,6 +138,11 @@
             },
             signal,
             pending,
+            policy.image_extensions.includes(
+              entry.name.split('.').at(-1)?.toLowerCase() ?? '',
+            )
+              ? 'image'
+              : 'video',
           );
           pending = null;
           void oncomplete().catch((failure: unknown) => {
@@ -149,7 +154,7 @@
       if (input !== undefined) input.value = '';
       onclose();
       onnotice(
-        count === 1 ? 'Video uploaded.' : `${String(count)} videos uploaded.`,
+        count === 1 ? 'Media uploaded.' : `${String(count)} files uploaded.`,
       );
       await oncomplete();
     } catch (failure) {
@@ -188,7 +193,7 @@
   }
 </script>
 
-<Modal {open} title="Upload videos" {onclose} closeLabel="Close upload">
+<Modal {open} title="Upload media" {onclose} closeLabel="Close upload">
   {#if storageConfigured === null}
     <p class="storage-setup muted" role="status">Loading upload settings…</p>
   {:else if !storageConfigured}
@@ -221,7 +226,7 @@
           accept={policy?.allowed_extensions
             .map((extension) => '.' + extension)
             .join(',') ?? 'video/*'}
-          aria-label="Video files"
+          aria-label="Media files"
           disabled={busy || policy === null}
           onchange={(event) => {
             selectFiles(Array.from(event.currentTarget.files ?? []));
@@ -233,7 +238,7 @@
           ondragleave={() => (dragging = false)}
           ondrop={dropFile}
         />
-        {#if file !== null}<Check size={25} strokeWidth={1.25} />{:else}<Video
+        {#if file !== null}<Check size={25} strokeWidth={1.25} />{:else}<Images
             size={28}
             strokeWidth={1.25}
           />{/if}
@@ -241,8 +246,8 @@
           >{busy
             ? file?.name
             : files.length > 1
-              ? `${String(files.length)} videos selected`
-              : (file?.name ?? 'Drop videos here')}</strong
+              ? `${String(files.length)} files selected`
+              : (file?.name ?? 'Drop images or videos here')}</strong
         >
         <span
           >{file !== null
@@ -252,7 +257,7 @@
         <small
           >{policy === null
             ? 'Loading upload settings…'
-            : 'Video · up to ' +
+            : 'Images and videos · up to ' +
               String(policy.max_upload_bytes / 1_000_000_000) +
               ' GB'}</small
         >
@@ -322,9 +327,7 @@
             disabled={file === null || policy === null}
             ><ArrowUp size={17} />{pending !== null
               ? 'Resume upload'
-              : files.length > 1
-                ? 'Upload videos'
-                : 'Upload video'}</Button
+              : 'Upload media'}</Button
           >{/if}
       </footer>
     </form>

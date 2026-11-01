@@ -8,6 +8,8 @@ mod auth;
 mod bootstrap;
 /// Delivery behavior.
 mod delivery;
+/// Shared image/video lifecycle and original-byte preservation.
+mod images;
 /// Migrations behavior.
 mod migrations;
 /// Restart-safe object relocation and legacy layout upgrades.

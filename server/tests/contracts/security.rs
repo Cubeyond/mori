@@ -39,7 +39,7 @@ async fn origin_framing_and_missing_routes() {
     }
     for (path, ancestor) in [
         ("/login", "frame-ancestors 'none'"),
-        ("/videos", "frame-ancestors 'none'"),
+        ("/gallery", "frame-ancestors 'none'"),
         ("/albums", "frame-ancestors 'none'"),
         ("/settings", "frame-ancestors 'none'"),
     ] {
@@ -58,6 +58,9 @@ async fn origin_framing_and_missing_routes() {
                 .contains("no-store")
         );
     }
+    let (status, headers, _) = call(&r, "GET", "/videos?upload=1", None, None, Value::Null).await;
+    assert_eq!(status, StatusCode::PERMANENT_REDIRECT);
+    assert_eq!(headers["location"], "/gallery?upload=1");
     let mut protected = s;
     protected.origin_secret = Some(Arc::new("very-long-test-origin-secret-value".into()));
     let protected = http::router(protected);

@@ -4,7 +4,7 @@ use crate::{
     app::{AppState, now, random_id},
     features::{
         auth,
-        videos::{self, Accepted},
+        videos::{self, Accepted, MediaKind},
     },
     http::error::{Error, Result, bad, missing},
     infra::storage::Storage,
@@ -50,6 +50,8 @@ pub struct UploadPolicy {
     pub max_upload_bytes: i64,
     /// Enabled lowercase container extensions.
     pub allowed_extensions: Vec<String>,
+    /// Image containers used by clients to choose image metadata and preview generation.
+    pub image_extensions: Vec<String>,
 }
 /// Retain the existing container name for legacy clients that omit an extension.
 fn default_extension() -> String {
@@ -62,9 +64,12 @@ fn default_extension() -> String {
 #[utoipa::path(get, path = "/v1/admin/upload-policy", responses((status = 200, body = UploadPolicy)), security(("session" = [])))]
 pub async fn policy(State(s): State<AppState>, h: HeaderMap) -> Result<Json<UploadPolicy>> {
     auth::require(&s, &h, false).await?;
+    let mut allowed_extensions = s.config.video_extensions.clone();
+    allowed_extensions.extend(s.config.image_extensions.iter().cloned());
     Ok(Json(UploadPolicy {
         max_upload_bytes: s.config.max_upload_bytes,
-        allowed_extensions: s.config.video_extensions.clone(),
+        allowed_extensions,
+        image_extensions: s.config.image_extensions.clone(),
     }))
 }
 /// S3-confirmed part metadata used to resume an interrupted upload.
@@ -133,6 +138,33 @@ async fn record(s: &AppState, id: &str) -> Result<Record> {
         .await?
         .ok_or_else(missing)
 }
+/// Validate original-file policy independently of reserving a durable multipart session.
+///
+/// # Errors
+/// Returns invalid size, visibility, container, or presentation metadata errors.
+fn validate_input(s: &AppState, input: &CreateUpload) -> Result<MediaKind> {
+    if input.size < 16
+        || input.size > s.config.max_upload_bytes
+        || !matches!(input.visibility.as_str(), "private" | "public")
+    {
+        return Err(bad("Invalid size or visibility"));
+    }
+    let kind = if s.config.image_extensions.contains(&input.extension) {
+        MediaKind::Image
+    } else if s.config.video_extensions.contains(&input.extension) {
+        MediaKind::Video
+    } else {
+        return Err(bad("Unsupported media extension"));
+    };
+    if !(0..=32768).contains(&input.width)
+        || !(0..=32768).contains(&input.height)
+        || !input.duration.is_finite()
+        || !(0.0..=31_536_000.0).contains(&input.duration)
+    {
+        return Err(bad("Unsupported extension or invalid media dimensions"));
+    }
+    Ok(kind)
+}
 /// Create a private multipart session with independent random name and URL token.
 ///
 /// # Errors
@@ -151,24 +183,12 @@ pub async fn create(
 ) -> Result<(StatusCode, Json<Upload>)> {
     auth::require(&s, &h, true).await?;
     let storage = s.storage.get()?;
-    if input.size < 16
-        || input.size > s.config.max_upload_bytes
-        || !matches!(input.visibility.as_str(), "private" | "public")
-    {
-        return Err(bad("Invalid size or visibility"));
-    }
-    if !s.config.video_extensions.contains(&input.extension)
-        || !(0..=32768).contains(&input.width)
-        || !(0..=32768).contains(&input.height)
-        || !input.duration.is_finite()
-        || !(0.0..=31_536_000.0).contains(&input.duration)
-    {
-        return Err(bad("Unsupported extension or invalid media dimensions"));
-    }
+    let kind = validate_input(&s, &input)?;
     let name = random_id();
     let video_id = random_id();
     let token = random_id();
     let source_key = Storage::private(&token, &input.extension);
+    let poster_key = Storage::private_preview(&token);
     let id = random_id();
     let expires_at = now() + 86400;
     // Reserve a slot transactionally before opening an S3 upload.
@@ -186,7 +206,7 @@ pub async fn create(
     }
     sqlx::query(
         r"INSERT INTO videos(id, token, album_id, name, visibility, state, size,
-created_at,extension,width,height,duration,media_prefix,source_key) VALUES(?, ?, ?, ?, ?, 'uploading', ?, ?, ?, ?, ?, ?, ?, ?)",
+created_at,extension,width,height,duration,media_prefix,source_key,poster_key,kind) VALUES(?, ?, ?, ?, ?, 'uploading', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&video_id)
     .bind(token)
@@ -201,6 +221,8 @@ created_at,extension,width,height,duration,media_prefix,source_key) VALUES(?, ?,
     .bind(input.duration)
     .bind(&prefix)
     .bind(&source_key)
+    .bind(&poster_key)
+    .bind(kind)
     .execute(&mut *tx)
     .await?;
     sqlx::query("INSERT INTO media_aliases(video_id,prefix) VALUES(?,?)")

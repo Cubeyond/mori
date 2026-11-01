@@ -16,6 +16,7 @@ services:
       MORI_ADMIN_PASSWORD: ${MORI_ADMIN_PASSWORD:?Set MORI_ADMIN_PASSWORD}
       MORI_MAX_UPLOAD_BYTES: ${MORI_MAX_UPLOAD_BYTES:-1000000000}
       MORI_VIDEO_EXTENSIONS: ${MORI_VIDEO_EXTENSIONS:-mp4,m4v,mov,webm,mkv,avi,ogv,mpeg,mpg,ts,mts,m2ts,3gp,wmv,flv}
+      MORI_IMAGE_EXTENSIONS: ${MORI_IMAGE_EXTENSIONS:-jpg,jpeg,png,apng,gif,webp,avif,bmp,ico,tif,tiff,heic,heif,jxl,svg,dng,cr2,cr3,nef,arw,raf,rw2,orf,pef,psd}
     volumes: [metadata:/data]
     tmpfs: ["/tmp:size=8m,noexec,nosuid"]
     logging:

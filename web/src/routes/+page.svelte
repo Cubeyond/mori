@@ -5,7 +5,7 @@
   import {
     ArrowRight,
     Upload,
-    Video,
+    Images,
     Library,
     LogIn,
     Link,
@@ -18,22 +18,22 @@
   <title>{pageTitle()}</title>
   <meta
     name="description"
-    content="Your videos, collected and shared simply."
+    content="Images and videos, collected privately and shared simply."
   />
 </svelte:head>
 <main class="home">
   <div class="introduction">
-    <h1>Your videos.<br />Simply shared.</h1>
+    <h1>Images &amp; videos.<br />Simply shared.</h1>
     <p class="description">
-      A place to keep your videos, bring them together, and share what you
-      choose.
+      One home for your images and videos. Keep them private, collect them in
+      albums, and share what you choose.
     </p>
     {#if $session.authenticated}
       <Button
         class="button primary"
         onclick={() => window.dispatchEvent(new Event('mori:upload'))}
       >
-        <Upload size={20} />Upload video
+        <Upload size={20} />Upload media
       </Button>
     {:else}
       <Button class="button primary" href={resolve('/login')}
@@ -48,11 +48,11 @@
       : 'Watching and sharing'}
   >
     {#if $session.authenticated}
-      <a class="destination" href={resolve('/videos')}>
-        <span class="destination-icon"><Video size={24} /></span>
+      <a class="destination" href={resolve('/gallery')}>
+        <span class="destination-icon"><Images size={24} /></span>
         <span
-          ><h2>Videos</h2>
-          <p>Your complete library, in one place.</p></span
+          ><h2>Gallery</h2>
+          <p>Every image and video, together.</p></span
         >
         <ArrowRight size={20} />
       </a>
@@ -60,7 +60,7 @@
         <span class="destination-icon"><Library size={24} /></span>
         <span
           ><h2>Albums</h2>
-          <p>Collect videos. Share them together.</p></span
+          <p>Mix images and videos. Share one collection.</p></span
         >
         <ArrowRight size={20} />
       </a>
@@ -68,17 +68,15 @@
       <div class="destination">
         <span class="destination-icon"><Link size={24} /></span>
         <div>
-          <h2>Here to watch?</h2>
-          <p>
-            Open the video or album link shared with you. No account needed.
-          </p>
+          <h2>Here to explore?</h2>
+          <p>Open a shared image, video, or album. No account needed.</p>
         </div>
       </div>
       <div class="destination">
         <span class="destination-icon"><Library size={24} /></span>
         <div>
           <h2>A library of your own</h2>
-          <p>Log in to upload, organize, and share your videos.</p>
+          <p>Log in to upload, organize, and share your images and videos.</p>
         </div>
       </div>
     {/if}

@@ -5,7 +5,9 @@ import { bootstrap } from './bootstrap';
 import { createApi, apiData } from './transport';
 export { apiData } from './transport';
 /** Typed Video contract derived from the generated API or local browser state. */
-export type Video = components['schemas']['Video'];
+export type MediaItem = components['schemas']['Video'];
+/** Compatibility name used by the video-specific player and existing integrations. */
+export type Video = MediaItem;
 /** Typed Album contract derived from the generated API or local browser state. */
 export type Album = components['schemas']['Album'];
 /** Non-secret runtime policy returned by the upload API. */

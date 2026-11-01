@@ -600,6 +600,11 @@ export interface components {
             /** @description Configured administrator name; omitted legacy requests use root. */
             username?: string;
         };
+        /**
+         * @description Media category independent of its container and browser decoding support.
+         * @enum {string}
+         */
+        MediaKind: "image" | "video";
         /** @description Checksum required to authorize a single multipart part. */
         PartInput: {
             /** @description Base64 SHA-256 checksum of a single uploaded part. */
@@ -688,6 +693,8 @@ export interface components {
         UploadPolicy: {
             /** @description Enabled lowercase container extensions. */
             allowed_extensions: string[];
+            /** @description Image containers used by clients to choose image metadata and preview generation. */
+            image_extensions: string[];
             /**
              * Format: int64
              * @description Maximum accepted file length in bytes.
@@ -709,7 +716,7 @@ export interface components {
              */
             size: number;
         };
-        /** @description Video metadata and visibility-dependent delivery URLs. */
+        /** @description Image/video metadata; the legacy DTO name and API routes preserve existing integrations. */
         Video: {
             /** @description Optional explicit album membership; absent means standalone. */
             album_id: string | null;
@@ -732,6 +739,8 @@ export interface components {
             height: number;
             /** @description Stable internal identifier for this record. */
             id: string;
+            /** @description Original media category, independent of extension or browser codec support. */
+            kind: components["schemas"]["MediaKind"];
             /** @description Sanitized actionable failure shown in administrator management. */
             last_error: string | null;
             /** @description Public direct URL or authenticated private content endpoint. */

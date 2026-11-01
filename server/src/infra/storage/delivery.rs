@@ -18,6 +18,14 @@ impl Storage {
     /// Returns signature construction errors without making an S3 network request.
     pub async fn public_url(&self, token: &str, extension: &str, head: bool) -> Result<String> {
         let key = Self::public(token, extension);
+        self.published_url(key, head).await
+    }
+
+    /// Sign an already-authorized published original or derivative, never an input bucket key.
+    ///
+    /// # Errors
+    /// Returns signature construction errors without an S3 network request.
+    pub(crate) async fn published_url(&self, key: String, head: bool) -> Result<String> {
         let expires = PresigningConfig::expires_in(PLAYBACK_LIFETIME)?;
         let signed = if head {
             self.s3

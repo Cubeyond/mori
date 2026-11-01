@@ -54,6 +54,14 @@ pub struct Config {
         default_value = "mp4,m4v,mov,webm,mkv,avi,ogv,mpeg,mpg,ts,mts,m2ts,3gp,wmv,flv"
     )]
     pub video_extensions: Vec<String>,
+    /// Allowed image containers; originals are retained even when a browser cannot decode them.
+    #[arg(
+        long,
+        env = "MORI_IMAGE_EXTENSIONS",
+        value_delimiter = ',',
+        default_value = "jpg,jpeg,png,apng,gif,webp,avif,bmp,ico,tif,tiff,heic,heif,jxl,svg,dng,cr2,cr3,nef,arw,raf,rw2,orf,pef,psd"
+    )]
+    pub image_extensions: Vec<String>,
     /// Optional path to the `CloudFront` origin-header secret.
     #[arg(long, env = "MORI_ORIGIN_SECRET_FILE")]
     pub origin_secret_file: Option<String>,
@@ -103,7 +111,7 @@ impl Config {
                     .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
             {
                 bail!(
-                    "MORI_VIDEO_EXTENSIONS must contain safe extensions; jpg is reserved for covers"
+                    "MORI_VIDEO_EXTENSIONS must contain safe video extensions; configure jpg with MORI_IMAGE_EXTENSIONS"
                 );
             }
         }
@@ -111,6 +119,25 @@ impl Config {
         self.video_extensions.dedup();
         if self.video_extensions.is_empty() {
             bail!("MORI_VIDEO_EXTENSIONS must not be empty");
+        }
+        for extension in &mut self.image_extensions {
+            *extension = extension.trim().to_ascii_lowercase();
+            if extension.is_empty()
+                || extension.len() > 12
+                || !extension
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+                || self.video_extensions.contains(extension)
+            {
+                bail!(
+                    "MORI_IMAGE_EXTENSIONS must contain safe extensions distinct from video extensions"
+                );
+            }
+        }
+        self.image_extensions.sort();
+        self.image_extensions.dedup();
+        if self.image_extensions.is_empty() {
+            bail!("MORI_IMAGE_EXTENSIONS must not be empty");
         }
         if url.scheme() != "https" && !matches!(url.host_str(), Some("localhost" | "127.0.0.1")) {
             bail!("HTTPS is required outside localhost");

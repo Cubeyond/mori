@@ -14,6 +14,8 @@
   import { loadSession, session } from '#lib/api/client';
   import { loadPreferences } from '#lib/features/preferences';
   import { bootstrap } from '#lib/api/bootstrap';
+  import BackgroundLayer from '#lib/components/BackgroundLayer.svelte';
+  import { hasBackground } from '#lib/features/background';
   /** Active route contents, rendered once to preserve upload and player state. */
   let { children }: { children: Snippet } = $props();
   /** The compact navigation disclosure is controlled independently of the page. */
@@ -21,7 +23,7 @@
   /** Only authenticated dashboard routes display the administration sidebar. */
   const dashboard = $derived(
     $session.authenticated &&
-      (['/videos', '/manage', '/albums', '/settings'].includes(
+      (['/gallery', '/videos', '/manage', '/albums', '/settings'].includes(
         page.url.pathname,
       ) ||
         page.url.pathname.startsWith('/albums/') ||
@@ -41,48 +43,67 @@
   });
 </script>
 
-<a class="skip-link" href="#page-content">Skip to content</a>
-<header class="topbar">
-  <div class="header-inner">
-    <div class="brand">
-      {#if dashboard}<Button
-          variant="ghost"
-          size="icon"
-          type="submit"
-          class="icon-button navigation-toggle"
-          aria-label="Open navigation"
-          aria-haspopup="dialog"
-          aria-expanded={navigationOpen}
-          aria-controls="mobile-navigation"
-          onclick={() => (navigationOpen = true)}
-        >
-          <Menu size={20} />
-        </Button>{/if}
-      <Wordmark />
-    </div>
-    <nav aria-label="Account navigation">
-      <div class="account-slot">
-        {#if sessionReady}<AuthControl />{/if}
+<BackgroundLayer />
+<div class="application" class:personalized={$hasBackground}>
+  <a class="skip-link" href="#page-content">Skip to content</a>
+  <header class="topbar">
+    <div class="header-inner">
+      <div class="brand">
+        {#if dashboard}<Button
+            variant="ghost"
+            size="icon"
+            type="submit"
+            class="icon-button navigation-toggle"
+            aria-label="Open navigation"
+            aria-haspopup="dialog"
+            aria-expanded={navigationOpen}
+            aria-controls="mobile-navigation"
+            onclick={() => (navigationOpen = true)}
+          >
+            <Menu size={20} />
+          </Button>{/if}
+        <Wordmark />
       </div>
-    </nav>
+      <nav aria-label="Account navigation">
+        <div class="account-slot">
+          {#if sessionReady}<AuthControl />{/if}
+        </div>
+      </nav>
+    </div>
+  </header>
+  <div class="workspace" class:dashboard>
+    {#if dashboard}<aside id="sidebar" aria-label="Sidebar">
+        <LibraryNavigation path={page.url.pathname} />
+      </aside>{/if}
+    <div id="page-content" class="page-content" tabindex="-1">
+      {@render children()}
+    </div>
   </div>
-</header>
-<div class="workspace" class:dashboard>
-  {#if dashboard}<aside id="sidebar" aria-label="Sidebar">
-      <LibraryNavigation path={page.url.pathname} />
-    </aside>{/if}
-  <div id="page-content" class="page-content" tabindex="-1">
-    {@render children()}
-  </div>
+  {#if dashboard}<MobileNavigation
+      open={navigationOpen}
+      path={page.url.pathname}
+      onclose={() => (navigationOpen = false)}
+    />{/if}
+  {#if $session.authenticated}<UploadController />{/if}
 </div>
-{#if dashboard}<MobileNavigation
-    open={navigationOpen}
-    path={page.url.pathname}
-    onclose={() => (navigationOpen = false)}
-  />{/if}
-{#if $session.authenticated}<UploadController />{/if}
 
 <style>
+  .application {
+    position: relative;
+    z-index: 1;
+    min-height: 100svh;
+  }
+  .personalized .page-content,
+  .personalized aside {
+    background: rgb(11 12 20 / 95%);
+    border-radius: 8px;
+  }
+  .personalized .page-content {
+    padding: 24px;
+  }
+  .personalized aside {
+    padding: 12px;
+  }
   .topbar {
     min-height: 56px;
     background: #0d0e15;
@@ -175,6 +196,9 @@
     }
     .page-content {
       width: 100%;
+    }
+    .personalized .page-content {
+      padding: 16px;
     }
   }
 </style>

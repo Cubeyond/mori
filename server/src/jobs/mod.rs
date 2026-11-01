@@ -361,12 +361,7 @@ async fn publish(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<(
     if v.poster != 0 {
         s.storage
             .get()?
-            .copy_verified(
-                v.private_poster(),
-                Storage::public_poster(&v.token),
-                "image/jpeg",
-                None,
-            )
+            .copy_verified(v.private_poster(), v.public_poster(), "image/jpeg", None)
             .await?;
     }
     let storage = s.storage.get()?;
@@ -404,10 +399,7 @@ async fn withdraw(s: &AppState, job: &Job, v: &videos::Video) -> anyhow::Result<
         .get()?
         .delete(Storage::public(&v.token, &v.extension))
         .await?;
-    s.storage
-        .get()?
-        .delete(Storage::public_poster(&v.token))
-        .await?;
+    s.storage.get()?.delete(v.public_poster()).await?;
     if job.kind != "delete_private" && !invalidation_finished(s, job, v).await? {
         return Ok(());
     }
@@ -487,7 +479,15 @@ async fn invalidation_finished(s: &AppState, job: &Job, v: &videos::Video) -> an
         let paths = Paths::builder()
             .quantity(2)
             .items(format!("/files/{}.{}", v.token, v.extension))
-            .items(format!("/files/{}.jpg", v.token))
+            .items(format!(
+                "/{}/{}.jpg",
+                if v.poster_key.is_some() {
+                    "posters"
+                } else {
+                    "files"
+                },
+                v.token
+            ))
             .build()?;
         let batch = InvalidationBatch::builder()
             .caller_reference(format!("mori-{}-{}", v.id, v.revision))

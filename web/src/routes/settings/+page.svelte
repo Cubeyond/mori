@@ -7,6 +7,7 @@
   import { Check, CircleAlert } from '@lucide/svelte';
   import { onDestroy } from 'svelte';
   import AccessGate from '#lib/components/AccessGate.svelte';
+  import BackgroundSettings from '#lib/components/settings/BackgroundSettings.svelte';
   import {
     preferences,
     savePreferences,
@@ -41,6 +42,7 @@
   <div class="page-heading"><h1>Preferences</h1></div>
   <AccessGate>
     <section class="settings-group" aria-label="Preferences">
+      <BackgroundSettings />
       <div class="setting-row">
         <div class="setting-content">
           <label for="preference-density">Gallery density</label>

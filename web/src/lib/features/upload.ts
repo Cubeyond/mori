@@ -40,11 +40,13 @@ export async function uploadVideo(
   onprogress: (value: number, label: string) => void,
   signal: AbortSignal,
   resume: PendingUpload | null = null,
+  kind: 'image' | 'video' = 'video',
 ): Promise<void> {
   const transfer = new AbortController();
   signal = AbortSignal.any([signal, transfer.signal]);
-  onprogress(0, 'Preparing video');
-  const preview = resume === null ? prepareUploadPreview(file, signal) : null;
+  onprogress(0, 'Preparing media');
+  const preview =
+    resume === null ? prepareUploadPreview(file, signal, kind) : null;
   try {
     const [hash, metadata] = await Promise.all([
       fingerprint(file),
@@ -166,7 +168,7 @@ export async function uploadVideo(
     }
     await Promise.all([worker(), worker(), posterTask]);
     signal.throwIfAborted();
-    onprogress(100, 'Verifying video');
+    onprogress(100, 'Verifying upload');
     const accepted = await apiData(
       api.POST('/v1/admin/uploads/{id}/complete', {
         params: { path: { id: upload.id } },

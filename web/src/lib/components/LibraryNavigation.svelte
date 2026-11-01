@@ -1,7 +1,7 @@
 <script lang="ts">
   /** The desktop sidebar and full-page mobile navigation share destinations and active-route semantics. */
   import { resolve } from '$app/paths';
-  import { Video, Library, Settings2, HardDrive } from '@lucide/svelte';
+  import { Images, Library, Settings2, HardDrive } from '@lucide/svelte';
   /** Mobile navigation follows the same routes with larger touch rows. */
   let {
     path,
@@ -18,11 +18,13 @@
   <nav aria-label="Library">
     <p class="category">Library</p>
     <a
-      href={resolve('/videos')}
-      aria-current={['/videos', '/manage'].includes(path) ? 'page' : undefined}
+      href={resolve('/gallery')}
+      aria-current={['/gallery', '/videos', '/manage'].includes(path)
+        ? 'page'
+        : undefined}
       onclick={onfollow}
     >
-      <Video size={22} /><span>Videos</span>
+      <Images size={22} /><span>Gallery</span>
     </a>
     <a
       href={resolve('/albums')}

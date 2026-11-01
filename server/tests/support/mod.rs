@@ -104,6 +104,16 @@ pub async fn setup() -> (AppState, Router, tempfile::TempDir) {
         admin_username: "root".into(),
         admin_password: Some("a-long-test-password".into()),
         video_extensions: vec!["mp4".into(), "webm".into(), "mov".into()],
+        image_extensions: vec![
+            "jpg".into(),
+            "jpeg".into(),
+            "png".into(),
+            "gif".into(),
+            "webp".into(),
+            "svg".into(),
+            "heic".into(),
+            "dng".into(),
+        ],
         origin_secret_file: None,
     };
     let state = AppState::new(config).await.unwrap();
