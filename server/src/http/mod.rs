@@ -214,7 +214,7 @@ async fn album_page(
     }
     index(State(s), h, OriginalUri(uri)).await
 }
-/// Recognize direct media paths so resource redirects can be framed cross-site.
+/// Recognize direct media paths so resource responses can be framed cross-site.
 fn media_path(path: &str) -> bool {
     let mut segments = path.trim_start_matches('/').split('/');
     let Some(prefix) = segments.next() else {
@@ -282,24 +282,16 @@ async fn security(State(s): State<AppState>, request: Request, next: Next) -> Re
         },
     );
     let script_csp = &s.script_csp;
-    let media = s.storage.current().map_or_else(String::new, |storage| {
-        if s.config.s3_endpoint.is_some() {
-            connect.clone()
-        } else {
-            storage.browser_sources()
-        }
-    });
     let csp = format!(
         concat!(
             "default-src 'self'; script-src 'self' {script_csp}; ",
-            "style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: {media}; ",
-            "media-src 'self' blob: {media}; connect-src 'self' {connect}; ",
+            "style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; ",
+            "media-src 'self' blob:; connect-src 'self' {connect}; ",
             "font-src 'self'; object-src 'none'; base-uri 'none'; ",
             "frame-ancestors {ancestors}",
         ),
         script_csp = script_csp,
         connect = connect,
-        media = media,
         ancestors = ancestors,
     );
     if let Ok(value) = csp.parse() {

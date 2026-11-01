@@ -5,6 +5,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
+use http_body_util::BodyExt;
 use mori::{
     http,
     infra::{storage::Storage, storage_settings::config::StorageSettings},
@@ -110,11 +111,12 @@ async fn seed(state: &mori::app::AppState) {
     }
 }
 
-/// Assert a method-specific signed redirect stays on the fixture's published prefix.
-async fn signed(router: &axum::Router, method: &str, path: &str) -> url::Url {
+/// Assert stable delivery keeps upstream locations and credentials out of every response.
+async fn delivered(router: &axum::Router, method: &str, path: &str) -> axum::http::HeaderMap {
     let (status, headers, _) = call(router, method, path, None, None, Value::Null).await;
-    assert_eq!(status, StatusCode::TEMPORARY_REDIRECT);
+    assert_eq!(status, StatusCode::OK);
     assert_eq!(headers["cache-control"], "no-store");
+    assert!(headers.get("location").is_none());
     assert!(
         headers["content-security-policy"]
             .to_str()
@@ -127,17 +129,7 @@ async fn signed(router: &axum::Router, method: &str, path: &str) -> url::Url {
             .unwrap()
             .contains("fullscreen=*")
     );
-    let url = url::Url::parse(headers["location"].to_str().unwrap()).unwrap();
-    assert!(url.path().starts_with("/test-bucket/public/files/"));
-    let query: std::collections::BTreeMap<_, _> = url.query_pairs().collect();
-    assert_eq!(query.get("X-Amz-Expires").unwrap(), "3600");
-    assert_eq!(query.get("X-Amz-SignedHeaders").unwrap(), "host");
-    assert!(query.contains_key("X-Amz-Signature"));
-    if method == "GET" {
-        assert_eq!(query.get("response-cache-control").unwrap(), "no-store");
-        assert_eq!(query.get("response-content-disposition").unwrap(), "inline");
-    }
-    url
+    headers
 }
 
 /// Publish an album member using its real source and durable copy job.
@@ -163,16 +155,17 @@ async fn published_album() -> (Media, mori::features::videos::Video) {
 }
 
 #[tokio::test]
-/// Album links and posters receive method-specific signatures scoped to published copies.
-async fn public_s3_links_and_posters_are_scoped() {
+/// Canonical album links and previews serve public bytes without redirects.
+async fn public_links_and_posters_keep_their_original_addresses() {
     let (media, video) = published_album().await;
     let path = format!("/nature/{}.webm", video.token);
-    let get = signed(&media.router, "GET", &path).await;
-    let head = signed(&media.router, "HEAD", &path).await;
-    assert_ne!(get.query(), head.query());
+    let get = delivered(&media.router, "GET", &path).await;
+    let head = delivered(&media.router, "HEAD", &path).await;
+    assert_eq!(get["etag"], head["etag"]);
+    assert_eq!(get["content-length"], head["content-length"]);
     let poster = format!("/files/{}.jpg", video.token);
-    signed(&media.router, "GET", &poster).await;
-    signed(&media.router, "HEAD", &poster).await;
+    delivered(&media.router, "GET", &poster).await;
+    delivered(&media.router, "HEAD", &poster).await;
     let visitor = Client::visitor(&media.router);
     for path in [
         format!("/files/{}.jpg", "b".repeat(32)),
@@ -196,8 +189,8 @@ async fn public_s3_links_and_posters_are_scoped() {
 }
 
 #[tokio::test]
-/// Public ranges remain unsigned and browser policy admits only the configured delivery origin.
-async fn s3_seeking_and_browser_policy() {
+/// Single ranges, invalid ranges, and stale If-Range values retain normal HTTP semantics.
+async fn streaming_seeking_and_browser_policy() {
     let (media, video) = published_album().await;
     let path = format!("/nature/{}.webm", video.token);
     let range = media
@@ -212,33 +205,40 @@ async fn s3_seeking_and_browser_policy() {
         )
         .await
         .unwrap();
-    assert_eq!(range.status(), StatusCode::TEMPORARY_REDIRECT);
-    let url = url::Url::parse(range.headers()["location"].to_str().unwrap()).unwrap();
-    assert!(
-        url.query_pairs()
-            .any(|(key, value)| key == "X-Amz-SignedHeaders" && value == "host")
-    );
-    let storage = media.state.storage.get().unwrap();
-    let object = storage
-        .s3
-        .get_object()
-        .bucket(&storage.bucket)
-        .key(Storage::public(&video.token, "webm"))
-        .range("bytes=3-17")
-        .send()
-        .await
-        .unwrap();
+    assert_eq!(range.status(), StatusCode::PARTIAL_CONTENT);
     assert_eq!(
-        object.body.collect().await.unwrap().into_bytes(),
+        range.headers()["content-range"],
+        format!("bytes 3-17/{}", video.size)
+    );
+    assert!(range.headers().get("location").is_none());
+    assert_eq!(
+        range.into_body().collect().await.unwrap().to_bytes(),
         include_bytes!("../fixtures/short.webm")[3..18]
     );
+    for (value, if_range, expected) in [
+        ("bytes=999999-", None, StatusCode::RANGE_NOT_SATISFIABLE),
+        ("bytes=0-1,4-5", None, StatusCode::RANGE_NOT_SATISFIABLE),
+        ("bytes=3-17", Some("\"stale\""), StatusCode::OK),
+    ] {
+        let mut request = Request::builder().uri(&path).header("range", value);
+        if let Some(value) = if_range {
+            request = request.header("if-range", value);
+        }
+        let response = media
+            .router
+            .clone()
+            .oneshot(request.body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), expected);
+        let _ = response.into_body().collect().await.unwrap();
+    }
     let home = Client::visitor(&media.router)
         .request("GET", "/", Value::Null)
         .await;
     let policy = home.headers["content-security-policy"].to_str().unwrap();
-    let origin = media.state.config.s3_endpoint.as_deref().unwrap();
-    assert!(policy.contains(&format!("media-src 'self' blob: {origin}")));
-    assert!(policy.contains(&format!("img-src 'self' blob: data: {origin}")));
+    assert!(policy.contains("media-src 'self' blob:;"));
+    assert!(policy.contains("img-src 'self' blob: data:;"));
 }
 
 #[tokio::test]

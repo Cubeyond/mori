@@ -202,7 +202,7 @@ state='uploading') OR state='canceling'",
         .bind(now())
         .execute(&s.db)
         .await?;
-    sqlx::query("INSERT INTO jobs(id,video_id,kind,revision,created_at) SELECT lower(hex(randomblob(16))),v.id,'normalize',v.revision,? FROM videos v WHERE v.source_key IS NULL AND v.state IN ('ready','published') AND NOT EXISTS(SELECT 1 FROM jobs j WHERE j.video_id=v.id AND j.revision=v.revision AND j.kind='normalize' AND j.state='pending') LIMIT 16")
+    sqlx::query("INSERT INTO jobs(id,video_id,kind,revision,created_at) SELECT lower(hex(randomblob(16))),v.id,'normalize',v.revision,? FROM videos v WHERE (v.source_key IS NULL OR v.poster_key IS NULL OR v.poster_key NOT LIKE 'private/files/posters/%') AND v.state IN ('ready','published') AND NOT EXISTS(SELECT 1 FROM jobs j WHERE j.video_id=v.id AND j.revision=v.revision AND j.kind='normalize' AND j.state='pending') LIMIT 16")
         .bind(now()).execute(&s.db).await?;
     // Recover reservations left by a process crash before an upload session was persisted.
     sqlx::query(
@@ -476,13 +476,17 @@ async fn invalidation_finished(s: &AppState, job: &Job, v: &videos::Video) -> an
         }
     } else {
         use aws_sdk_cloudfront::types::{InvalidationBatch, Paths};
+        let locations = [
+            Storage::public(&v.token, &v.extension),
+            Storage::public_poster(&v.token),
+            Storage::published_preview(&v.token),
+        ]
+        .map(|key| format!("/{}", key.trim_start_matches("public/")))
+        .into_iter()
+        .collect::<std::collections::BTreeSet<_>>();
         let paths = Paths::builder()
-            .quantity(2)
-            .items(format!("/files/{}.{}", v.token, v.extension))
-            .items(format!(
-                "/{}",
-                v.public_poster().trim_start_matches("public/")
-            ))
+            .quantity(i32::try_from(locations.len())?)
+            .set_items(Some(locations.into_iter().collect()))
             .build()?;
         let batch = InvalidationBatch::builder()
             .caller_reference(format!("mori-{}-{}", v.id, v.revision))

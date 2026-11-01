@@ -13,7 +13,9 @@
       kind: 'media',
       label: video.kind === 'image' ? 'Direct image link' : 'Direct video link',
     },
-    { kind: 'iframe', label: 'Iframe embed code' },
+    ...(video.kind === 'video'
+      ? [{ kind: 'iframe' as const, label: 'Iframe embed code' }]
+      : []),
   ]);
 </script>
 

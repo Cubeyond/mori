@@ -142,7 +142,7 @@
               <h2 id="connection-heading">Amazon S3</h2>
               {#if locked}<p>
                   <LockKeyhole size={16} />Storage location is locked while your
-                  library contains videos.
+                  library contains media.
                 </p>{/if}
             </div>
             <div class="settings-fields">

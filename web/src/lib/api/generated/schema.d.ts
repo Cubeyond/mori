@@ -697,7 +697,12 @@ export interface components {
             image_extensions: string[];
             /**
              * Format: int64
-             * @description Maximum accepted file length in bytes.
+             * @description Independent maximum original-image length in bytes.
+             */
+            max_image_upload_bytes: number;
+            /**
+             * Format: int64
+             * @description Maximum accepted video length in bytes.
              */
             max_upload_bytes: number;
         };

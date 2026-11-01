@@ -96,7 +96,7 @@
     max-width: min(720px, calc(100% - 32px));
   }
   dialog::backdrop {
-    background: #070808b8;
+    background: var(--dialog-backdrop, #070808b8);
     backdrop-filter: blur(6px);
   }
   dialog[open] {

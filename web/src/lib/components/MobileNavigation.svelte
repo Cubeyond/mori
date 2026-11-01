@@ -101,7 +101,7 @@
     overscroll-behavior: contain;
     border: 0;
     border-radius: 0;
-    background: #101117;
+    background: var(--navigation-surface, #101117);
     color: var(--foreground);
   }
   header {
@@ -118,7 +118,7 @@
     margin-inline: auto;
   }
   dialog::backdrop {
-    background: #05060999;
+    background: var(--dialog-backdrop, #05060999);
     backdrop-filter: blur(3px);
   }
   dialog[open] {

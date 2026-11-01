@@ -68,7 +68,9 @@
           />{/if}{#if !ready}<span
             >{video.state === 'failed'
               ? 'Upload failed'
-              : 'Processing video…'}</span
+              : video.state === 'deleting'
+                ? 'Deleting ' + video.kind + '…'
+                : 'Processing ' + video.kind + '…'}</span
           >{/if}</span
       >{/if}
     <span class="play controls"
@@ -84,11 +86,11 @@
         value={shareValue(video, 'media')}
         label={video.kind === 'image' ? 'Copy image link' : 'Copy video link'}
         icon="link"
-      /><CopyButton
-        value={shareValue(video, 'iframe')}
-        label="Copy iframe"
-        icon="code"
-      />{/if}
+      />{#if video.kind === 'video'}<CopyButton
+          value={shareValue(video, 'iframe')}
+          label="Copy iframe"
+          icon="code"
+        />{/if}{/if}
     {#if onmanage}<Button
         variant="ghost"
         size="icon"

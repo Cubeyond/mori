@@ -41,7 +41,7 @@
   <p class="mb-3 text-xs tracking-[.2em] text-white/40">YOUR LIBRARY</p>
   <h1 class="serif mb-2 text-4xl">Welcome back.</h1>
   <p class="muted mb-9 text-sm">
-    Log in to keep, arrange, and share your videos.
+    Log in to keep, arrange, and share your images and videos.
   </p>
   {#if $session.authenticated}<p class="muted mb-5 text-sm">
       You are signed in as the administrator.

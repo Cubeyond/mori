@@ -80,22 +80,32 @@
   /** Validate the selected local file before opening a multipart upload session. */
   function selectFiles(selected: File[]): void {
     error = '';
-    if (
-      selected.length > 0 &&
-      (policy === null ||
-        selected.some(
-          (file) =>
-            file.size < 16 ||
-            file.size > policy.max_upload_bytes ||
-            !policy.allowed_extensions.includes(
-              file.name.split('.').at(-1)?.toLowerCase() ?? '',
-            ),
-        ))
-    ) {
-      error =
-        policy === null
-          ? 'Upload settings are loading.'
-          : 'Choose an enabled image or video format within the upload limit.';
+    if (selected.length > 0 && policy === null) {
+      error = 'Upload settings are loading.';
+    } else if (policy !== null) {
+      for (const file of selected) {
+        const extension = file.name.split('.').at(-1)?.toLowerCase() ?? '';
+        const image = policy.image_extensions.includes(extension);
+        const limit = image
+          ? policy.max_image_upload_bytes
+          : policy.max_upload_bytes;
+        if (!policy.allowed_extensions.includes(extension)) {
+          error = 'Choose an enabled image or video format.';
+          break;
+        }
+        if (file.size < 16 || file.size > limit) {
+          error =
+            (image ? 'Image' : 'Video') +
+            ' exceeds the ' +
+            (limit / 1_048_576).toLocaleString(undefined, {
+              maximumFractionDigits: 1,
+            }) +
+            ' MiB upload limit.';
+          break;
+        }
+      }
+    }
+    if (error) {
       files = [];
       if (input !== undefined) input.value = '';
       return;
@@ -257,7 +267,9 @@
         <small
           >{policy === null
             ? 'Loading upload settings…'
-            : 'Images and videos · up to ' +
+            : 'Images ' +
+              String(policy.max_image_upload_bytes / 1_048_576) +
+              ' MiB · Videos ' +
               String(policy.max_upload_bytes / 1_000_000_000) +
               ' GB'}</small
         >

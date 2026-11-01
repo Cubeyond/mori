@@ -101,6 +101,7 @@ pub async fn setup() -> (AppState, Router, tempfile::TempDir) {
         cloudfront_endpoint: None,
         web_dir: directory.path().display().to_string(),
         max_upload_bytes: 1_000_000_000,
+        max_image_upload_bytes: 104_857_600,
         admin_username: "root".into(),
         admin_password: Some("a-long-test-password".into()),
         video_extensions: vec!["mp4".into(), "webm".into(), "mov".into()],

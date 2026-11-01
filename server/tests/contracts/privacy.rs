@@ -257,17 +257,26 @@ async fn private_content_and_posters_require_session() {
 #[tokio::test]
 /// Membership changes update preferred addresses while preserving previously issued aliases.
 async fn reassignment_preserves_existing_shared_addresses() {
-    let (_state, router, _directory) = library().await;
-    let admin = Client::admin(&router).await;
-    let visitor = Client::visitor(&router);
-    let video = format!("/v1/videos/{}", "c".repeat(32));
+    let media = crate::support::media::Media::new(false).await;
+    let album = media
+        .request(
+            "POST",
+            "/v1/admin/albums",
+            json!({"name":"Nature","slug":"nature","visibility":"private"}),
+        )
+        .await
+        .body;
+    let private = media.ready().await;
+    let published = media.visibility(&private, "public").await;
+    let visitor = Client::visitor(&media.router);
+    let video = format!("/v1/videos/{}", published.token);
     let before = visitor.request("GET", &video, Value::Null).await.body;
     assert_eq!(
-        admin
+        media
             .request(
                 "PATCH",
-                "/v1/admin/videos/standalone",
-                json!({"name":"Renamed","album_id":"collection","visibility":"public"})
+                &format!("/v1/admin/videos/{}", published.id),
+                json!({"name":"Renamed","album_id":album["id"],"visibility":"public"})
             )
             .await
             .status,
@@ -281,11 +290,11 @@ async fn reassignment_preserves_existing_shared_addresses() {
         let response = visitor
             .request(
                 "GET",
-                &format!("/{prefix}/{}.mp4", "c".repeat(32)),
+                &format!("/{prefix}/{}.webm", published.token),
                 Value::Null,
             )
             .await;
-        assert_eq!(response.status, StatusCode::TEMPORARY_REDIRECT);
+        assert_eq!(response.status, StatusCode::OK);
         assert!(
             response.headers["content-security-policy"]
                 .to_str()

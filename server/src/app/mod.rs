@@ -43,9 +43,16 @@ pub struct Config {
     /// Optional environment-provisioned password; plaintext is discarded after startup.
     #[arg(long, env = "MORI_ADMIN_PASSWORD", hide_env_values = true)]
     pub admin_password: Option<String>,
-    /// Maximum bytes per upload; the default is one decimal gigabyte.
+    /// Maximum bytes per video upload; the default is one decimal gigabyte.
     #[arg(long, env = "MORI_MAX_UPLOAD_BYTES", default_value_t = 1_000_000_000)]
     pub max_upload_bytes: i64,
+    /// Independent original-image ceiling, including RAW photos; defaults to 100 MiB.
+    #[arg(
+        long,
+        env = "MORI_MAX_IMAGE_UPLOAD_BYTES",
+        default_value_t = 104_857_600
+    )]
+    pub max_image_upload_bytes: i64,
     /// Allowed filename extensions; codecs are never restricted or transcoded.
     #[arg(
         long,
@@ -87,6 +94,11 @@ impl Config {
         self.public_url = url.origin().ascii_serialization();
         if !(16..=5_000_000_000).contains(&self.max_upload_bytes) {
             bail!("MORI_MAX_UPLOAD_BYTES must be 16..=5000000000 for S3 CopyObject publication");
+        }
+        if !(16..=5_000_000_000).contains(&self.max_image_upload_bytes) {
+            bail!(
+                "MORI_MAX_IMAGE_UPLOAD_BYTES must be 16..=5000000000 for S3 CopyObject publication"
+            );
         }
         if self.admin_username.is_empty()
             || self.admin_username.len() > 64

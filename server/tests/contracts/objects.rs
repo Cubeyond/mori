@@ -129,6 +129,17 @@ async fn legacy_object_layout_is_upgraded_without_losing_media() {
             Some(&video.private_source())
         );
         assert_eq!(normalized.token, video.token);
+        assert_eq!(
+            normalized.private_poster(),
+            Storage::private_preview(&video.token)
+        );
+        assert_eq!(
+            normalized.public_poster(),
+            Storage::published_preview(&video.token)
+        );
+        assert_eq!(media.exists(normalized.private_poster()).await, !public);
+        assert_eq!(media.exists(normalized.public_poster()).await, public);
+        assert!(!media.exists(Storage::public_poster(&video.token)).await);
         assert!(!media.exists(Storage::source(&video.id)).await);
         assert!(!media.exists(Storage::poster(&video.id)).await);
         assert_eq!(media.exists(normalized.private_source()).await, !public);
@@ -147,4 +158,64 @@ async fn legacy_object_layout_is_upgraded_without_losing_media() {
                 .any(|entry| entry["id"] == video.id)
         );
     }
+}
+
+#[tokio::test]
+/// Moving an old image preview never removes an original with the same JPEG filename.
+async fn old_image_preview_moves_without_deleting_jpeg_original() {
+    let media = Media::new(false).await;
+    let bytes = include_bytes!("../fixtures/image.jpg");
+    let upload = media.begin("private", bytes.len(), "jpg").await;
+    media.part(&upload, bytes).await;
+    media.poster(upload["video_id"].as_str().unwrap()).await;
+    let job = media.complete(&upload).await;
+    assert_eq!(wait_job(&media.state, &job).await, "complete");
+    let image = videos::get(&media.state, upload["video_id"].as_str().unwrap())
+        .await
+        .unwrap();
+    let storage = media.state.storage.get().unwrap();
+    let old = format!("private/posters/{}.jpg", image.token);
+    storage
+        .copy(image.private_poster(), old.clone(), "image/jpeg")
+        .await
+        .unwrap();
+    storage.delete(image.private_poster()).await.unwrap();
+    sqlx::query("UPDATE videos SET poster_key=? WHERE id=?")
+        .bind(&old)
+        .bind(&image.id)
+        .execute(&media.state.db)
+        .await
+        .unwrap();
+    let job = random_id();
+    sqlx::query(
+        "INSERT INTO jobs(id,video_id,kind,revision,created_at) VALUES(?,?,'normalize',0,1)",
+    )
+    .bind(&job)
+    .bind(&image.id)
+    .execute(&media.state.db)
+    .await
+    .unwrap();
+    for _ in 0..2 {
+        sqlx::query("UPDATE jobs SET state='pending' WHERE id=?")
+            .bind(&job)
+            .execute(&media.state.db)
+            .await
+            .unwrap();
+        media.state.job_wakeup.notify_one();
+        assert_eq!(wait_job(&media.state, &job).await, "complete");
+        assert!(media.exists(image.private_source()).await);
+        assert!(media.exists(Storage::private_preview(&image.token)).await);
+        assert!(!media.exists(old.clone()).await);
+    }
+    let content = media
+        .content(&format!("/v1/admin/videos/{}/content", image.id), None)
+        .await;
+    assert_eq!(
+        http_body_util::BodyExt::collect(content.into_body())
+            .await
+            .unwrap()
+            .to_bytes()
+            .as_ref(),
+        bytes
+    );
 }

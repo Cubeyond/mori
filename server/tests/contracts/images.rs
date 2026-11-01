@@ -60,7 +60,8 @@ async fn jpeg_original_survives_preview_publication_and_withdrawal() {
                     Value::Null,
                 )
                 .await;
-            assert_eq!(preview.status, StatusCode::TEMPORARY_REDIRECT);
+            assert_eq!(preview.status, StatusCode::OK);
+            assert!(preview.headers.get("location").is_none());
         } else {
             assert!(!media.exists(image.public_poster()).await);
         }
@@ -132,6 +133,12 @@ async fn private_svg_has_an_independent_sandbox_policy() {
         )
         .await;
     assert_eq!(response.headers()["content-type"], "image/svg+xml");
+    assert!(
+        response.headers()["content-disposition"]
+            .to_str()
+            .unwrap()
+            .starts_with("attachment;")
+    );
     assert!(
         response
             .headers()

@@ -1103,6 +1103,7 @@ components:
       description: Safe upload limits exposed without credentials or storage configuration.
       required:
       - max_upload_bytes
+      - max_image_upload_bytes
       - allowed_extensions
       - image_extensions
       properties:
@@ -1116,10 +1117,14 @@ components:
           items:
             type: string
           description: Image containers used by clients to choose image metadata and preview generation.
+        max_image_upload_bytes:
+          type: integer
+          format: int64
+          description: Independent maximum original-image length in bytes.
         max_upload_bytes:
           type: integer
           format: int64
-          description: Maximum accepted file length in bytes.
+          description: Maximum accepted video length in bytes.
     UploadedPart:
       type: object
       description: S3-confirmed part metadata used to resume an interrupted upload.

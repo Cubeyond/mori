@@ -149,6 +149,18 @@ fn historical_checksums_are_immutable() {
             6,
             "8213393f1227213bd05822f77f96b3520debc1f5b1acfa0e33aff4d832b429d142c3dd934fabe17677e2c06b75c348aa",
         ),
+        (
+            7,
+            "2a801e871f6b557eca05e9f575fa41f2bfde89458d42c49394e72153999e36de75be6b63fcc3565ec0797b9c451a03b2",
+        ),
+        (
+            8,
+            "150a7ce8fd15ebe709f294605a2a911ff0213af9d8f834b0d29cc02b8d913d310b9d144ebec0405613483543f2460e53",
+        ),
+        (
+            9,
+            "56cae57e7250887732bfe7984e59a009b27c697b4023ba3c830d19362e7577575626980a369aa16f4bc9164afed94fcf",
+        ),
     ];
     let migrations = sqlx::migrate!();
     for (version, checksum) in expected {
@@ -162,4 +174,37 @@ fn historical_checksums_are_immutable() {
             "Changed migration {version}"
         );
     }
+}
+
+#[tokio::test]
+/// Upgrades retain old preview pointers and enqueue durable moves without touching active uploads.
+async fn preview_layout_upgrade_keeps_readable_pointers() {
+    let (pool, _directory) = database_at(9).await;
+    for (id, state, pointer) in [
+        ("old-video", "published", None),
+        ("old-image", "ready", Some("private/posters/photo.jpg")),
+        (
+            "current",
+            "ready",
+            Some("private/files/posters/current.jpg"),
+        ),
+        ("upload", "uploading", None),
+    ] {
+        sqlx::query("INSERT INTO videos(id,token,name,state,visibility,size,created_at,source_key,poster_key) VALUES(?,?,?, ?,'private',100,1,'private/files/original.mp4',?)")
+            .bind(id).bind(id).bind(id).bind(state).bind(pointer).execute(&pool).await.unwrap();
+    }
+    sqlx::migrate!().run(&pool).await.unwrap();
+    let jobs: Vec<String> = sqlx::query_scalar(
+        "SELECT video_id FROM jobs WHERE kind='normalize' AND state='pending' ORDER BY video_id",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(jobs, ["old-image", "old-video"]);
+    let pointer: Option<String> =
+        sqlx::query_scalar("SELECT poster_key FROM videos WHERE id='old-image'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(pointer.as_deref(), Some("private/posters/photo.jpg"));
 }

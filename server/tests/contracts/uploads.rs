@@ -43,6 +43,7 @@ async fn configured_upload_policy_contract() {
     .await
     .2;
     assert_eq!(policy["max_upload_bytes"], 1_000_000_000);
+    assert_eq!(policy["max_image_upload_bytes"], 104_857_600);
     assert!(
         policy["allowed_extensions"]
             .as_array()
@@ -51,6 +52,7 @@ async fn configured_upload_policy_contract() {
     );
     for input in [
         json!({"album_id":null,"size":1_000_000_001i64,"visibility":"private","extension":"mp4"}),
+        json!({"album_id":null,"size":104_857_601i64,"visibility":"private","extension":"jpg"}),
         json!({"album_id":null,"size":100,"visibility":"private","extension":"exe"}),
         json!({"album_id":null,"size":100,"visibility":"private","extension":"../mp4"}),
     ] {
@@ -67,6 +69,35 @@ async fn configured_upload_policy_contract() {
             .0,
             StatusCode::BAD_REQUEST
         );
+    }
+}
+
+#[tokio::test]
+/// Image limits are independent of video limits and enforced before a multipart session exists.
+async fn image_limit_is_independent_and_configurable() {
+    let media = Media::new(false).await;
+    let mut state = media.state.clone();
+    let mut config = (*state.config).clone();
+    config.max_image_upload_bytes = 512;
+    config.max_upload_bytes = 256;
+    config.validate().unwrap();
+    state.config = std::sync::Arc::new(config);
+    let router = mori::http::router(state);
+    let admin = Client::admin(&router).await;
+    for (extension, size, expected) in [
+        ("jpg", 512, StatusCode::CREATED),
+        ("jpg", 513, StatusCode::BAD_REQUEST),
+        ("webm", 257, StatusCode::BAD_REQUEST),
+        ("webm", 256, StatusCode::CREATED),
+    ] {
+        let response = admin
+            .request(
+                "POST",
+                "/v1/admin/uploads",
+                json!({"size":size,"extension":extension,"visibility":"private"}),
+            )
+            .await;
+        assert_eq!(response.status, expected);
     }
 }
 

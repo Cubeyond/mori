@@ -134,7 +134,7 @@
     overflow: visible;
   }
   dialog::backdrop {
-    background: #05060be8;
+    background: var(--viewer-backdrop, #05060be8);
     backdrop-filter: blur(6px);
   }
   .viewer {
@@ -166,7 +166,7 @@
     justify-content: center;
     width: 100%;
     max-height: calc(100svh - 100px);
-    background: #0b0c14;
+    background: var(--viewer-surface, #0b0c14);
   }
   .image-frame img {
     width: 100%;

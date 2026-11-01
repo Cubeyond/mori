@@ -60,7 +60,7 @@ void test('edited display names cannot inject markup or iframe attributes', () =
   assert.equal(iframe.match(/<\/iframe>/g)?.length, 1);
 });
 
-void test('image iframe keeps the original image address and portrait aspect ratio', () => {
+void test('images offer their original address without video iframe markup', () => {
   const image: Video = {
     ...video,
     kind: 'image',
@@ -70,8 +70,8 @@ void test('image iframe keeps the original image address and portrait aspect rat
     media_url: 'https://media.laplacian.net/nature/' + video.token + '.jpg',
   };
   assert.equal(shareValue(image, 'media'), image.media_url);
-  const iframe = shareValue(image, 'iframe');
-  assert.ok(iframe.includes(`src="${image.media_url}"`));
-  assert.ok(iframe.includes('aspect-ratio:800 / 1200'));
-  assert.ok(iframe.includes('sandbox="allow-same-origin allow-downloads"'));
+  assert.throws(
+    () => shareValue(image, 'iframe'),
+    /Images share their direct link/,
+  );
 });

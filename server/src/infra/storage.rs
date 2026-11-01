@@ -1,7 +1,5 @@
 //! S3 multipart operations, publication copies, and optional CloudFront clients.
 
-/// Short-lived public-object signatures and browser delivery origins.
-mod delivery;
 /// Verified, restart-safe object relocation within the configured bucket.
 mod relocation;
 
@@ -162,7 +160,7 @@ impl Storage {
     /// Store derivatives separately so a JPEG original can never overwrite its own preview.
     #[must_use]
     pub fn private_preview(token: &str) -> String {
-        format!("private/posters/{token}.jpg")
+        format!("private/files/posters/{token}.jpg")
     }
     /// Keep derivatives distinct from originals within the existing public IAM/OAC prefix.
     #[must_use]

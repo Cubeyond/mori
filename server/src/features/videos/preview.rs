@@ -1,6 +1,6 @@
-//! Authenticated streaming with bounded buffering and HTTP range semantics.
+//! Shared bounded streaming keeps original URLs stable for public and private media.
 
-use super::{MediaKind, get};
+use super::{MediaKind, Video, get};
 use crate::{
     app::AppState,
     features::auth,
@@ -133,7 +133,20 @@ async fn stream(
     {
         return Err(crate::http::error::missing());
     }
-    let permit = stream_permit(&s, poster).await?;
+    resource(&s, &h, method, &v, poster).await
+}
+
+/// Stream an already-authorized original or preview without exposing an upstream URL.
+///
+/// # Errors
+/// Returns bounded-capacity, S3 metadata/body, range, or response-building failures.
+pub(super) async fn resource(
+    s: &AppState,
+    h: &HeaderMap,
+    method: Method,
+    v: &Video,
+    poster: bool,
+) -> Result<Response> {
     let key = v.content_key(poster);
     let head = s
         .storage
@@ -147,24 +160,7 @@ async fn stream(
         .map_err(anyhow::Error::from)?;
     let size = u64::try_from(head.content_length.unwrap_or(0))
         .map_err(|_| bad("Invalid stored object length"))?;
-    let mut builder = Response::builder()
-        .header(
-            header::CONTENT_TYPE,
-            if poster {
-                "image/jpeg"
-            } else {
-                super::content_type(&v.extension)
-            },
-        )
-        .header(header::ACCEPT_RANGES, "bytes")
-        .header(header::CACHE_CONTROL, "private, no-store")
-        .header("x-content-type-options", "nosniff");
-    if !poster && v.kind == MediaKind::Image {
-        builder = builder.header(
-            header::CONTENT_SECURITY_POLICY,
-            "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'",
-        );
-    }
+    let mut builder = response_headers(v, poster);
     if let Some(etag) = &head.e_tag {
         builder = builder.header(header::ETAG, etag);
     }
@@ -207,6 +203,7 @@ async fn stream(
             .body(Body::empty())
             .map_err(|_| bad("Invalid HEAD response"));
     }
+    let permit = stream_permit(s, poster).await?;
     let object = request.send().await.map_err(anyhow::Error::from)?;
     let stream =
         ReaderStream::with_capacity(object.body.into_async_read(), 64 * 1024).map(move |chunk| {
@@ -216,4 +213,42 @@ async fn stream(
     builder
         .body(Body::from_stream(stream))
         .map_err(|_| bad("Invalid media response"))
+}
+
+/// Preserve media types and isolate active image documents from the application origin.
+fn response_headers(v: &Video, poster: bool) -> axum::http::response::Builder {
+    let mut builder = Response::builder()
+        .header(
+            header::CONTENT_TYPE,
+            if poster {
+                "image/jpeg"
+            } else {
+                super::content_type(&v.extension)
+            },
+        )
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(
+            header::CACHE_CONTROL,
+            if v.visibility == "public" && v.state == "published" {
+                "no-store"
+            } else {
+                "private, no-store"
+            },
+        )
+        .header("x-content-type-options", "nosniff");
+    if !poster && v.kind == MediaKind::Image {
+        builder = builder.header(
+            header::CONTENT_SECURITY_POLICY,
+            "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'",
+        );
+    }
+    if !poster
+        && (v.extension == "svg" || super::content_type(&v.extension) == "application/octet-stream")
+    {
+        builder = builder.header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}.{}\"", v.token, v.extension),
+        );
+    }
+    builder
 }

@@ -46,8 +46,10 @@ pub struct CreateUpload {
 /// Safe upload limits exposed without credentials or storage configuration.
 #[derive(Serialize, ToSchema)]
 pub struct UploadPolicy {
-    /// Maximum accepted file length in bytes.
+    /// Maximum accepted video length in bytes.
     pub max_upload_bytes: i64,
+    /// Independent maximum original-image length in bytes.
+    pub max_image_upload_bytes: i64,
     /// Enabled lowercase container extensions.
     pub allowed_extensions: Vec<String>,
     /// Image containers used by clients to choose image metadata and preview generation.
@@ -68,6 +70,7 @@ pub async fn policy(State(s): State<AppState>, h: HeaderMap) -> Result<Json<Uplo
     allowed_extensions.extend(s.config.image_extensions.iter().cloned());
     Ok(Json(UploadPolicy {
         max_upload_bytes: s.config.max_upload_bytes,
+        max_image_upload_bytes: s.config.max_image_upload_bytes,
         allowed_extensions,
         image_extensions: s.config.image_extensions.clone(),
     }))
@@ -143,12 +146,6 @@ async fn record(s: &AppState, id: &str) -> Result<Record> {
 /// # Errors
 /// Returns invalid size, visibility, container, or presentation metadata errors.
 fn validate_input(s: &AppState, input: &CreateUpload) -> Result<MediaKind> {
-    if input.size < 16
-        || input.size > s.config.max_upload_bytes
-        || !matches!(input.visibility.as_str(), "private" | "public")
-    {
-        return Err(bad("Invalid size or visibility"));
-    }
     let kind = if s.config.image_extensions.contains(&input.extension) {
         MediaKind::Image
     } else if s.config.video_extensions.contains(&input.extension) {
@@ -156,6 +153,16 @@ fn validate_input(s: &AppState, input: &CreateUpload) -> Result<MediaKind> {
     } else {
         return Err(bad("Unsupported media extension"));
     };
+    let limit = match kind {
+        MediaKind::Image => s.config.max_image_upload_bytes,
+        MediaKind::Video => s.config.max_upload_bytes,
+    };
+    if input.size < 16 || input.size > limit {
+        return Err(bad("Media exceeds its configured size limit"));
+    }
+    if !matches!(input.visibility.as_str(), "private" | "public") {
+        return Err(bad("Invalid visibility"));
+    }
     if !(0..=32768).contains(&input.width)
         || !(0..=32768).contains(&input.height)
         || !input.duration.is_finite()

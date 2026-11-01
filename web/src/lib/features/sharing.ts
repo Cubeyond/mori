@@ -10,16 +10,14 @@ function attribute(value: string): string {
     .replaceAll('"', '&quot;')
     .replaceAll('<', '&lt;');
 }
-/** Produce sharing markup that delegates media controls through cross-origin S3 redirects. */
+/** Share the stable original address; only videos provide fullscreen iframe markup. */
 export function shareValue(video: Video, kind: ShareKind): string {
   if (kind === 'media') return video.media_url;
+  if (video.kind !== 'video')
+    throw new Error('Images share their direct link.');
   const ratio =
     video.width > 0 && video.height > 0
       ? `${String(video.width)} / ${String(video.height)}`
       : '16 / 9';
-  const sandbox =
-    video.kind === 'image'
-      ? ' sandbox="allow-same-origin allow-downloads"'
-      : '';
-  return `<iframe src="${attribute(video.media_url)}" title="${attribute(video.name)}" style="width:100%;height:auto;aspect-ratio:${ratio};border:0"${sandbox} allow="fullscreen *; picture-in-picture *" allowfullscreen loading="lazy" referrerpolicy="no-referrer"></iframe>`;
+  return `<iframe src="${attribute(video.media_url)}" title="${attribute(video.name)}" style="width:100%;height:auto;aspect-ratio:${ratio};border:0" allow="fullscreen *; picture-in-picture *" allowfullscreen loading="lazy" referrerpolicy="no-referrer"></iframe>`;
 }

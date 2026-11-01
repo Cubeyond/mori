@@ -50,9 +50,9 @@ async fn empty_public_album_contract() {
 #[tokio::test]
 /// Slug edits validate uniqueness and update member resources while releasing the old address.
 async fn album_slug_edit_contract() {
-    let (state, router, _directory) = setup().await;
-    lifecycle_collection(&state).await;
-    let (cookie, csrf) = login(&router).await;
+    let media = collection().await;
+    let router = &media.router;
+    let (cookie, csrf) = login(router).await;
     for (slug, expected) in [
         ("login", StatusCode::BAD_REQUEST),
         ("other", StatusCode::CONFLICT),
@@ -60,7 +60,7 @@ async fn album_slug_edit_contract() {
     ] {
         assert_eq!(
             call(
-                &router,
+                router,
                 "PATCH",
                 "/v1/admin/albums/collection",
                 Some(&cookie),
@@ -75,7 +75,7 @@ async fn album_slug_edit_contract() {
     let token = "a".repeat(32);
     assert_eq!(
         call(
-            &router,
+            router,
             "GET",
             &format!("/nature/{token}.mp4"),
             None,
@@ -88,7 +88,7 @@ async fn album_slug_edit_contract() {
     );
     assert_eq!(
         call(
-            &router,
+            router,
             "GET",
             &format!("/new-nature/{token}.mp4"),
             None,
@@ -97,10 +97,10 @@ async fn album_slug_edit_contract() {
         )
         .await
         .0,
-        StatusCode::TEMPORARY_REDIRECT
+        StatusCode::OK
     );
     let video = call(
-        &router,
+        router,
         "GET",
         &format!("/v1/videos/{token}"),
         None,
@@ -117,7 +117,7 @@ async fn album_slug_edit_contract() {
     );
     assert_eq!(
         call(
-            &router,
+            router,
             "POST",
             "/v1/admin/albums",
             Some(&cookie),
@@ -130,7 +130,7 @@ async fn album_slug_edit_contract() {
     );
     assert_eq!(
         call(
-            &router,
+            router,
             "GET",
             &format!("/nature/{token}.mp4"),
             None,
@@ -146,12 +146,13 @@ async fn album_slug_edit_contract() {
 #[tokio::test]
 /// Collection-only deletion preserves both visibility policies and releases its address safely.
 async fn album_retention_deletion_contract() {
-    let (state, router, _directory) = setup().await;
-    lifecycle_collection(&state).await;
-    let (cookie, csrf) = login(&router).await;
+    let media = collection().await;
+    let state = &media.state;
+    let router = &media.router;
+    let (cookie, csrf) = login(router).await;
     assert_eq!(
         call(
-            &router,
+            router,
             "DELETE",
             "/v1/admin/albums/collection",
             Some(&cookie),
@@ -164,7 +165,7 @@ async fn album_retention_deletion_contract() {
     );
     assert_eq!(
         call(
-            &router,
+            router,
             "DELETE",
             "/v1/admin/albums/collection",
             Some(&cookie),
@@ -190,7 +191,7 @@ async fn album_retention_deletion_contract() {
     let token = "a".repeat(32);
     assert_eq!(
         call(
-            &router,
+            router,
             "GET",
             &format!("/file/{token}.mp4"),
             None,
@@ -199,11 +200,11 @@ async fn album_retention_deletion_contract() {
         )
         .await
         .0,
-        StatusCode::TEMPORARY_REDIRECT
+        StatusCode::OK
     );
     assert_eq!(
         call(
-            &router,
+            router,
             "GET",
             &format!("/file/{}.mp4", "b".repeat(32)),
             None,
@@ -216,7 +217,7 @@ async fn album_retention_deletion_contract() {
     );
     assert_eq!(
         call(
-            &router,
+            router,
             "POST",
             "/v1/admin/albums",
             Some(&cookie),
@@ -229,7 +230,7 @@ async fn album_retention_deletion_contract() {
     );
     assert_eq!(
         call(
-            &router,
+            router,
             "GET",
             &format!("/nature/{token}.mp4"),
             None,
@@ -300,4 +301,24 @@ async fn album_media_deletion_atomic_contract() {
         .await
         .unwrap();
     assert_eq!(count, 0);
+}
+
+/// Supply actual S3 bytes for collection-address contracts without mocking delivery responses.
+async fn collection() -> crate::support::media::Media {
+    let media = crate::support::media::Media::new(false).await;
+    lifecycle_collection(&media.state).await;
+    let storage = media.state.storage.get().unwrap();
+    storage
+        .s3
+        .put_object()
+        .bucket(&storage.bucket)
+        .key(mori::infra::storage::Storage::public(
+            &"a".repeat(32),
+            "mp4",
+        ))
+        .body(aws_sdk_s3::primitives::ByteStream::from(vec![0; 100]))
+        .send()
+        .await
+        .unwrap();
+    media
 }

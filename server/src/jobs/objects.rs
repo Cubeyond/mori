@@ -65,9 +65,9 @@ pub(super) async fn normalize(state: &AppState, job: &Job, video: &Video) -> any
         Storage::private(&video.token, &video.extension)
     };
     let poster = if public {
-        video.public_poster()
+        Storage::published_preview(&video.token)
     } else {
-        Storage::private_poster(&video.token)
+        Storage::private_preview(&video.token)
     };
     storage
         .copy_verified(
@@ -79,26 +79,45 @@ pub(super) async fn normalize(state: &AppState, job: &Job, video: &Video) -> any
         .await?;
     if video.poster != 0 {
         storage
-            .copy_verified(video.private_poster(), poster, "image/jpeg", None)
+            .copy_verified(video.content_key(true), poster, "image/jpeg", None)
             .await?;
     }
-    sqlx::query("UPDATE videos SET source_key=? WHERE id=?")
+    sqlx::query("UPDATE videos SET source_key=?,poster_key=? WHERE id=?")
         .bind(Storage::private(&video.token, &video.extension))
+        .bind(Storage::private_preview(&video.token))
         .bind(&video.id)
         .execute(&state.db)
         .await?;
     remove_legacy(&storage, video).await?;
+    remove_old_previews(&storage, video).await?;
     if public {
         storage
             .delete(Storage::private(&video.token, &video.extension))
             .await?;
         storage
-            .delete(Storage::private_poster(&video.token))
+            .delete(Storage::private_preview(&video.token))
             .await?;
     }
     sqlx::query("UPDATE jobs SET state='complete',error=NULL WHERE id=?")
         .bind(&job.id)
         .execute(&state.db)
         .await?;
+    Ok(())
+}
+
+/// Delete only obsolete derivative paths, preserving identically named JPEG originals.
+///
+/// # Errors
+/// Returns deletion failures; the verified replacement and durable job remain available.
+async fn remove_old_previews(storage: &Storage, video: &Video) -> anyhow::Result<()> {
+    storage
+        .delete(format!("private/posters/{}.jpg", video.token))
+        .await?;
+    if video.extension != "jpg" {
+        storage
+            .delete(Storage::private_poster(&video.token))
+            .await?;
+        storage.delete(Storage::public_poster(&video.token)).await?;
+    }
     Ok(())
 }
