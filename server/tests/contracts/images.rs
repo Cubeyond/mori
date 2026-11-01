@@ -27,6 +27,13 @@ async fn jpeg_original_survives_preview_publication_and_withdrawal() {
             .content(&format!("/v1/admin/videos/{}/content", image.id), None)
             .await;
         assert_eq!(content.headers()["content-type"], "image/jpeg");
+        assert!(
+            content
+                .headers()
+                .get_all("content-security-policy")
+                .iter()
+                .any(|value| value.to_str().unwrap().starts_with("sandbox;"))
+        );
         assert_eq!(
             content
                 .into_body()

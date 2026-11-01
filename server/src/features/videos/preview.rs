@@ -1,6 +1,6 @@
 //! Authenticated streaming with bounded buffering and HTTP range semantics.
 
-use super::get;
+use super::{MediaKind, get};
 use crate::{
     app::AppState,
     features::auth,
@@ -159,7 +159,7 @@ async fn stream(
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CACHE_CONTROL, "private, no-store")
         .header("x-content-type-options", "nosniff");
-    if !poster && v.extension == "svg" {
+    if !poster && v.kind == MediaKind::Image {
         builder = builder.header(
             header::CONTENT_SECURITY_POLICY,
             "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'",
