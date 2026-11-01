@@ -16,13 +16,36 @@ COPY server/ ./server/
 RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/src/server/target \
     cargo build --manifest-path server/Cargo.toml --release --locked -j 2 && cp server/target/release/mori /usr/local/bin/mori
 
-# Ship no Node runtime, compiler, or video processing tools.
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/* && useradd --uid 10001 --create-home mori && mkdir /data && chown mori:mori /data
+# Collect the native executable's runtime dependencies and HTTPS trust store.
+RUN set -eu; \
+    mkdir -p /runtime/data /runtime/tmp /runtime/etc/ssl/certs; \
+    LC_ALL=C ldd /usr/local/bin/mori > /tmp/mori-libraries; \
+    if grep -q 'not found' /tmp/mori-libraries; then exit 1; fi; \
+    awk '$2 == "=>" && $3 ~ /^\// { print $3 } $1 ~ /^\// { print $1 }' /tmp/mori-libraries > /tmp/mori-library-paths; \
+    while IFS= read -r library; do cp --parents "$library" /runtime; done < /tmp/mori-library-paths; \
+    for library in /lib/*/libnss_dns.so.2 /lib/*/libnss_files.so.2; do \
+        if [ -f "$library" ]; then cp --parents "$library" /runtime; fi; \
+    done; \
+    cp /etc/ssl/certs/ca-certificates.crt /runtime/etc/ssl/certs/; \
+    for package in libc6 libgcc-s1 ca-certificates; do \
+        cp --parents "/usr/share/doc/$package/copyright" /runtime; \
+    done; \
+    cp -a /usr/share/common-licenses /runtime/usr/share/; \
+    printf 'hosts: files dns\npasswd: files\ngroup: files\n' > /runtime/etc/nsswitch.conf; \
+    printf 'mori:x:10001:10001:Mori:/data:/sbin/nologin\n' > /runtime/etc/passwd; \
+    printf 'mori:x:10001:\n' > /runtime/etc/group; \
+    chmod 1777 /runtime/tmp; \
+    chmod 700 /runtime/data; \
+    chown 10001:10001 /runtime/data
+
+# Ship only the executable, its shared libraries, certificates, and static UI.
+FROM scratch
+COPY --from=server /runtime/ /
 COPY --from=server /usr/local/bin/mori /usr/local/bin/mori
 COPY --from=web /src/web/build /app/web
 USER 10001:10001
-ENV MORI_DATABASE_URL=sqlite:///data/mori.db MORI_WEB_DIR=/app/web RUST_LOG=warn
+ENV MORI_DATABASE_URL=sqlite:///data/mori.db MORI_WEB_DIR=/app/web RUST_LOG=warn \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 EXPOSE 3000
-ENTRYPOINT ["mori"]
+ENTRYPOINT ["/usr/local/bin/mori"]
 CMD ["serve"]

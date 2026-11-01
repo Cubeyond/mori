@@ -1,9 +1,6 @@
 services:
   mori:
     image: ${MORI_IMAGE:-mori:local}
-    build:
-      context: .
-      dockerfile: Dockerfile
     restart: unless-stopped
     init: true
     read_only: true
