@@ -118,7 +118,7 @@ async fn current_schema_is_repeatable_and_indexed() {
         .fetch_all(&pool)
         .await
         .unwrap();
-    assert!(violations.is_empty());
+    assert_eq!(violations, Vec::<(String, i64, String, i64)>::new());
 }
 
 #[test]

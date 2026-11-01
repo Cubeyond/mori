@@ -1,0 +1,5 @@
+# Keep development, CI, and the Docker builder on the same Rust release.
+[toolchain]
+channel = "1.99.0"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

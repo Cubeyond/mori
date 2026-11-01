@@ -10,7 +10,7 @@ COPY web/ ./
 RUN pnpm run build
 
 # Compile a portable optimized binary using the project release profile.
-FROM rust:1.98-bookworm AS server
+FROM rust:1.99.0-bookworm AS server
 WORKDIR /src
 COPY server/ ./server/
 RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/src/server/target \
