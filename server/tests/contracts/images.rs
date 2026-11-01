@@ -45,6 +45,8 @@ async fn jpeg_original_survives_preview_publication_and_withdrawal() {
             bytes
         );
         if visibility == "public" {
+            // Existing least-privilege IAM and OAC grants cover only public/files/*.
+            assert!(image.public_poster().starts_with("public/files/"));
             assert_ne!(
                 image.public_poster(),
                 mori::infra::storage::Storage::public(&image.token, "jpg")

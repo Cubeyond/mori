@@ -164,10 +164,10 @@ impl Storage {
     pub fn private_preview(token: &str) -> String {
         format!("private/posters/{token}.jpg")
     }
-    /// Build the matching public derivative key without colliding with original filenames.
+    /// Keep derivatives distinct from originals within the existing public IAM/OAC prefix.
     #[must_use]
     pub fn published_preview(token: &str) -> String {
-        format!("public/posters/{token}.jpg")
+        format!("public/files/posters/{token}.jpg")
     }
     /// Build the published media key from the immutable sharing token.
     #[must_use]

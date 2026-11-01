@@ -480,13 +480,8 @@ async fn invalidation_finished(s: &AppState, job: &Job, v: &videos::Video) -> an
             .quantity(2)
             .items(format!("/files/{}.{}", v.token, v.extension))
             .items(format!(
-                "/{}/{}.jpg",
-                if v.poster_key.is_some() {
-                    "posters"
-                } else {
-                    "files"
-                },
-                v.token
+                "/{}",
+                v.public_poster().trim_start_matches("public/")
             ))
             .build()?;
         let batch = InvalidationBatch::builder()
