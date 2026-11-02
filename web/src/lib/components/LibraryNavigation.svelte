@@ -63,7 +63,7 @@
     margin-bottom: 0;
   }
   .category {
-    color: #858593;
+    color: var(--muted-foreground);
     font-size: 15px;
     line-height: 22px;
     margin: 0 0 2px;
@@ -78,15 +78,15 @@
     font-size: 16px;
     line-height: 24px;
     font-weight: 500;
-    color: #e4e4eb;
+    color: var(--foreground);
     border-radius: 5px;
   }
   a:hover {
-    background: #ffffff08;
+    background: var(--hover-surface);
   }
   a[aria-current='page'] {
-    background: #ffffff0b;
-    color: #fff;
+    background: var(--hover-surface);
+    color: var(--foreground);
   }
   .drawer nav {
     gap: 6px;

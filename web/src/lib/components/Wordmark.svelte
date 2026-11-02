@@ -15,7 +15,7 @@
     line-height: 1;
     letter-spacing: -0.045em;
     font-weight: 400;
-    color: #f1eadd;
+    color: var(--wordmark);
     /* Center the actual serif glyphs optically within the 56px header. */
     transform: translateY(-1px);
   }

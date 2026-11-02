@@ -1,0 +1,118 @@
+/** Catppuccin: https://catppuccin.com/palette/ (MIT). Tokyo Night: folke/tokyonight.nvim (Apache-2.0). */
+
+:root[data-theme='catppuccin-latte'] {
+  --background: #eff1f5;
+  --foreground: #4c4f69;
+  --card: #e6e9ef;
+  --popover: #e6e9ef;
+  --primary: #4c4f69;
+  --primary-foreground: #eff1f5;
+  --secondary: #ccd0da;
+  --muted: #ccd0da;
+  --muted-foreground: #6c6f85;
+  --accent: #ccd0da;
+  --destructive: #d20f39;
+  --border: #ccd0da;
+  --input: #bcc0cc;
+  --ring: #7287fd;
+  --media-ring: #8839ef;
+  --success: #40a02b;
+  --warning: #df8e1d;
+  --topbar-surface: #e6e9ef;
+  --navigation-surface: #eff1f5;
+  --wordmark: #4c4f69;
+  color-scheme: light;
+}
+
+:root[data-theme='catppuccin-frappe'] {
+  --background: #303446;
+  --foreground: #c6d0f5;
+  --card: #292c3c;
+  --popover: #292c3c;
+  --primary: #c6d0f5;
+  --primary-foreground: #303446;
+  --secondary: #414559;
+  --muted: #414559;
+  --muted-foreground: #a5adce;
+  --accent: #414559;
+  --destructive: #e78284;
+  --border: #414559;
+  --input: #51576d;
+  --ring: #babbf1;
+  --media-ring: #ca9ee6;
+  --success: #a6d189;
+  --warning: #e5c890;
+  --topbar-surface: #292c3c;
+  --navigation-surface: #303446;
+  --wordmark: #c6d0f5;
+}
+
+:root[data-theme='catppuccin-macchiato'] {
+  --background: #24273a;
+  --foreground: #cad3f5;
+  --card: #1e2030;
+  --popover: #1e2030;
+  --primary: #cad3f5;
+  --primary-foreground: #24273a;
+  --secondary: #363a4f;
+  --muted: #363a4f;
+  --muted-foreground: #a5adcb;
+  --accent: #363a4f;
+  --destructive: #ed8796;
+  --border: #363a4f;
+  --input: #494d64;
+  --ring: #b7bdf8;
+  --media-ring: #c6a0f6;
+  --success: #a6da95;
+  --warning: #eed49f;
+  --topbar-surface: #1e2030;
+  --navigation-surface: #24273a;
+  --wordmark: #cad3f5;
+}
+
+:root[data-theme='catppuccin-mocha'] {
+  --background: #1e1e2e;
+  --foreground: #cdd6f4;
+  --card: #181825;
+  --popover: #181825;
+  --primary: #cdd6f4;
+  --primary-foreground: #1e1e2e;
+  --secondary: #313244;
+  --muted: #313244;
+  --muted-foreground: #a6adc8;
+  --accent: #313244;
+  --destructive: #f38ba8;
+  --border: #313244;
+  --input: #45475a;
+  --ring: #b4befe;
+  --media-ring: #cba6f7;
+  --success: #a6e3a1;
+  --warning: #f9e2af;
+  --topbar-surface: #181825;
+  --navigation-surface: #1e1e2e;
+  --wordmark: #cdd6f4;
+}
+
+/** Night variant inherits Tokyo Night Storm's foreground and accent colors upstream. */
+:root[data-theme='tokyonight'] {
+  --background: #1a1b26;
+  --foreground: #c0caf5;
+  --card: #16161e;
+  --popover: #16161e;
+  --primary: #c0caf5;
+  --primary-foreground: #1a1b26;
+  --secondary: #292e42;
+  --muted: #292e42;
+  --muted-foreground: #a9b1d6;
+  --accent: #292e42;
+  --destructive: #f7768e;
+  --border: #3b4261;
+  --input: #545c7e;
+  --ring: #7aa2f7;
+  --media-ring: #7aa2f7;
+  --success: #9ece6a;
+  --warning: #e0af68;
+  --topbar-surface: #16161e;
+  --navigation-surface: #1a1b26;
+  --wordmark: #c0caf5;
+}

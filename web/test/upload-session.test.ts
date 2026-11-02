@@ -1,7 +1,13 @@
 /** Stored browser data never crosses the upload interface without shape validation. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePendingUpload } from '../src/lib/features/upload-session.ts';
+import {
+  parsePendingUpload,
+  parsePendingUploads,
+  rememberUpload,
+  savedUploads,
+  forgetUpload,
+} from '../src/lib/features/upload-session.ts';
 
 /** Minimal metadata shared by old and current browser resume formats. */
 const pending = {
@@ -38,5 +44,45 @@ void test('resume parsing rejects missing, malformed, and non-finite fields', ()
     { ...pending, fingerprint: 'invalid' },
   ]) {
     assert.equal(parsePendingUpload(value), null);
+  }
+});
+
+void test('legacy single sessions migrate and concurrent completion never clears a sibling', () => {
+  const second = {
+    ...pending,
+    id: 'c'.repeat(32),
+    fingerprint: 'd'.repeat(64),
+  };
+  assert.deepEqual(parsePendingUploads(pending), [pending]);
+  assert.deepEqual(parsePendingUploads([pending, null, second, pending]), [
+    pending,
+    second,
+  ]);
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const stored = new Map<string, string>();
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        stored.set(key, value);
+      },
+      removeItem: (key: string) => {
+        stored.delete(key);
+      },
+    },
+  });
+  try {
+    rememberUpload(pending);
+    rememberUpload(second);
+    assert.deepEqual(savedUploads(), [pending, second]);
+    forgetUpload(pending.id);
+    assert.deepEqual(savedUploads(), [second]);
+    forgetUpload(second.id);
+    assert.deepEqual(savedUploads(), []);
+  } finally {
+    if (original !== undefined)
+      Object.defineProperty(globalThis, 'localStorage', original);
+    else Reflect.deleteProperty(globalThis, 'localStorage');
   }
 });

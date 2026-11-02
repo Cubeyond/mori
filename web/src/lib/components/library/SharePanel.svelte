@@ -66,7 +66,7 @@
     justify-content: space-between;
     gap: 12px;
     font-size: 14px;
-    color: #b6b9af;
+    color: var(--muted-foreground);
   }
   .share-field :global(input),
   .share-field :global(textarea) {

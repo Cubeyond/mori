@@ -258,20 +258,20 @@
   .tabs {
     display: flex;
     gap: 24px;
-    border-bottom: 1px solid #ffffff1f;
+    border-bottom: 1px solid var(--border);
     margin-bottom: 18px;
   }
   .tabs button {
     min-height: 44px;
-    color: #96988f;
+    color: var(--muted-foreground);
     font-size: 15px;
     border-bottom: 1px solid transparent;
     margin-bottom: -1px;
     padding: 0 0 12px;
   }
   .tabs .active {
-    color: #ebe8df;
-    border-bottom-color: #d3cbb9;
+    color: var(--foreground);
+    border-bottom-color: var(--foreground);
   }
   .options {
     display: grid;
@@ -279,7 +279,7 @@
     gap: 14px;
   }
   .hint {
-    color: #a0a397;
+    color: var(--muted-foreground);
     font-size: 13px;
     line-height: 1.7;
     margin-bottom: 24px;
@@ -292,12 +292,12 @@
   }
   .delete-name {
     font-size: 15px;
-    color: #e1ded4;
+    color: var(--foreground);
     overflow-wrap: anywhere;
     margin-bottom: 12px;
   }
   :global(.danger-text) {
-    color: #d2a39a;
+    color: var(--destructive);
   }
   .private-message {
     display: flex;
@@ -307,7 +307,7 @@
     padding: 24px 4px 10px;
   }
   .private-message :global(svg) {
-    color: #a6aa9b;
+    color: var(--muted-foreground);
   }
   .private-message h3 {
     font-size: 26px;

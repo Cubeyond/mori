@@ -232,12 +232,12 @@
     align-items: center;
     gap: 12px;
     padding: 32px 20px;
-    color: #999d92;
+    color: var(--muted-foreground);
     text-align: center;
     font-size: 14px;
   }
   .empty h2 {
-    color: #dedbd2;
+    color: var(--foreground);
     font-size: 24px;
   }
   .more {
@@ -258,12 +258,12 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    background: #171823f5;
-    border: 1px solid #ffffff25;
+    background: var(--popover);
+    border: 1px solid var(--input);
     box-shadow: 0 6px 30px #0004;
     border-radius: 6px;
     padding: 2px 5px 2px 16px;
-    color: #e4e4eb;
+    color: var(--foreground);
     font-size: 13px;
   }
   .toast p {
@@ -271,7 +271,7 @@
     line-height: 1.6;
   }
   .toast.failure {
-    color: #e9afa5;
+    color: var(--destructive);
   }
   @media (max-width: 480px) {
     .feedback {

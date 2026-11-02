@@ -120,7 +120,7 @@
     overflow: hidden;
     background: transparent;
     isolation: isolate;
-    border-radius: 5px;
+    border-radius: 7px;
   }
   .cover {
     display: block;
@@ -144,8 +144,8 @@
     justify-content: center;
     gap: 12px;
     height: 100%;
-    color: #858593;
-    background: #14151e;
+    color: var(--muted-foreground);
+    background: var(--card);
     font-size: 14px;
   }
   .processing-status {
@@ -167,11 +167,11 @@
     pointer-events: none;
   }
   .card:has(:global(:focus-visible))::after {
-    box-shadow: inset 0 0 0 2px #a5b4fc;
+    box-shadow: inset 0 0 0 2px var(--media-ring);
   }
   @media (hover: hover) {
     .card:hover::after {
-      box-shadow: inset 0 0 0 2px #a5b4fc;
+      box-shadow: inset 0 0 0 2px var(--media-ring);
     }
   }
   .controls {

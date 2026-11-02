@@ -134,7 +134,7 @@
     overflow: visible;
   }
   dialog::backdrop {
-    background: var(--viewer-backdrop, #05060be8);
+    background: transparent;
     backdrop-filter: blur(6px);
   }
   .viewer {

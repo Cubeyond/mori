@@ -1,23 +1,136 @@
-/** Batch uploads retain their exact pending position after failure and cancellation. */
+/** Concurrent queue invariants cover live edits, resource bounds, cancellation and partial success. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runUploadQueue } from '../src/lib/features/upload-queue.ts';
 
-void test('a batch is sequential and resumes at the failed file', async () => {
-  const files = ['first', 'second', 'third'].map(
-    (name) => new File(['video'], name),
-  );
+void test('two workers upload concurrently, accept waiting edits and never duplicate an original', async () => {
+  const [first, second, removed, added] = [
+    'first',
+    'second',
+    'removed',
+    'added',
+  ].map((name) => new File(['media'], name));
+  assert.ok(first && second && removed && added);
+  let files = [first, second, removed];
+  const started = Promise.withResolvers<undefined>();
+  const finish = Promise.withResolvers<undefined>();
   const transferred: string[] = [];
+  let active = 0,
+    peak = 0;
+  const pending = runUploadQueue(
+    () => files,
+    async (file) => {
+      peak = Math.max(peak, ++active);
+      transferred.push(file.name);
+      if (active === 2) started.resolve(undefined);
+      await finish.promise;
+      active--;
+    },
+    new AbortController().signal,
+  );
+  await started.promise;
+  assert.equal(active, 2);
+  files = [first, second, added];
+  finish.resolve(undefined);
+  assert.equal(await pending, 3);
+  assert.equal(peak, 2);
+  assert.deepEqual(transferred, ['first', 'second', 'added']);
+  assert.deepEqual(files, []);
+});
+
+void test('failure aborts and settles the sibling before returning, preserving both resumable originals', async () => {
+  const files = ['failed', 'interrupted', 'waiting'].map(
+    (name) => new File(['media'], name),
+  );
+  const sibling = Promise.withResolvers<undefined>();
+  let settled = false;
+  const started: string[] = [];
+  await assert.rejects(
+    runUploadQueue(
+      () => files,
+      async (file, signal) => {
+        started.push(file.name);
+        if (file.name === 'failed') {
+          await sibling.promise;
+          throw new Error('Disconnected');
+        }
+        sibling.resolve(undefined);
+        await new Promise<void>((resolve) => {
+          signal.addEventListener(
+            'abort',
+            () => {
+              resolve();
+            },
+            { once: true },
+          );
+        });
+        await Promise.resolve(undefined);
+        settled = true;
+        signal.throwIfAborted();
+      },
+      new AbortController().signal,
+    ),
+    /Disconnected/,
+  );
+  assert.equal(settled, true);
+  assert.deepEqual(started, ['failed', 'interrupted']);
+  assert.equal(files.length, 3);
+  assert.equal(
+    await runUploadQueue(
+      () => files,
+      () => Promise.resolve(),
+      new AbortController().signal,
+    ),
+    3,
+  );
+  assert.deepEqual(files, []);
+});
+
+void test('pausing retains both active originals and never starts waiting files', async () => {
+  const files = ['first', 'second', 'third'].map(
+    (name) => new File(['media'], name),
+  );
+  const controller = new AbortController();
+  const ready = Promise.withResolvers<undefined>();
   let active = 0;
+  const pending = runUploadQueue(
+    () => files,
+    async (_, signal) => {
+      if (++active === 2) ready.resolve(undefined);
+      await new Promise<void>((resolve) => {
+        signal.addEventListener(
+          'abort',
+          () => {
+            resolve();
+          },
+          { once: true },
+        );
+      });
+      signal.throwIfAborted();
+    },
+    controller.signal,
+  );
+  await ready.promise;
+  controller.abort();
+  await assert.rejects(pending, { name: 'AbortError' });
+  assert.equal(active, 2);
+  assert.equal(files.length, 3);
+});
+
+void test('a successful sibling is removed even when another transfer fails', async () => {
+  const files = ['success', 'failure'].map((name) => new File(['media'], name));
+  const completed = Promise.withResolvers<undefined>();
   await assert.rejects(
     runUploadQueue(
       () => files,
       async (file) => {
-        assert.equal(++active, 1);
-        await Promise.resolve();
-        active--;
-        if (file.name === 'second') throw new Error('Disconnected');
-        transferred.push(file.name);
+        if (file.name === 'success') {
+          completed.resolve(undefined);
+          return;
+        }
+        await completed.promise;
+        await Promise.resolve(undefined);
+        throw new Error('Disconnected');
       },
       new AbortController().signal,
     ),
@@ -25,63 +138,6 @@ void test('a batch is sequential and resumes at the failed file', async () => {
   );
   assert.deepEqual(
     files.map((file) => file.name),
-    ['second', 'third'],
+    ['failure'],
   );
-  await runUploadQueue(
-    () => files,
-    (file) => {
-      transferred.push(file.name);
-      return Promise.resolve();
-    },
-    new AbortController().signal,
-  );
-  assert.deepEqual(transferred, ['first', 'second', 'third']);
-  assert.equal(files.length, 0);
-});
-
-void test('pausing a batch does not start or discard the next file', async () => {
-  const files = ['first', 'second'].map((name) => new File(['video'], name));
-  const controller = new AbortController();
-  await assert.rejects(
-    runUploadQueue(
-      () => files,
-      () => {
-        controller.abort();
-        return Promise.resolve();
-      },
-      controller.signal,
-    ),
-    { name: 'AbortError' },
-  );
-  assert.deepEqual(
-    files.map((file) => file.name),
-    ['second'],
-  );
-});
-
-void test('later additions and removals affect only waiting entries during an active transfer', async () => {
-  const first = new File(['video'], 'first');
-  const removed = new File(['video'], 'removed');
-  const added = new File(['image'], 'added');
-  let files = [first, removed];
-  const started = Promise.withResolvers<undefined>();
-  const finish = Promise.withResolvers<undefined>();
-  const transferred: string[] = [];
-  const pending = runUploadQueue(
-    () => files,
-    async (file) => {
-      transferred.push(file.name);
-      if (file === first) {
-        started.resolve(undefined);
-        await finish.promise;
-      }
-    },
-    new AbortController().signal,
-  );
-  await started.promise;
-  files = [first, added];
-  finish.resolve(undefined);
-  assert.equal(await pending, 2);
-  assert.deepEqual(transferred, ['first', 'added']);
-  assert.deepEqual(files, []);
 });

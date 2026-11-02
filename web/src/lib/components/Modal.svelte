@@ -101,8 +101,8 @@
     display: none;
   }
   dialog::backdrop {
-    background: var(--dialog-backdrop, #070808b8);
-    backdrop-filter: blur(6px);
+    background: transparent;
+    backdrop-filter: blur(8px);
   }
   dialog[open] {
     animation: arrive 160ms ease-out;

@@ -6,6 +6,23 @@
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
+    <script>
+      // Restore the browser palette before CSS paints; the server hashes this script for CSP.
+      try {
+        const value = JSON.parse(
+          localStorage.getItem('mori:preferences') || 'null',
+        );
+        if (value && typeof value.theme === 'string') {
+          document.documentElement.dataset.theme = value.theme;
+          document.documentElement.classList.toggle(
+            'dark',
+            value.theme !== 'catppuccin-latte',
+          );
+        }
+      } catch {
+        // Storage is optional; the default Mori palette remains available.
+      }
+    </script>
     <link
       rel="preload"
       href="/fonts/geist-sans-2ffebe993e96.woff2"

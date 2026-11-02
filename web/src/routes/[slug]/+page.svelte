@@ -125,7 +125,7 @@
   }
   .eyebrow {
     font-size: 14px;
-    color: #8e8e9a;
+    color: var(--muted-foreground);
     margin-bottom: 10px;
     letter-spacing: 0.05em;
   }

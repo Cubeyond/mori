@@ -108,7 +108,7 @@
         }}
         >{#if saved && changed === 'image'}<Check
             size={18}
-            class="text-[#b7ebcf]"
+            class="text-(--success)"
           />{:else}<ImagePlus size={18} />{/if}{busy
           ? 'Saving…'
           : $background === null
@@ -163,7 +163,7 @@
     border-radius: 6px;
   }
   .background-error {
-    color: #fda4af;
+    color: var(--destructive);
     font-size: 15px;
     margin-block: 16px;
   }

@@ -98,18 +98,18 @@
     line-height: 1.04;
     font-weight: 400;
     letter-spacing: -0.035em;
-    color: #f0ece5;
+    color: var(--foreground);
   }
   .description {
     max-width: 460px;
     font-size: 20px;
     line-height: 1.6;
-    color: #a5a5b0;
+    color: var(--muted-foreground);
     margin: 24px 0 28px;
     text-wrap: pretty;
   }
   .home-panel {
-    background: #ffffff03;
+    background: var(--soft-surface);
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
@@ -124,18 +124,18 @@
     border-top: 1px solid var(--border);
   }
   a.destination:hover {
-    background: #ffffff05;
+    background: var(--hover-surface);
   }
   .destination-icon {
     align-self: flex-start;
     display: flex;
     align-items: center;
     min-height: 28px;
-    color: #b7b7c3;
+    color: var(--muted-foreground);
   }
   .destination > :global(svg:last-child) {
     margin-left: auto;
-    color: #92929e;
+    color: var(--muted-foreground);
   }
   h2 {
     font-size: 19px;
@@ -147,7 +147,7 @@
     margin-top: 6px;
     font-size: 16px;
     line-height: 1.6;
-    color: #9c9caa;
+    color: var(--muted-foreground);
     text-wrap: pretty;
   }
   @media (max-width: 767px) {

@@ -127,8 +127,8 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
-    border-radius: 5px;
-    background: #0b0c14;
+    border-radius: 7px;
+    background: var(--card);
   }
   img,
   .placeholder {
@@ -143,7 +143,7 @@
   .placeholder {
     display: grid;
     place-items: center;
-    color: #858593;
+    color: var(--muted-foreground);
   }
   .remove-file {
     position: absolute;
@@ -153,7 +153,7 @@
     place-items: center;
     width: 32px;
     height: 32px;
-    border-radius: 5px;
+    border-radius: 7px;
     color: #f4f4f5;
     background: #0b0c14d9;
   }
@@ -196,7 +196,7 @@
     line-height: 20px;
   }
   .metadata {
-    color: #92929e;
+    color: var(--muted-foreground);
     font-size: 12px;
     line-height: 17px;
     white-space: nowrap;

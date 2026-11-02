@@ -50,7 +50,7 @@
       oninput(defaultValue);
       oncommit();
     }}
-    >{#if saved}<Check size={17} class="text-[#b7ebcf]" />{:else}<RotateCcw
+    >{#if saved}<Check size={17} class="text-(--success)" />{:else}<RotateCcw
         size={17}
       />{/if}</Button
   >

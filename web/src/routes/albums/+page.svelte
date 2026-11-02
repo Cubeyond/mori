@@ -124,24 +124,24 @@
 
 <style>
   .album-list {
-    border-top: 1px solid #ffffff12;
+    border-top: 1px solid var(--border);
   }
   .album-row {
     display: flex;
     align-items: center;
     gap: 16px;
     padding: 18px 4px;
-    border-bottom: 1px solid #ffffff12;
+    border-bottom: 1px solid var(--border);
   }
   .album-icon {
     width: 48px;
     height: 48px;
     display: grid;
     place-items: center;
-    border: 1px solid #ffffff12;
+    border: 1px solid var(--border);
     border-radius: 6px;
-    color: #aaaab8;
-    background: #ffffff03;
+    color: var(--muted-foreground);
+    background: var(--soft-surface);
     flex-shrink: 0;
   }
   .album-metadata {
@@ -162,18 +162,18 @@
     display: inline-block;
     margin-top: 6px;
     padding: 2px 7px;
-    border: 1px solid #ffffff18;
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 12px;
-    color: #9999aa;
+    color: var(--muted-foreground);
   }
   .album-visibility.public {
-    color: #a8c7b5;
-    border-color: #a8c7b530;
+    color: var(--success);
+    border-color: color-mix(in srgb, var(--success) 20%, transparent);
   }
   .album-address {
     display: block;
-    color: #858593;
+    color: var(--muted-foreground);
     font-size: 14px;
     margin-top: 6px;
     user-select: text;
@@ -181,7 +181,7 @@
   }
   .album-actions {
     display: flex;
-    color: #aaaab8;
+    color: var(--muted-foreground);
   }
   @media (max-width: 480px) {
     .album-row {

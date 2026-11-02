@@ -5,10 +5,13 @@ import { putUploadPart } from './upload-part';
 import { waitForJob } from './jobs';
 import {
   rememberUpload as remember,
-  savedUpload,
+  forgetUpload,
+  savedUploads,
   type PendingUpload,
 } from './upload-session';
-export { savedUpload, type PendingUpload } from './upload-session';
+export { savedUploads, type PendingUpload } from './upload-session';
+/** A live worker must never reuse a multipart identity owned by another worker. */
+const activeUploads = new Set<string>();
 
 /** Open the shared uploader, optionally preselecting an album for a new draft. */
 export function openUploader(albumId: string | null = null): void {
@@ -39,32 +42,32 @@ export async function uploadVideo(
   visibility: string,
   onprogress: (value: number, label: string) => void,
   signal: AbortSignal,
-  resume: PendingUpload | null = null,
   kind: 'image' | 'video' = 'video',
 ): Promise<void> {
   const transfer = new AbortController();
   signal = AbortSignal.any([signal, transfer.signal]);
   onprogress(0, 'Preparing media');
-  const preview =
-    resume === null ? prepareUploadPreview(file, signal, kind) : null;
+  let preview: ReturnType<typeof prepareUploadPreview> | undefined;
+  let uploadId: string | undefined;
   try {
-    const [hash, metadata] = await Promise.all([
-      fingerprint(file),
-      preview?.metadata,
-    ]);
+    const hash = await fingerprint(file);
     signal.throwIfAborted();
-    if (
-      resume &&
-      (resume.size !== file.size ||
-        resume.modified !== file.lastModified ||
-        resume.fingerprint !== hash)
-    )
-      throw new Error('Choose the same original file to resume this upload.');
+    const resume = savedUploads().find(
+      (upload) => !activeUploads.has(upload.id) && matches(upload, file, hash),
+    );
+    if (resume !== undefined) activeUploads.add(resume.id);
+    uploadId = resume?.id;
+    preview =
+      resume === undefined
+        ? prepareUploadPreview(file, signal, kind)
+        : undefined;
+    const metadata = await preview?.metadata;
     const extension = file.name.split('.').at(-1)?.toLowerCase() ?? '';
     const upload = resume
       ? await apiData(
           api.GET('/v1/admin/uploads/{id}', {
             params: { path: { id: resume.id } },
+            signal,
           }),
         )
       : await apiData(
@@ -88,7 +91,10 @@ export async function uploadVideo(
       size: file.size,
       modified: file.lastModified,
       fingerprint: hash,
+      source_name: file.name,
     };
+    uploadId = upload.id;
+    activeUploads.add(upload.id);
     remember(pending);
     const posterTask = (async () => {
       const poster = await preview?.poster;
@@ -166,7 +172,14 @@ export async function uploadVideo(
         report();
       }
     }
-    await Promise.all([worker(), worker(), posterTask]);
+    const tasks = [worker(), worker(), posterTask];
+    try {
+      await Promise.all(tasks);
+    } catch (failure) {
+      transfer.abort();
+      await Promise.allSettled(tasks);
+      throw failure;
+    }
     signal.throwIfAborted();
     onprogress(100, 'Verifying upload');
     const accepted = await apiData(
@@ -175,7 +188,7 @@ export async function uploadVideo(
         signal,
       }),
     );
-    remember(null);
+    forgetUpload(upload.id);
     if (accepted.job_id !== null) {
       try {
         await waitForJob(accepted.job_id, signal);
@@ -189,17 +202,28 @@ export async function uploadVideo(
     throw e;
   } finally {
     preview?.dispose();
+    if (uploadId !== undefined) activeUploads.delete(uploadId);
   }
 }
 /** Abort the active multipart operation before discarding local resume metadata. */
-export async function cancelUpload(): Promise<void> {
-  const saved = savedUpload();
-  if (saved) {
+export async function cancelUpload(file?: File): Promise<void> {
+  const hash = file === undefined ? undefined : await fingerprint(file);
+  for (const saved of savedUploads()) {
+    if (file !== undefined && !matches(saved, file, hash ?? '')) continue;
     await apiData(
       api.DELETE('/v1/admin/uploads/{id}', {
         params: { path: { id: saved.id } },
       }),
     );
-    remember(null);
+    forgetUpload(saved.id);
   }
+}
+/** A resumed file must match its original bytes and metadata independently of queue position. */
+function matches(upload: PendingUpload, file: File, hash: string): boolean {
+  return (
+    (upload.source_name === undefined || upload.source_name === file.name) &&
+    upload.size === file.size &&
+    upload.modified === file.lastModified &&
+    upload.fingerprint === hash
+  );
 }

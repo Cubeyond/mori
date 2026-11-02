@@ -8,12 +8,12 @@
   let {
     files,
     policy,
-    activeFile,
+    activeFiles,
     onremove,
   }: {
     files: File[];
     policy: UploadPolicy;
-    activeFile: File | null;
+    activeFiles: File[];
     onremove: (file: File) => void;
   } = $props();
   /** Each page owns two columns and at most two rows. */
@@ -86,8 +86,8 @@
           {file}
           kind={uploadKind(file, policy)}
           root={viewport}
-          locked={file === activeFile}
-          active={file === activeFile}
+          locked={activeFiles.includes(file)}
+          active={activeFiles.includes(file)}
           {onremove}
         />{/each}
     </div>{/each}
@@ -109,7 +109,7 @@
     font-size: 14px;
   }
   .total-size {
-    color: #92929e;
+    color: var(--muted-foreground);
   }
   .total-size::before {
     content: '·';
@@ -125,7 +125,7 @@
     min-width: 36px;
     text-align: center;
     font-size: 13px;
-    color: #a1a1af;
+    color: var(--muted-foreground);
     font-variant-numeric: tabular-nums;
   }
   nav button {
@@ -134,10 +134,10 @@
     display: grid;
     place-items: center;
     border-radius: 5px;
-    color: #e4e4eb;
+    color: var(--foreground);
   }
   nav button:hover:not(:disabled) {
-    background: #ffffff0b;
+    background: var(--hover-surface);
   }
   nav button:disabled {
     opacity: 0.3;

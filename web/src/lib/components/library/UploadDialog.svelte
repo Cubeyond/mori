@@ -1,6 +1,7 @@
 <script lang="ts">
-  /** The editable local queue survives dismissal and stays separate from one active transfer. */
+  /** The editable local queue survives dismissal and stays separate from bounded concurrent transfers. */
   import { onMount } from 'svelte';
+  import { SvelteMap } from 'svelte/reactivity';
   import { resolve } from '$app/paths';
   import { Images, ArrowUp, Pause, FolderCog, Upload } from '@lucide/svelte';
   import Button from '#lib/components/ui/button/button.svelte';
@@ -17,7 +18,7 @@
   import { runUploadQueue } from '#lib/features/upload-queue';
   import {
     uploadVideo,
-    savedUpload,
+    savedUploads,
     cancelUpload,
     type PendingUpload,
     type TransferStatus,
@@ -48,14 +49,14 @@
   } = $props();
   /** Original File objects remain intact while picker additions replace only the queue array. */
   let files = $state<File[]>([]),
-    activeFile = $state<File | null>(null);
-  /** Resume always targets the first remaining original file. */
+    activeFiles = $state<File[]>([]);
+  /** The first waiting original determines whether the draft can be submitted. */
   const file = $derived(files[0] ?? null);
   /** Album and visibility are fixed while a resumable or active transfer owns them. */
   let albumId = $state(''),
     visibility = $state('private');
   /** Saved session metadata contains no media bytes or AWS credentials. */
-  let pending = $state<PendingUpload | null>(null),
+  let pending = $state<PendingUpload[]>([]),
     busy = $state(false);
   /** Progress belongs to the modal or its background pill, never the gallery layout. */
   let progress = $state(0),
@@ -65,14 +66,14 @@
   /** Pausing affects transfer rather than ordinary modal dismissal. */
   let controller: AbortController | undefined;
   $effect(() => {
-    if (open && file === null && pending === null && !busy) {
+    if (open && file === null && pending.length === 0 && !busy) {
       albumId = initialAlbumId ?? '';
       visibility = $preferences.uploadVisibility;
     }
   });
   onMount(() => {
-    pending = savedUpload();
-    if (pending !== null)
+    pending = savedUploads();
+    if (pending.length > 0)
       onstatus({ progress: 0, phase: 'Resume upload', paused: true });
     return () => controller?.abort();
   });
@@ -93,15 +94,14 @@
     dragging = false;
     selectFiles(Array.from(event.dataTransfer?.files ?? []));
   }
-  /** Removing a paused first file first cancels its multipart reservation; successors stay intact. */
+  /** Removing a paused original cancels only its matching reservation; active originals stay locked. */
   async function removeFile(selected: File): Promise<void> {
-    if (selected === activeFile) return;
+    if (activeFiles.includes(selected)) return;
+    const position = files.indexOf(selected);
+    files = files.filter((entry) => entry !== selected);
     try {
-      if (selected === files[0] && pending !== null) {
-        await cancelUpload();
-        pending = null;
-      }
-      files = files.filter((entry) => entry !== selected);
+      await cancelUpload(selected);
+      pending = savedUploads();
       error = '';
       if (!busy)
         onstatus(
@@ -110,10 +110,11 @@
             : { progress: 0, phase: 'Continue uploads', paused: true },
         );
     } catch (failure) {
+      files.splice(Math.max(0, position), 0, selected);
       error = message(failure);
     }
   }
-  /** Consume a live queue so appending or removing waiting files cannot shift the active upload. */
+  /** Upload two live entries at once with byte-weighted progress and independent resumes. */
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     if (file === null || policy === null || busy) return;
@@ -121,36 +122,55 @@
     busy = true;
     error = '';
     progress = 0;
-    phase = 'Preparing upload';
+    phase = 'Preparing uploads';
     onstatus({ progress, phase });
     controller = new AbortController();
     const signal = controller.signal;
+    const transferred = new SvelteMap<File, number>();
+    let completedBytes = 0;
+    /** Combine progress by bytes so competing workers never overwrite the meter. */
+    function report(label: string): void {
+      const total =
+        completedBytes + files.reduce((bytes, entry) => bytes + entry.size, 0);
+      const sent =
+        completedBytes +
+        [...transferred].reduce(
+          (bytes, [entry, value]) => bytes + (entry.size * value) / 100,
+          0,
+        );
+      progress = total === 0 ? 0 : Math.round((sent / total) * 100);
+      phase =
+        activeFiles.length > 1
+          ? `${String(activeFiles.length)} files · ${label}`
+          : label;
+      onstatus({ progress, phase });
+    }
     try {
       const completed = await runUploadQueue(
         () => files,
-        async (entry, position) => {
-          activeFile = entry;
-          await uploadVideo(
-            entry,
-            albumId || null,
-            visibility,
-            (value, label) => {
-              progress = value;
-              const total = position - 1 + files.length;
-              phase =
-                total > 1
-                  ? `${String(position)} of ${String(total)} · ${label}`
-                  : label;
-              onstatus({ progress, phase });
-            },
-            signal,
-            pending,
-            uploadKind(entry, transferPolicy),
-          );
-          pending = null;
-          void oncomplete().catch((failure: unknown) => {
-            onnotice(message(failure));
-          });
+        async (entry, transferSignal) => {
+          activeFiles = [...activeFiles, entry];
+          try {
+            await uploadVideo(
+              entry,
+              albumId || null,
+              visibility,
+              (value, label) => {
+                transferred.set(entry, value);
+                report(label);
+              },
+              transferSignal,
+              uploadKind(entry, transferPolicy),
+            );
+            completedBytes += entry.size;
+            pending = savedUploads();
+            void oncomplete().catch((failure: unknown) => {
+              onnotice(message(failure));
+            });
+          } finally {
+            transferred.delete(entry);
+            activeFiles = activeFiles.filter((active) => active !== entry);
+          }
         },
         signal,
       );
@@ -162,33 +182,24 @@
       );
       await oncomplete();
     } catch (failure) {
-      error = signal.aborted
-        ? savedUpload() === null
-          ? 'Upload queue paused.'
-          : 'Upload paused. Choose the same file to continue.'
-        : message(failure);
-      pending = savedUpload();
+      pending = savedUploads();
+      error = signal.aborted ? 'Uploads paused.' : message(failure);
       if (!open) onnotice('Upload interrupted. Open Upload to continue.');
     } finally {
-      activeFile = null;
+      activeFiles = [];
       busy = false;
       onstatus(
-        pending === null && files.length === 0
+        pending.length === 0 && files.length === 0
           ? null
-          : {
-              progress,
-              phase: pending === null ? 'Continue uploads' : 'Resume upload',
-              paused: true,
-            },
+          : { progress, phase: 'Continue uploads', paused: true },
       );
     }
   }
-  /** Discard the paused multipart session without discarding unrelated queued originals. */
+  /** Discard saved multipart sessions while retaining selected originals for a fresh upload. */
   async function discard(): Promise<void> {
     try {
       await cancelUpload();
-      pending = null;
-      files.shift();
+      pending = [];
       onstatus(
         files.length === 0
           ? null
@@ -222,26 +233,23 @@
       >
     </div>
   {:else}<form onsubmit={submit}>
-      {#if pending !== null && !busy}<div class="resume">
+      {#if pending.length > 0 && !busy}<div class="resume">
           <p>
-            {file === null
-              ? 'Continue your unfinished upload'
-              : 'Upload paused'}
+            {file === null ? 'Continue unfinished uploads' : 'Uploads paused'}
           </p>
-          {#if file === null}<span
-              >Choose the same original file to resume.</span
+          {#if file === null}<span>Choose the original files to resume.</span
             >{/if}<Button
             variant="ghost"
             type="button"
             class="text-action"
             disabled={busy}
-            onclick={discard}>Discard upload</Button
+            onclick={discard}>Discard paused uploads</Button
           >
         </div>{/if}
       {#if files.length > 0 && policy !== null}<UploadSelection
           {files}
           {policy}
-          {activeFile}
+          {activeFiles}
           onremove={(selected: File) => {
             void removeFile(selected);
           }}
@@ -289,7 +297,7 @@
           <NativeSelect
             id="upload-album"
             bind:value={albumId}
-            disabled={busy || pending !== null}
+            disabled={busy || pending.length > 0}
             ><option value="">No album</option
             >{#each albums as album (album.id)}<option value={album.id}
                 >{album.name}</option
@@ -303,7 +311,7 @@
           <NativeSelect
             id="upload-visibility"
             bind:value={visibility}
-            disabled={busy || pending !== null}
+            disabled={busy || pending.length > 0}
             ><option value="private">Private</option><option value="public"
               >Public</option
             ></NativeSelect
@@ -344,8 +352,8 @@
             type="submit"
             class="button primary"
             disabled={file === null || policy === null}
-            ><ArrowUp size={17} />{pending !== null
-              ? 'Resume upload'
+            ><ArrowUp size={17} />{pending.length > 0
+              ? 'Continue uploads'
               : files.length > 0
                 ? 'Upload ' +
                   String(files.length) +
@@ -373,9 +381,9 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    border: 1px dashed #ffffff38;
-    background: #0c0d1755;
-    border-radius: 5px;
+    border: 1px dashed var(--input);
+    background: var(--soft-surface);
+    border-radius: 7px;
     text-align: center;
     padding: 24px;
     margin-bottom: 18px;
@@ -387,17 +395,15 @@
   }
   .drop-zone:hover,
   .dragging,
-  .drop-zone:focus-within {
-    border-color: #a5b4fc;
-    background: #18192699;
+  .drop-zone:has(input:focus-visible) {
+    border-color: var(--media-ring);
   }
-  .drop-zone:focus-within {
-    outline: 2px solid #a5b4fc;
-    outline-offset: 3px;
-  }
+
   .drop-zone input {
     position: absolute;
     inset: 0;
+    outline: none;
+    box-shadow: none;
     margin: 0;
     padding: 0;
     opacity: 0;
@@ -406,13 +412,13 @@
     height: 100%;
   }
   .drop-zone strong {
-    color: #ebe8df;
+    color: var(--foreground);
     font-size: 15px;
     font-weight: 400;
   }
   .drop-zone span {
     font-size: 14px;
-    color: #a7a7b2;
+    color: var(--muted-foreground);
   }
   .options {
     display: grid;
@@ -431,20 +437,20 @@
     width: 36px;
     height: 36px;
     margin: 0;
-    color: #a9ad9e;
+    color: var(--muted-foreground);
   }
   :global(#upload-album),
   :global(#upload-visibility) {
     margin: 0;
   }
   .optional {
-    color: #858593;
+    color: var(--muted-foreground);
     font-size: 12px;
     margin-left: 4px;
   }
   .limits {
     font-size: 12px;
-    color: #92929e;
+    color: var(--muted-foreground);
     margin: 0 0 18px;
   }
   footer {
@@ -455,14 +461,14 @@
   }
   .resume {
     padding: 12px;
-    border: 1px solid #ffffff1f;
-    border-radius: 5px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
     margin-bottom: 16px;
     font-size: 14px;
   }
   .resume span {
     display: block;
-    color: #a7a79e;
+    color: var(--muted-foreground);
     margin: 5px 0;
     font-size: 13px;
   }
@@ -480,11 +486,11 @@
     display: block;
     width: 100%;
     height: 3px;
-    accent-color: #d4ccba;
+    accent-color: var(--foreground);
   }
   .transfer p {
     font-size: 12px;
-    color: #a3a3b0;
+    color: var(--muted-foreground);
     margin-top: 8px;
   }
   @media (max-width: 380px) {

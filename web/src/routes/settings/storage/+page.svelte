@@ -337,17 +337,17 @@
     margin-bottom: 24px;
   }
   .success {
-    color: #b7ebcf;
+    color: var(--success);
   }
   .optional {
     display: block;
-    color: #92929e;
+    color: var(--muted-foreground);
     font-size: 14px;
     font-weight: 400;
   }
   .field-hint {
     font-size: 14px;
-    color: #92929e;
+    color: var(--muted-foreground);
     margin-top: 8px;
   }
   .token-removal {
@@ -358,7 +358,7 @@
     font-size: 14px;
   }
   .token-removal input {
-    accent-color: #e4e4eb;
+    accent-color: var(--foreground);
     width: 16px;
     height: 16px;
     margin: 0;

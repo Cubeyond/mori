@@ -94,18 +94,15 @@
     min-height: 100svh;
   }
   .personalized {
-    --popover: rgb(23 24 30 / 78%);
-    --card: rgb(18 19 25 / 22%);
-    --topbar-surface: rgb(13 14 21 / 35%);
-    --viewer-backdrop: rgb(5 6 11 / 30%);
-    --dialog-backdrop: rgb(7 8 8 / 25%);
+    --card: color-mix(in srgb, var(--background) 22%, transparent);
+    --topbar-surface: color-mix(in srgb, var(--background) 35%, transparent);
     --viewer-surface: transparent;
-    --navigation-surface: rgb(11 12 20 / 55%);
+    --navigation-surface: var(--background);
   }
   .topbar {
     min-height: 56px;
     background: var(--topbar-surface, #0d0e15);
-    border-bottom: 1px solid #ffffff0d;
+    border-bottom: 1px solid var(--subtle-border);
   }
   .header-inner {
     max-width: 1400px;

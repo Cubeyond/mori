@@ -118,7 +118,7 @@
     margin-inline: auto;
   }
   dialog::backdrop {
-    background: var(--dialog-backdrop, #05060999);
+    background: transparent;
     backdrop-filter: blur(3px);
   }
   dialog[open] {

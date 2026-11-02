@@ -108,7 +108,7 @@
     height: 24px;
     padding: 3px;
     border-radius: 14px;
-    background: #383941;
+    background: var(--input);
     pointer-events: none;
   }
   .track::after {
@@ -117,14 +117,14 @@
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background: #e4e4eb;
+    background: var(--foreground);
   }
   input:checked + .track {
-    background: #cbd0e3;
+    background: var(--primary);
   }
   input:checked + .track::after {
     transform: translateX(18px);
-    background: #17181e;
+    background: var(--primary-foreground);
   }
   input:focus-visible + .track {
     outline: 2px solid var(--ring);
@@ -132,12 +132,12 @@
   }
   .feedback {
     width: 24px;
-    color: #b7ebcf;
+    color: var(--success);
   }
   .storage-error {
     margin: 0;
     padding: 0 24px 20px;
-    color: #f4d69a;
+    color: var(--warning);
     font-size: 14px;
   }
 </style>

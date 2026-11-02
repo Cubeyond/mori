@@ -1,7 +1,10 @@
 /** Browser-scoped presentation and upload defaults; access control remains server-enforced. */
 import { writable } from 'svelte/store';
+import { applyTheme, parseTheme, type Theme } from '#lib/features/theme';
 /** Explicitly supported local defaults without credentials or media metadata. */
 export interface Preferences {
+  /** Browser-local palette; existing installations retain the Mori appearance. */
+  theme: Theme;
   /** Visibility applied only to new uploads. */
   uploadVisibility: 'private' | 'public';
   /** Local spacing and width of masonry columns. */
@@ -17,6 +20,7 @@ export interface Preferences {
 export const DEFAULT_THUMBNAIL_OPACITY = 0.92;
 /** Safe defaults used when browser persistence is unavailable. */
 const defaults: Preferences = {
+  theme: 'mori',
   uploadVisibility: 'private',
   density: 'comfortable',
   backgroundOpacity: 0.1,
@@ -31,15 +35,19 @@ export function loadPreferences(): void {
     const raw: unknown = JSON.parse(
       localStorage.getItem('mori:preferences') ?? 'null',
     );
-    preferences.set(parsePreferences(raw));
+    const value = parsePreferences(raw);
+    preferences.set(value);
+    applyTheme(value.theme);
   } catch {
     preferences.set({ ...defaults });
+    applyTheme(defaults.theme);
   }
 }
 /** Validate persisted appearance values and migrate older browser preferences safely. */
 export function parsePreferences(raw: unknown): Preferences {
   if (raw === null || typeof raw !== 'object') return { ...defaults };
   return {
+    theme: parseTheme('theme' in raw ? raw.theme : undefined),
     uploadVisibility:
       'uploadVisibility' in raw && raw.uploadVisibility === 'public'
         ? 'public'
@@ -68,6 +76,7 @@ function opacity(
 /** Apply in-memory defaults and report whether browser persistence succeeded. */
 export function savePreferences(value: Preferences): boolean {
   preferences.set(value);
+  applyTheme(value.theme);
   try {
     localStorage.setItem('mori:preferences', JSON.stringify(value));
     return true;

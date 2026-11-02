@@ -148,8 +148,8 @@
     align-items: center;
     gap: 12px;
     padding: 2px 5px 2px 16px;
-    border: 1px solid #ffffff20;
-    background: #171823f5;
+    border: 1px solid var(--input);
+    background: var(--popover);
     border-radius: 6px;
     box-shadow: 0 6px 30px #0004;
     font-size: 13px;
@@ -167,10 +167,10 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #a5b4fc;
+    background: var(--media-ring);
   }
   .percentage {
-    color: #a1a1af;
+    color: var(--muted-foreground);
     font-variant-numeric: tabular-nums;
     margin-left: auto;
   }
