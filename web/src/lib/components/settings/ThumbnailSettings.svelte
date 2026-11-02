@@ -30,13 +30,16 @@
 
 <div class="setting-row">
   <div class="setting-content">
-    <label for="thumbnail-translucency">Translucent thumbnails</label>
+    <span id="thumbnail-translucency-label" class="setting-label"
+      >Translucent thumbnails</span
+    >
     <div class="toggle-control">
       <div class="switch">
         <input
           id="thumbnail-translucency"
           type="checkbox"
           role="switch"
+          aria-labelledby="thumbnail-translucency-label"
           checked={$preferences.translucentThumbnails}
           onchange={(event) => {
             preferences.update((value) => ({
@@ -59,7 +62,7 @@
     id="thumbnail-opacity-row"
   >
     <div class="setting-content">
-      <label for="thumbnail-opacity">Thumbnail opacity</label>
+      <span class="setting-label">Thumbnail opacity</span>
       <OpacityControl
         id="thumbnail-opacity"
         label="Thumbnail opacity"

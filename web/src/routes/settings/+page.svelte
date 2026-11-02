@@ -51,10 +51,11 @@
         </header>
         <div class="setting-row">
           <div class="setting-content">
-            <label for="preference-theme">Theme</label>
+            <span id="preference-theme-label" class="setting-label">Theme</span>
             <div class="setting-control preference-control">
               <NativeSelect
                 id="preference-theme"
+                aria-labelledby="preference-theme-label"
                 value={$preferences.theme}
                 onchange={(
                   event: Event & { currentTarget: HTMLSelectElement },
@@ -119,10 +120,13 @@
         </header>
         <div class="setting-row">
           <div class="setting-content">
-            <label for="preference-density">Gallery density</label>
+            <span id="preference-density-label" class="setting-label"
+              >Gallery density</span
+            >
             <div class="setting-control preference-control">
               <NativeSelect
                 id="preference-density"
+                aria-labelledby="preference-density-label"
                 value={$preferences.density}
                 onchange={(
                   event: Event & { currentTarget: HTMLSelectElement },
@@ -154,10 +158,13 @@
         </header>
         <div class="setting-row">
           <div class="setting-content">
-            <label for="preference-visibility">New upload visibility</label>
+            <span id="preference-visibility-label" class="setting-label"
+              >New upload visibility</span
+            >
             <div class="setting-control preference-control">
               <NativeSelect
                 id="preference-visibility"
+                aria-labelledby="preference-visibility-label"
                 value={$preferences.uploadVisibility}
                 onchange={(
                   event: Event & { currentTarget: HTMLSelectElement },
@@ -199,10 +206,6 @@
   }
   .preference-control :global([data-slot='native-select-wrapper']) {
     min-width: 0;
-  }
-  .setting-label {
-    font-size: 16px;
-    font-weight: 500;
   }
   .accent-options {
     display: flex;

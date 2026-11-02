@@ -83,7 +83,9 @@
 
 <div class="setting-row">
   <div class="setting-content">
-    <label for="background-image">Background image</label>
+    <span id="background-image-label" class="setting-label"
+      >Background image</span
+    >
     <div class="background-controls" class:has-image={$background !== null}>
       {#if $background !== null}<img
           class="thumbnail"
@@ -93,7 +95,8 @@
       <input
         bind:this={picker}
         id="background-image"
-        class="sr-only"
+        hidden
+        aria-labelledby="background-image-label"
         type="file"
         accept="image/*"
         onchange={select}
@@ -131,7 +134,7 @@
 </div>
 {#if $background !== null}<div class="setting-row">
     <div class="setting-content">
-      <label for="background-opacity">Background opacity</label>
+      <span class="setting-label">Background opacity</span>
       <OpacityControl
         id="background-opacity"
         label="Background opacity"

@@ -271,7 +271,8 @@ svg.lucide {
   gap: 24px;
   max-width: 584px;
 }
-.setting-content > label {
+.setting-content > label,
+.setting-content > .setting-label {
   font-size: 16px;
   line-height: 24px;
   font-weight: 500;
