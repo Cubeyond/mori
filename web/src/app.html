@@ -1,5 +1,10 @@
 <!doctype html>
-<html lang="en" class="dark style-nova">
+<html
+  lang="en"
+  class="dark style-nova"
+  data-theme="catppuccin-mocha"
+  data-accent="mauve"
+>
   <head>
     <meta charset="utf-8" />
     <title>Mori</title>
@@ -13,7 +18,10 @@
           localStorage.getItem('mori:preferences') || 'null',
         );
         if (value && typeof value.theme === 'string') {
-          document.documentElement.dataset.theme = value.theme;
+          document.documentElement.dataset.theme =
+            value.theme === 'mori' ? 'catppuccin-mocha' : value.theme;
+          document.documentElement.dataset.accent =
+            typeof value.accent === 'string' ? value.accent : 'mauve';
           document.documentElement.classList.toggle(
             'dark',
             value.theme !== 'catppuccin-latte',

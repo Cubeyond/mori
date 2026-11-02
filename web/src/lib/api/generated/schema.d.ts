@@ -152,7 +152,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Discover reservations independently of optional local resume fingerprints.
+         * @description # Errors
+         *     Returns authentication or database failures.
+         */
+        get: operations["get_v1_admin_uploads"];
         put?: never;
         /**
          * Create a private multipart session with independent random name and URL token.
@@ -160,7 +165,12 @@ export interface paths {
          *     Returns authentication, CSRF, upload-limit, membership, delivery, S3, or database errors.
          */
         post: operations["post_v1_admin_uploads"];
-        delete?: never;
+        /**
+         * Cancel an explicit queue snapshot, retaining successful cancellations if storage requires retry.
+         * @description # Errors
+         *     Returns authentication, CSRF, invalid selection, verification conflicts, or storage failures.
+         */
+        delete: operations["delete_v1_admin_uploads"];
         options?: never;
         head?: never;
         patch?: never;
@@ -182,9 +192,9 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Stop a resumable multipart upload and persist cancellation progress.
+         * Cancel one original; retrying a cancelled or interrupted cancellation remains safe.
          * @description # Errors
-         *     Returns authentication, CSRF, state-conflict, S3-abort, or database errors.
+         *     Returns authentication, CSRF, missing reservation, verification conflicts, or storage failures.
          */
         delete: operations["delete_v1_admin_uploads_id"];
         options?: never;
@@ -249,6 +259,27 @@ export interface paths {
         get: operations["get_v1_admin_videos"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/videos/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply exactly one atomic operation to a bounded, authorized selection.
+         * @description # Errors
+         *     Returns authentication, CSRF, invalid selection/album, missing records, or state conflicts.
+         */
+        post: operations["post_v1_admin_videos_batch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -483,6 +514,41 @@ export interface components {
             /** @description Visibility-filtered page of video records. */
             videos: components["schemas"]["Video"][];
         };
+        /** @description Existing or newly created album membership remains independent of media visibility. */
+        BatchAction: {
+            /** @description Existing album identifier or explicit standalone membership. */
+            album_id?: string | null;
+            /** @enum {string} */
+            type: "move";
+        } | {
+            /** @description The normal album creation contract, including a separately validated URL slug. */
+            album: components["schemas"]["CreateAlbum"];
+            /** @enum {string} */
+            type: "create_album";
+        } | {
+            /** @enum {string} */
+            type: "delete";
+        };
+        /** @description One bounded, explicitly selected set; unknown fields cannot broaden destructive scope. */
+        BatchInput: {
+            /** @description Membership change, new collection, or permanently confirmed deletion. */
+            action: components["schemas"]["BatchAction"];
+            /** @description Unique internal media identifiers, capped at one hundred per operation. */
+            ids: string[];
+        };
+        /** @description Successful selection changes, optionally containing jobs and a newly created album. */
+        BatchResult: {
+            /** @description Number of distinct selected records changed atomically. */
+            affected: number;
+            album: null | components["schemas"]["Album"];
+            /** @description Persisted jobs whose completion confirms permanent object removal. */
+            job_ids: string[];
+        };
+        /** @description A bounded snapshot prevents a cancellation from reaching newly started unrelated sessions. */
+        CancelUploads: {
+            /** @description Exact multipart reservations explicitly cancelled by the administrator. */
+            ids: string[];
+        };
         /** @description Successful S3 write/read/delete probe, independent of `CloudFront` setup. */
         ConnectionCheck: {
             /** @description Provider actually checked, so a local fixture cannot be reported as a real AWS connection. */
@@ -663,6 +729,22 @@ export interface components {
          * @enum {string}
          */
         StorageMode: "unconfigured" | "amazon_s3" | "test";
+        /** @description Non-secret queue metadata remains available after browser storage has been cleared. */
+        UnfinishedUpload: {
+            /** @description Album whose deletion may be blocked by this upload. */
+            album_id: string | null;
+            /** @description Multipart reservation identity; no AWS upload credentials are exposed. */
+            id: string;
+            /** @description Server-assigned display hash for the unfinished original. */
+            name: string;
+            /**
+             * Format: int64
+             * @description Expected source length in bytes.
+             */
+            size: number;
+            /** @description Media record associated with this unfinished original. */
+            video_id: string;
+        };
         /** @description Resumable upload details with the server-assigned display hash. */
         Upload: {
             /**
@@ -1069,6 +1151,25 @@ export interface operations {
             };
         };
     };
+    get_v1_admin_uploads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnfinishedUpload"][];
+                };
+            };
+        };
+    };
     post_v1_admin_uploads: {
         parameters: {
             query?: never;
@@ -1089,6 +1190,28 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Upload"];
                 };
+            };
+        };
+    };
+    delete_v1_admin_uploads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelUploads"];
+            };
+        };
+        responses: {
+            /** @description Uploads cancelled */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1201,6 +1324,36 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["VideoPage"];
                 };
+            };
+        };
+    };
+    post_v1_admin_videos_batch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchInput"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchResult"];
+                };
+            };
+            /** @description Media changed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

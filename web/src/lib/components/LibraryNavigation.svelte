@@ -85,8 +85,8 @@
     background: var(--hover-surface);
   }
   a[aria-current='page'] {
-    background: var(--hover-surface);
-    color: var(--foreground);
+    background: var(--accent);
+    color: var(--primary);
   }
   .drawer nav {
     gap: 6px;

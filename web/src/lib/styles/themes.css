@@ -1,6 +1,22 @@
 /** Catppuccin: https://catppuccin.com/palette/ (MIT). Tokyo Night: folke/tokyonight.nvim (Apache-2.0). */
 
 :root[data-theme='catppuccin-latte'] {
+  --accent-blue: #1e66f5;
+  --on-blue: #ffffff;
+  --accent-lavender: #7287fd;
+  --on-lavender: #11111b;
+  --accent-mauve: #8839ef;
+  --on-mauve: #eff1f5;
+  --accent-pink: #ea76cb;
+  --on-pink: #11111b;
+  --accent-peach: #fe640b;
+  --on-peach: #11111b;
+  --accent-green: #40a02b;
+  --on-green: #11111b;
+  --accent-teal: #179299;
+  --on-teal: #11111b;
+  --accent-red: #d20f39;
+  --on-red: #eff1f5;
   --background: #eff1f5;
   --foreground: #4c4f69;
   --card: #e6e9ef;
@@ -25,6 +41,22 @@
 }
 
 :root[data-theme='catppuccin-frappe'] {
+  --accent-blue: #8caaee;
+  --on-blue: #11111b;
+  --accent-lavender: #babbf1;
+  --on-lavender: #11111b;
+  --accent-mauve: #ca9ee6;
+  --on-mauve: #11111b;
+  --accent-pink: #f4b8e4;
+  --on-pink: #11111b;
+  --accent-peach: #ef9f76;
+  --on-peach: #11111b;
+  --accent-green: #a6d189;
+  --on-green: #11111b;
+  --accent-teal: #81c8be;
+  --on-teal: #11111b;
+  --accent-red: #e78284;
+  --on-red: #11111b;
   --background: #303446;
   --foreground: #c6d0f5;
   --card: #292c3c;
@@ -48,6 +80,22 @@
 }
 
 :root[data-theme='catppuccin-macchiato'] {
+  --accent-blue: #8aadf4;
+  --on-blue: #11111b;
+  --accent-lavender: #b7bdf8;
+  --on-lavender: #11111b;
+  --accent-mauve: #c6a0f6;
+  --on-mauve: #11111b;
+  --accent-pink: #f5bde6;
+  --on-pink: #11111b;
+  --accent-peach: #f5a97f;
+  --on-peach: #11111b;
+  --accent-green: #a6da95;
+  --on-green: #11111b;
+  --accent-teal: #8bd5ca;
+  --on-teal: #11111b;
+  --accent-red: #ed8796;
+  --on-red: #11111b;
   --background: #24273a;
   --foreground: #cad3f5;
   --card: #1e2030;
@@ -71,6 +119,22 @@
 }
 
 :root[data-theme='catppuccin-mocha'] {
+  --accent-blue: #89b4fa;
+  --on-blue: #11111b;
+  --accent-lavender: #b4befe;
+  --on-lavender: #11111b;
+  --accent-mauve: #cba6f7;
+  --on-mauve: #11111b;
+  --accent-pink: #f5c2e7;
+  --on-pink: #11111b;
+  --accent-peach: #fab387;
+  --on-peach: #11111b;
+  --accent-green: #a6e3a1;
+  --on-green: #11111b;
+  --accent-teal: #94e2d5;
+  --on-teal: #11111b;
+  --accent-red: #f38ba8;
+  --on-red: #11111b;
   --background: #1e1e2e;
   --foreground: #cdd6f4;
   --card: #181825;
@@ -95,6 +159,22 @@
 
 /** Night variant inherits Tokyo Night Storm's foreground and accent colors upstream. */
 :root[data-theme='tokyonight'] {
+  --accent-blue: #7aa2f7;
+  --on-blue: #11111b;
+  --accent-lavender: #bb9af7;
+  --on-lavender: #11111b;
+  --accent-mauve: #9d7cd8;
+  --on-mauve: #11111b;
+  --accent-pink: #ff007c;
+  --on-pink: #11111b;
+  --accent-peach: #ff9e64;
+  --on-peach: #11111b;
+  --accent-green: #9ece6a;
+  --on-green: #11111b;
+  --accent-teal: #1abc9c;
+  --on-teal: #11111b;
+  --accent-red: #f7768e;
+  --on-red: #11111b;
   --background: #1a1b26;
   --foreground: #c0caf5;
   --card: #16161e;
@@ -115,4 +195,68 @@
   --topbar-surface: #16161e;
   --navigation-surface: #1a1b26;
   --wordmark: #c0caf5;
+}
+
+:root[data-accent='blue'] {
+  --primary: var(--accent-blue);
+  --primary-foreground: var(--on-blue);
+  --ring: var(--accent-blue);
+  --media-ring: var(--accent-blue);
+  --accent: color-mix(in srgb, var(--accent-blue) 15%, var(--background));
+}
+
+:root[data-accent='lavender'] {
+  --primary: var(--accent-lavender);
+  --primary-foreground: var(--on-lavender);
+  --ring: var(--accent-lavender);
+  --media-ring: var(--accent-lavender);
+  --accent: color-mix(in srgb, var(--accent-lavender) 15%, var(--background));
+}
+
+:root[data-accent='mauve'] {
+  --primary: var(--accent-mauve);
+  --primary-foreground: var(--on-mauve);
+  --ring: var(--accent-mauve);
+  --media-ring: var(--accent-mauve);
+  --accent: color-mix(in srgb, var(--accent-mauve) 15%, var(--background));
+}
+
+:root[data-accent='pink'] {
+  --primary: var(--accent-pink);
+  --primary-foreground: var(--on-pink);
+  --ring: var(--accent-pink);
+  --media-ring: var(--accent-pink);
+  --accent: color-mix(in srgb, var(--accent-pink) 15%, var(--background));
+}
+
+:root[data-accent='peach'] {
+  --primary: var(--accent-peach);
+  --primary-foreground: var(--on-peach);
+  --ring: var(--accent-peach);
+  --media-ring: var(--accent-peach);
+  --accent: color-mix(in srgb, var(--accent-peach) 15%, var(--background));
+}
+
+:root[data-accent='green'] {
+  --primary: var(--accent-green);
+  --primary-foreground: var(--on-green);
+  --ring: var(--accent-green);
+  --media-ring: var(--accent-green);
+  --accent: color-mix(in srgb, var(--accent-green) 15%, var(--background));
+}
+
+:root[data-accent='teal'] {
+  --primary: var(--accent-teal);
+  --primary-foreground: var(--on-teal);
+  --ring: var(--accent-teal);
+  --media-ring: var(--accent-teal);
+  --accent: color-mix(in srgb, var(--accent-teal) 15%, var(--background));
+}
+
+:root[data-accent='red'] {
+  --primary: var(--accent-red);
+  --primary-foreground: var(--on-red);
+  --ring: var(--accent-red);
+  --media-ring: var(--accent-red);
+  --accent: color-mix(in srgb, var(--accent-red) 15%, var(--background));
 }

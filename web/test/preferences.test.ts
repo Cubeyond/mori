@@ -7,7 +7,8 @@ void test('older browser settings retain choices and receive a 10 percent backgr
   assert.deepEqual(
     parsePreferences({ density: 'compact', uploadVisibility: 'public' }),
     {
-      theme: 'mori',
+      theme: 'catppuccin-mocha',
+      accent: 'mauve',
       density: 'compact',
       uploadVisibility: 'public',
       backgroundOpacity: 0.1,

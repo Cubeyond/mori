@@ -1,7 +1,7 @@
 <script lang="ts">
   /** Canonical album editor and name-confirmed deletion with an explicit media option. */
   import Input from '#lib/components/ui/input/input.svelte';
-  import NativeSelect from '#lib/components/ui/native-select/native-select.svelte';
+  import AlbumFields from './AlbumFields.svelte';
   import Button from '#lib/components/ui/button/button.svelte';
   import { untrack } from 'svelte';
   import Modal from '../Modal.svelte';
@@ -80,7 +80,7 @@
   <form onsubmit={save}>
     {#if removing}
       <fieldset class="deletion-options" disabled={busy}>
-        <legend class="sr-only">Video handling</legend>
+        <legend class="sr-only">Media handling</legend>
         <div class="deletion-choices">
           <label class="deletion-choice">
             <input
@@ -89,7 +89,7 @@
               value="keep"
               bind:group={deletionMode}
             />
-            <span>Keep in Videos</span>
+            <span>Keep in Gallery</span>
           </label>
           <label class="deletion-choice destructive">
             <input
@@ -119,40 +119,19 @@
         />
       </div>
     {:else}
-      <label class="field"
-        >Display name<Input
-          required
-          maxlength={200}
-          bind:value={name}
-          autocomplete="off"
-        /></label
-      >
-      <label class="field"
-        >URL slug<Input
-          required
-          minlength={3}
-          maxlength={64}
-          pattern="[a-z0-9]+(-[a-z0-9]+)*"
-          placeholder="my-album"
-          bind:value={slug}
-          autocomplete="off"
-        /></label
-      >
+      <AlbumFields
+        bind:name
+        bind:slug
+        bind:visibility
+        disabled={busy}
+        suggestSlug={album === null}
+      />
       {#if album !== null && slug !== album.slug}<p
           class="muted mb-6 text-sm leading-relaxed"
         >
           Changing the slug changes album and member sharing links. Previous
           album addresses will stop working.
         </p>{/if}
-      <label class="field" for="album-visibility"
-        >Album visibility<NativeSelect
-          id="album-visibility"
-          bind:value={visibility}
-          ><option value="private">Private</option><option value="public"
-            >Public</option
-          ></NativeSelect
-        ></label
-      >
     {/if}
     {#if error}<p class="error mb-4" role="alert">{error}</p>{/if}
     <div class="form-actions">
@@ -170,7 +149,7 @@
             : 'Saving…'
           : removing
             ? deleteMedia
-              ? 'Delete album and videos'
+              ? 'Delete album and media'
               : 'Delete album'
             : album === null
               ? 'Create album'

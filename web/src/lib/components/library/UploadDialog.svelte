@@ -9,7 +9,7 @@
   import Modal from '../Modal.svelte';
   import UploadSelection from './UploadSelection.svelte';
   import { preferences } from '#lib/features/preferences';
-  import type { Album, UploadPolicy } from '#lib/api/client';
+  import type { Album, UploadPolicy, UnfinishedUpload } from '#lib/api/client';
   import { message } from '#lib/api/client';
   import {
     appendUploadFiles,
@@ -27,6 +27,7 @@
   let {
     open,
     albums,
+    unfinished,
     policy,
     storageConfigured,
     initialAlbumId,
@@ -38,6 +39,7 @@
   }: {
     open: boolean;
     albums: Album[];
+    unfinished: UnfinishedUpload[];
     policy: UploadPolicy | null;
     storageConfigured: boolean | null;
     initialAlbumId: string | null;
@@ -65,6 +67,16 @@
     dragging = $state(false);
   /** Pausing affects transfer rather than ordinary modal dismissal. */
   let controller: AbortController | undefined;
+  /** Cancelling first settles all file workers before releasing their server reservations. */
+  let running: Promise<void> | undefined;
+  let cancelling = $state(false);
+  const hasQueue = $derived(
+    files.length > 0 || pending.length > 0 || unfinished.length > 0,
+  );
+  $effect(() => {
+    if (!open && !busy && !cancelling && unfinished.length > 0)
+      onstatus({ progress: 0, phase: 'Unfinished uploads', paused: true });
+  });
   $effect(() => {
     if (open && file === null && pending.length === 0 && !busy) {
       albumId = initialAlbumId ?? '';
@@ -79,7 +91,7 @@
   });
   /** Invalid additions preserve the existing selection instead of silently clearing it. */
   function selectFiles(selected: File[]): void {
-    if (selected.length === 0) return;
+    if (selected.length === 0 || cancelling) return;
     error = '';
     try {
       if (policy === null) throw new Error('Upload settings are loading.');
@@ -96,7 +108,7 @@
   }
   /** Removing a paused original cancels only its matching reservation; active originals stay locked. */
   async function removeFile(selected: File): Promise<void> {
-    if (activeFiles.includes(selected)) return;
+    if (cancelling || activeFiles.includes(selected)) return;
     const position = files.indexOf(selected);
     files = files.filter((entry) => entry !== selected);
     try {
@@ -115,9 +127,8 @@
     }
   }
   /** Upload two live entries at once with byte-weighted progress and independent resumes. */
-  async function submit(event: SubmitEvent): Promise<void> {
-    event.preventDefault();
-    if (file === null || policy === null || busy) return;
+  async function transfer(): Promise<void> {
+    if (file === null || policy === null || busy || cancelling) return;
     const transferPolicy = policy;
     busy = true;
     error = '';
@@ -126,6 +137,8 @@
     onstatus({ progress, phase });
     controller = new AbortController();
     const signal = controller.signal;
+    /** Read cancellation at async boundaries without retaining stale control-flow narrowing. */
+    const isCancelling = () => cancelling;
     const transferred = new SvelteMap<File, number>();
     let completedBytes = 0;
     /** Combine progress by bytes so competing workers never overwrite the meter. */
@@ -183,32 +196,51 @@
       await oncomplete();
     } catch (failure) {
       pending = savedUploads();
-      error = signal.aborted ? 'Uploads paused.' : message(failure);
+      error = isCancelling()
+        ? ''
+        : signal.aborted
+          ? 'Uploads paused.'
+          : message(failure);
       if (!open) onnotice('Upload interrupted. Open Upload to continue.');
     } finally {
       activeFiles = [];
       busy = false;
-      onstatus(
-        pending.length === 0 && files.length === 0
-          ? null
-          : { progress, phase: 'Continue uploads', paused: true },
-      );
+      if (!isCancelling())
+        onstatus(
+          pending.length === 0 && files.length === 0
+            ? null
+            : { progress, phase: 'Continue uploads', paused: true },
+        );
     }
   }
-  /** Discard saved multipart sessions while retaining selected originals for a fresh upload. */
-  async function discard(): Promise<void> {
+  /** The form awaits one owned batch so cancellation can wait for all worker cleanup. */
+  async function submit(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (busy || cancelling) return;
+    running = transfer();
+    await running;
+  }
+  /** Cancel every queued original and persisted reservation, including server-only orphans. */
+  async function cancelAll(): Promise<void> {
+    if (cancelling) return;
+    cancelling = true;
+    error = '';
+    controller?.abort();
     try {
+      await running;
       await cancelUpload();
+      files = [];
       pending = [];
-      onstatus(
-        files.length === 0
-          ? null
-          : { progress: 0, phase: 'Continue uploads', paused: true },
-      );
-      error = '';
+      progress = 0;
+      phase = '';
+      onstatus(null);
       await oncomplete();
     } catch (failure) {
       error = message(failure);
+      pending = savedUploads();
+      await oncomplete();
+    } finally {
+      cancelling = false;
     }
   }
 </script>
@@ -233,18 +265,13 @@
       >
     </div>
   {:else}<form onsubmit={submit}>
-      {#if pending.length > 0 && !busy}<div class="resume">
-          <p>
-            {file === null ? 'Continue unfinished uploads' : 'Uploads paused'}
-          </p>
-          {#if file === null}<span>Choose the original files to resume.</span
-            >{/if}<Button
-            variant="ghost"
-            type="button"
-            class="text-action"
-            disabled={busy}
-            onclick={discard}>Discard paused uploads</Button
-          >
+      {#if (pending.length > 0 || unfinished.length > 0) && !busy}<div
+          class="resume"
+        >
+          <p>{file === null ? 'Unfinished uploads' : 'Uploads paused'}</p>
+          {#if file === null && pending.length > 0}<span
+              >Choose the original files to resume.</span
+            >{/if}
         </div>{/if}
       {#if files.length > 0 && policy !== null}<UploadSelection
           {files}
@@ -262,7 +289,7 @@
             .map((extension) => '.' + extension)
             .join(',') ?? 'image/*,video/*'}
           aria-label="Media files"
-          disabled={policy === null}
+          disabled={policy === null || cancelling}
           onchange={(event) => {
             const selected = Array.from(event.currentTarget.files ?? []);
             event.currentTarget.value = '';
@@ -297,7 +324,7 @@
           <NativeSelect
             id="upload-album"
             bind:value={albumId}
-            disabled={busy || pending.length > 0}
+            disabled={busy || cancelling || pending.length > 0}
             ><option value="">No album</option
             >{#each albums as album (album.id)}<option value={album.id}
                 >{album.name}</option
@@ -311,7 +338,7 @@
           <NativeSelect
             id="upload-visibility"
             bind:value={visibility}
-            disabled={busy || pending.length > 0}
+            disabled={busy || cancelling || pending.length > 0}
             ><option value="private">Private</option><option value="public"
               >Public</option
             ></NativeSelect
@@ -339,27 +366,36 @@
           variant="ghost"
           class="text-action"
           type="button"
-          onclick={onclose}>{busy ? 'Continue in background' : 'Cancel'}</Button
+          onclick={onclose}>{busy ? 'Continue in background' : 'Close'}</Button
         >
-        {#if busy}<Button
-            variant="outline"
-            class="button"
-            type="button"
-            onclick={() => controller?.abort()}><Pause size={16} />Pause</Button
-          >
-        {:else}<Button
-            variant="default"
-            type="submit"
-            class="button primary"
-            disabled={file === null || policy === null}
-            ><ArrowUp size={17} />{pending.length > 0
-              ? 'Continue uploads'
-              : files.length > 0
-                ? 'Upload ' +
-                  String(files.length) +
-                  (files.length === 1 ? ' file' : ' files')
-                : 'Upload media'}</Button
-          >{/if}
+        <div class="footer-actions">
+          {#if hasQueue}<Button
+              variant="destructive"
+              type="button"
+              disabled={cancelling}
+              onclick={cancelAll}
+              >{cancelling ? 'Cancelling…' : 'Cancel uploads'}</Button
+            >{/if}
+          {#if busy}<Button
+              variant="outline"
+              type="button"
+              disabled={cancelling}
+              onclick={() => controller?.abort()}
+              ><Pause size={16} />Pause</Button
+            >
+          {:else}<Button
+              variant="default"
+              type="submit"
+              disabled={file === null || policy === null || cancelling}
+              ><ArrowUp size={17} />{pending.length > 0
+                ? 'Continue uploads'
+                : files.length > 0
+                  ? 'Upload ' +
+                    String(files.length) +
+                    (files.length === 1 ? ' file' : ' files')
+                  : 'Upload media'}</Button
+            >{/if}
+        </div>
       </footer>
     </form>{/if}
 </Modal>
@@ -459,6 +495,13 @@
     align-items: center;
     gap: 12px;
   }
+  .footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
   .resume {
     padding: 12px;
     border: 1px solid var(--border);
@@ -486,7 +529,7 @@
     display: block;
     width: 100%;
     height: 3px;
-    accent-color: var(--foreground);
+    accent-color: var(--primary);
   }
   .transfer p {
     font-size: 12px;

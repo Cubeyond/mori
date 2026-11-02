@@ -24,3 +24,9 @@ mod security;
 mod storage;
 /// Uploads behavior.
 mod uploads;
+
+/// Discoverable and idempotent upload cancellation.
+mod cancellation;
+
+/// Atomic selected-media membership and deletion.
+mod batch;

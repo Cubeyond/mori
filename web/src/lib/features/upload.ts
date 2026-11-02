@@ -81,7 +81,8 @@ export async function uploadVideo(
               height: metadata?.height ?? 0,
               duration: metadata?.duration ?? 0,
             },
-            signal,
+            // Settle reservation creation before a batch cancellation discovers its server identity.
+            signal: AbortSignal.timeout(30_000),
           }),
         );
     const pending: PendingUpload = {
@@ -96,6 +97,7 @@ export async function uploadVideo(
     uploadId = upload.id;
     activeUploads.add(upload.id);
     remember(pending);
+    signal.throwIfAborted();
     const posterTask = (async () => {
       const poster = await preview?.poster;
       if (poster && poster.size <= 1_048_576) {
@@ -205,18 +207,24 @@ export async function uploadVideo(
     if (uploadId !== undefined) activeUploads.delete(uploadId);
   }
 }
-/** Abort the active multipart operation before discarding local resume metadata. */
+/** Cancel selected saved originals or the server-discovered queue after browser storage loss. */
 export async function cancelUpload(file?: File): Promise<void> {
   const hash = file === undefined ? undefined : await fingerprint(file);
-  for (const saved of savedUploads()) {
-    if (file !== undefined && !matches(saved, file, hash ?? '')) continue;
-    await apiData(
-      api.DELETE('/v1/admin/uploads/{id}', {
-        params: { path: { id: saved.id } },
-      }),
-    );
-    forgetUpload(saved.id);
-  }
+  const local = savedUploads().filter(
+    (upload) => file === undefined || matches(upload, file, hash ?? ''),
+  );
+  if (file !== undefined && local.length === 0) return;
+  const server = await apiData(api.GET('/v1/admin/uploads'));
+  const active = new Set(server.map((upload) => upload.id));
+  const ids =
+    file === undefined
+      ? [...active]
+      : local
+          .filter((upload) => active.has(upload.id))
+          .map((upload) => upload.id);
+  if (ids.length > 0)
+    await apiData(api.DELETE('/v1/admin/uploads', { body: { ids } }));
+  for (const upload of local) forgetUpload(upload.id);
 }
 /** A resumed file must match its original bytes and metadata independently of queue position. */
 function matches(upload: PendingUpload, file: File, hash: string): boolean {

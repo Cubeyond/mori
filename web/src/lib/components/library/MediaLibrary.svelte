@@ -8,7 +8,13 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { X, ArrowUpRight, Plus, Search } from '@lucide/svelte';
+  import {
+    X,
+    ArrowUpRight,
+    Plus,
+    Search,
+    SquareDashedMousePointer,
+  } from '@lucide/svelte';
   import {
     api,
     apiData,
@@ -18,12 +24,14 @@
     type MediaItem,
     type Album,
   } from '#lib/api/client';
-  import Gallery from '#lib/components/Gallery.svelte';
+  import MediaSelection from './MediaSelection.svelte';
   import { openUploader } from '#lib/features/upload';
   import MediaDialog from '#lib/components/library/MediaDialog.svelte';
 
   /** Local text filter applies to the currently loaded page. */
   let query = $state('');
+  /** Selection mode leaves individual playback and sharing intact when dismissed. */
+  let selecting = $state(false);
   /** Metadata only; the gallery loads no video source before playback intent. */
   let videos = $state<MediaItem[]>([]),
     albums = $state<Album[]>([]);
@@ -137,14 +145,27 @@
   <Breadcrumbs items={[{ label: 'Gallery', href: resolve('/gallery') }]} />
   <div class="page-heading">
     <h1>Gallery</h1>
-    {#if loaded && $session.authenticated}<Button
-        variant="default"
-        type="submit"
-        class="button primary"
-        onclick={() => {
-          openUploader();
-        }}><Plus size={16} />Upload media</Button
-      >{/if}
+    {#if loaded && $session.authenticated}<div class="flex items-center gap-2">
+        <Button
+          variant="outline"
+          type="button"
+          aria-pressed={selecting}
+          disabled={videos.length === 0}
+          onclick={() => {
+            selecting = !selecting;
+          }}
+          ><SquareDashedMousePointer size={17} />{selecting
+            ? 'Done'
+            : 'Select'}</Button
+        ><Button
+          variant="default"
+          type="submit"
+          class="button primary"
+          onclick={() => {
+            openUploader();
+          }}><Plus size={16} />Upload media</Button
+        >
+      </div>{/if}
   </div>
   {#if loaded && $session.authenticated && videos.length > 0}<div
       class="collection-toolbar"
@@ -166,9 +187,12 @@
         >Log in to continue<ArrowUpRight size={17} /></Button
       >
     </div>
-  {:else if videos.length > 0}{#if visible.length > 0}<Gallery
+  {:else if videos.length > 0}{#if visible.length > 0}<MediaSelection
         videos={visible}
+        {albums}
+        bind:selecting
         onmanage={edit}
+        oncomplete={refresh}
       />{:else}<div class="empty-state">
         <h2>No matching media</h2>
         <p>Try another name or load more items.</p>

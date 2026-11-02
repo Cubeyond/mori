@@ -5,7 +5,7 @@
   import { onMount, untrack } from 'svelte';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { Pencil, Plus } from '@lucide/svelte';
+  import { Pencil, Plus, SquareDashedMousePointer } from '@lucide/svelte';
   import {
     api,
     apiData,
@@ -16,7 +16,7 @@
   } from '#lib/api/client';
   import AccessGate from '#lib/components/AccessGate.svelte';
   import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
-  import Gallery from '#lib/components/Gallery.svelte';
+  import MediaSelection from '#lib/components/library/MediaSelection.svelte';
   import AlbumEditor from '#lib/components/library/AlbumEditor.svelte';
   import MediaDialog from '#lib/components/library/MediaDialog.svelte';
   import { takeInitialPage } from '#lib/api/bootstrap';
@@ -31,6 +31,8 @@
     videos = $state<Video[]>(initial?.videos ?? []);
   /** Use the seed only once; later route changes fetch their own current metadata. */
   let seeded = false;
+  /** This album uses the shared batch selection surface. */
+  let selecting = $state(false);
   /** Background refreshes never replace an already rendered collection with loading text. */
   let loaded = $state(initial !== null);
   /** Bounded pagination, loading, and feedback remain independent of floating editors. */
@@ -101,6 +103,7 @@
         seeded = true;
         return;
       }
+      selecting = false;
       videos = [];
       album = null;
       loaded = false;
@@ -156,6 +159,18 @@
         >
           <Button
             variant="outline"
+            type="button"
+            aria-pressed={selecting}
+            disabled={videos.length === 0}
+            onclick={() => {
+              selecting = !selecting;
+            }}
+            ><SquareDashedMousePointer size={17} />{selecting
+              ? 'Done'
+              : 'Select'}</Button
+          >
+          <Button
+            variant="outline"
             type="submit"
             class="button"
             onclick={() => (editingAlbum = true)}
@@ -173,8 +188,11 @@
     </div>
     {#if error}<p class="error mb-4" role="alert">{error}</p>{/if}
     {#if notice}<p class="muted mb-4 text-sm" role="status">{notice}</p>{/if}
-    {#if videos.length > 0}<Gallery
+    {#if videos.length > 0}<MediaSelection
         {videos}
+        {albums}
+        bind:selecting
+        oncomplete={refresh}
         onmanage={(video: Video) => (editingVideo = video)}
       />{:else if busy && !loaded}<p class="empty-state muted" role="status">
         Loading album…
@@ -188,7 +206,7 @@
           type="submit"
           class="button"
           disabled={busy}
-          onclick={() => refresh(true)}>Load more videos</Button
+          onclick={() => refresh(true)}>Load more</Button
         >
       </div>{/if}
   </AccessGate>

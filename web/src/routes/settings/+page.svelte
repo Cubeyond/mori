@@ -5,11 +5,12 @@
   import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
   import { resolve } from '$app/paths';
   import { onDestroy } from 'svelte';
+  import { Check } from '@lucide/svelte';
   import AccessGate from '#lib/components/AccessGate.svelte';
   import BackgroundSettings from '#lib/components/settings/BackgroundSettings.svelte';
   import ThumbnailSettings from '#lib/components/settings/ThumbnailSettings.svelte';
   import PreferenceFeedback from '#lib/components/settings/PreferenceFeedback.svelte';
-  import { themes, parseTheme } from '#lib/features/theme';
+  import { themes, parseTheme, accents } from '#lib/features/theme';
   import {
     preferences,
     savePreferences,
@@ -67,6 +68,38 @@
               </NativeSelect>
               <PreferenceFeedback
                 visible={changed === 'theme' && notice !== ''}
+                {persisted}
+                {notice}
+              />
+            </div>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-content">
+            <span id="accent-label" class="setting-label">Accent</span>
+            <div class="setting-control preference-control">
+              <div
+                class="accent-options"
+                role="group"
+                aria-labelledby="accent-label"
+              >
+                {#each accents as accent (accent)}<button
+                    type="button"
+                    class="accent-swatch"
+                    aria-label={'Accent ' + accent}
+                    aria-pressed={$preferences.accent === accent}
+                    title={accent.charAt(0).toUpperCase() + accent.slice(1)}
+                    style:--swatch={'var(--accent-' + accent + ')'}
+                    style:--swatch-text={'var(--on-' + accent + ')'}
+                    onclick={() => {
+                      update('accent', accent);
+                    }}
+                  >
+                    {#if $preferences.accent === accent}<Check size={15} />{/if}
+                  </button>{/each}
+              </div>
+              <PreferenceFeedback
+                visible={changed === 'accent' && notice !== ''}
                 {persisted}
                 {notice}
               />
@@ -166,5 +199,49 @@
   }
   .preference-control :global([data-slot='native-select-wrapper']) {
     min-width: 0;
+  }
+  .setting-label {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .accent-options {
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+    max-width: 240px;
+  }
+  .accent-swatch {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 36px;
+    border-radius: 7px;
+    position: relative;
+    color: var(--swatch-text);
+    isolation: isolate;
+  }
+  .accent-swatch::before {
+    content: '';
+    position: absolute;
+    inset: 6px 2px;
+    border-radius: 50%;
+    background: var(--swatch);
+    z-index: -1;
+  }
+  .accent-swatch[aria-pressed='true']::after {
+    content: '';
+    position: absolute;
+    inset: 3px -1px;
+    border: 1px solid var(--swatch);
+    border-radius: 50%;
+  }
+  @media (pointer: coarse) {
+    .accent-swatch {
+      min-width: 36px;
+      min-height: 44px;
+    }
+    .accent-options {
+      max-width: none;
+    }
   }
 </style>

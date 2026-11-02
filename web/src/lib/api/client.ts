@@ -16,6 +16,10 @@ export type UploadPolicy = components['schemas']['UploadPolicy'];
 export type StorageInfo = components['schemas']['StorageInfo'];
 /** Write-only storage setup fields generated from Rust DTOs. */
 export type StorageInput = components['schemas']['StorageInput'];
+/** Generated bulk-operation contract shared by gallery and album dialogs. */
+export type BatchAction = components['schemas']['BatchAction'];
+/** Server-discovered unfinished originals, independent of local browser persistence. */
+export type UnfinishedUpload = components['schemas']['UnfinishedUpload'];
 /** Typed Upload contract derived from the generated API or local browser state. */
 export type Upload = components['schemas']['Upload'];
 /** Session metadata used for UI state; the server authorizes every protected request. */

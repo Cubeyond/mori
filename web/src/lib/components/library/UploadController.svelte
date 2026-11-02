@@ -9,6 +9,7 @@
     message,
     type Album,
     type UploadPolicy,
+    type UnfinishedUpload,
   } from '#lib/api/client';
   import type { TransferStatus } from '#lib/features/upload';
   import UploadDialog from './UploadDialog.svelte';
@@ -18,6 +19,8 @@
     albumOpen = $state(false);
   /** Current album metadata is refreshed whenever the picker opens. */
   let albums = $state<Album[]>([]);
+  /** Server reservations remain discoverable across reloads and browsers. */
+  let unfinished = $state<UnfinishedUpload[]>([]);
   /** Album context applies only to fresh drafts; active transfers retain their selection. */
   let initialAlbumId = $state<string | null>(null);
   /** Server settings are authoritative for limits and accepted extensions. */
@@ -28,19 +31,26 @@
   let transfer = $state<TransferStatus | null>(null),
     notice = $state(''),
     error = $state('');
+  /** Late discovery responses cannot restore reservations after cancellation has cleared them. */
+  let refreshVersion = 0;
   /** Refresh only the optional album selector, without touching the active file draft. */
   async function refreshAlbums(): Promise<void> {
+    const version = ++refreshVersion;
     try {
-      const [loadedAlbums, loadedPolicy, storage] = await Promise.all([
-        apiData(api.GET('/v1/admin/albums')),
-        apiData(api.GET('/v1/admin/upload-policy')),
-        apiData(api.GET('/v1/admin/storage')),
-      ]);
+      const [loadedAlbums, loadedPolicy, storage, reservations] =
+        await Promise.all([
+          apiData(api.GET('/v1/admin/albums')),
+          apiData(api.GET('/v1/admin/upload-policy')),
+          apiData(api.GET('/v1/admin/storage')),
+          apiData(api.GET('/v1/admin/uploads')),
+        ]);
+      if (version !== refreshVersion) return;
       albums = loadedAlbums;
+      unfinished = reservations;
       policy = loadedPolicy;
       storageConfigured = storage.configured;
     } catch (failure) {
-      error = message(failure);
+      if (version === refreshVersion) error = message(failure);
     }
   }
   /** Open the existing transfer without creating a second uploader. */
@@ -68,6 +78,7 @@
   }
   onMount(() => {
     window.addEventListener('mori:upload', show);
+    void refreshAlbums();
     return () => {
       window.removeEventListener('mori:upload', show);
     };
@@ -84,6 +95,7 @@
 <UploadDialog
   {open}
   {albums}
+  {unfinished}
   {policy}
   {storageConfigured}
   {initialAlbumId}

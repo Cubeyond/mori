@@ -7,6 +7,7 @@
     Video as VideoIcon,
     Image as ImageIcon,
     Expand,
+    Check,
   } from '@lucide/svelte';
   import type { MediaItem } from '#lib/api/client';
   import { shareValue } from '#lib/features/sharing';
@@ -18,8 +19,10 @@
     video,
     onopen,
     onmanage,
+    selection,
   }: {
     video: MediaItem;
+    selection?: boolean | undefined;
     onopen: () => void;
     onmanage?: ((video: MediaItem) => void) | undefined;
   } = $props();
@@ -44,6 +47,10 @@
   );
   /** Keep the first touch available for share and management controls. */
   function open(event: MouseEvent): void {
+    if (selection !== undefined) {
+      if (status.ready) onopen();
+      return;
+    }
     if ('pointerType' in event && event.pointerType === 'touch' && !revealed) {
       revealed = true;
       return;
@@ -52,10 +59,25 @@
   }
 </script>
 
-<div class="card" class:revealed role="group" aria-label={video.name}>
+<div
+  class="card"
+  class:revealed
+  class:selected={selection === true}
+  class:selecting={selection !== undefined}
+  role="group"
+  aria-label={video.name}
+>
   <button
     class="cover"
-    aria-label={'Open ' + video.kind + ' ' + video.name}
+    aria-label={(selection === undefined
+      ? 'Open '
+      : selection
+        ? 'Deselect '
+        : 'Select ') +
+      video.kind +
+      ' ' +
+      video.name}
+    aria-pressed={selection}
     onclick={open}
     disabled={!status.ready}
   >
@@ -75,42 +97,49 @@
     {#if !status.ready}<span class="processing-status" role="status"
         >{status.label}</span
       >{/if}
-    <span class="play controls"
-      >{#if video.kind === 'image'}<Expand size={24} />{:else}<Play
-          size={24}
-          fill="currentColor"
-          strokeWidth={1.5}
-        />{/if}</span
-    >
+    {#if selection === undefined}<span class="play controls"
+        >{#if video.kind === 'image'}<Expand size={24} />{:else}<Play
+            size={24}
+            fill="currentColor"
+            strokeWidth={1.5}
+          />{/if}</span
+      >
+    {/if}
   </button>
-  <div class="actions controls">
-    {#if shareable}<CopyButton
-        value={shareValue(video, 'media')}
-        label={video.kind === 'image' ? 'Copy image link' : 'Copy video link'}
-        icon="link"
-      />{#if video.kind === 'video'}<CopyButton
-          value={shareValue(video, 'iframe')}
-          label="Copy iframe"
-          icon="code"
-        />{/if}{/if}
-    {#if onmanage}<Button
-        variant="ghost"
-        size="icon"
-        type="submit"
-        class="icon-button"
-        aria-label="Media options"
-        title="Share or edit"
-        disabled={!['ready', 'published', 'failed'].includes(video.state)}
-        onclick={() => {
-          onmanage(video);
-        }}><Ellipsis size={21} /></Button
-      >{/if}
-  </div>
-  <div class="details controls">
-    <span>{status.visibility}</span>{#if video.kind === 'video'}<span
-        >{duration}</span
-      >{/if}
-  </div>
+  {#if selection === undefined}<div class="actions controls">
+      {#if shareable}<CopyButton
+          value={shareValue(video, 'media')}
+          label={video.kind === 'image' ? 'Copy image link' : 'Copy video link'}
+          icon="link"
+        />{#if video.kind === 'video'}<CopyButton
+            value={shareValue(video, 'iframe')}
+            label="Copy iframe"
+            icon="code"
+          />{/if}{/if}
+      {#if onmanage}<Button
+          variant="ghost"
+          size="icon"
+          type="submit"
+          class="icon-button"
+          aria-label="Media options"
+          title="Share or edit"
+          disabled={!['ready', 'published', 'failed'].includes(video.state)}
+          onclick={() => {
+            onmanage(video);
+          }}><Ellipsis size={21} /></Button
+        >{/if}
+    </div>
+    <div class="details controls">
+      <span>{status.visibility}</span>{#if video.kind === 'video'}<span
+          >{duration}</span
+        >{/if}
+    </div>
+  {/if}
+  {#if selection !== undefined && status.ready}<span
+      class="selection-check"
+      aria-hidden="true"
+      >{#if selection}<Check size={15} />{/if}</span
+    >{/if}
 </div>
 
 <style>
@@ -121,6 +150,25 @@
     background: transparent;
     isolation: isolate;
     border-radius: 7px;
+  }
+  .selection-check {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 3;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #fff9;
+    border-radius: 5px;
+    background: #0006;
+    pointer-events: none;
+  }
+  .selected .selection-check {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-foreground);
   }
   .cover {
     display: block;
@@ -166,6 +214,7 @@
     border-radius: inherit;
     pointer-events: none;
   }
+  .card.selected::after,
   .card:has(:global(:focus-visible))::after {
     box-shadow: inset 0 0 0 2px var(--media-ring);
   }

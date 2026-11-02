@@ -180,6 +180,17 @@ pub async fn create(
     Json(input): Json<CreateAlbum>,
 ) -> Result<(StatusCode, Json<Album>)> {
     auth::require(&s, &h, true).await?;
+    let mut tx = s.db.begin_with("BEGIN IMMEDIATE").await?;
+    let album = insert(&mut tx, input).await?;
+    tx.commit().await?;
+    Ok((StatusCode::CREATED, Json(album)))
+}
+
+/// Create a validated collection inside a caller-owned transaction, including batch moves.
+///
+/// # Errors
+/// Returns invalid names, visibility, reserved/duplicate slugs, or database failures.
+pub(crate) async fn insert(db: &mut sqlx::SqliteConnection, input: CreateAlbum) -> Result<Album> {
     if !valid_name(&input.name) {
         return Err(bad("Name must be 1-200 characters"));
     }
@@ -199,9 +210,9 @@ pub async fn create(
         .bind(&album.slug)
         .bind(&album.visibility)
         .bind(album.created_at)
-        .execute(&s.db)
+        .execute(db)
         .await?;
-    Ok((StatusCode::CREATED, Json(album)))
+    Ok(album)
 }
 /// Update album label and page visibility without changing member-video access policies.
 ///

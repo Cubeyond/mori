@@ -10,7 +10,14 @@
   let {
     videos,
     onmanage,
-  }: { videos: MediaItem[]; onmanage?: (video: MediaItem) => void } = $props();
+    selection,
+    onselect,
+  }: {
+    videos: MediaItem[];
+    onmanage?: (video: MediaItem) => void;
+    selection?: ReadonlySet<string> | undefined;
+    onselect?: (id: string) => void;
+  } = $props();
   /** Resize measurements are independent of image or video downloads. */
   let canvas: HTMLDivElement;
   /** Measured content width and currently selected full-frame video. */
@@ -53,7 +60,13 @@
     >
       <MediaCard
         video={placement.video}
-        onopen={() => (selected = placement.video)}
+        onopen={() => {
+          if (selection !== undefined) onselect?.(placement.video.id);
+          else selected = placement.video;
+        }}
+        selection={selection === undefined
+          ? undefined
+          : selection.has(placement.video.id)}
         {onmanage}
       />
     </div>

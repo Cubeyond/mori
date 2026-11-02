@@ -16,6 +16,9 @@ use axum::{
     http::{HeaderMap, StatusCode},
 };
 use serde::{Deserialize, Serialize};
+
+/// Discoverable, retry-safe cancellation of browser-independent multipart sessions.
+pub mod cancellation;
 use sqlx::FromRow;
 use utoipa::ToSchema;
 /// Bounded part size configuration.
@@ -369,54 +372,6 @@ pub async fn complete(
     s.job_wakeup.notify_one();
     Ok((StatusCode::ACCEPTED, Json(Accepted { job_id: Some(job) })))
 }
-/// Stop a resumable multipart upload and persist cancellation progress.
-///
-/// # Errors
-/// Returns authentication, CSRF, state-conflict, S3-abort, or database errors.
-#[utoipa::path(
-    delete,
-    path = "/v1/admin/uploads/{id}",
-    params(("id" = String, Path)),
-    responses((status = 204, description = "Aborted")),
-    security(("session" = [])),
-)]
-pub async fn cancel(
-    State(s): State<AppState>,
-    h: HeaderMap,
-    Path(id): Path<String>,
-) -> Result<StatusCode> {
-    auth::require(&s, &h, true).await?;
-    let r = record(&s, &id).await?;
-    if r.state != "uploading" {
-        return Err(Error(
-            StatusCode::CONFLICT,
-            "Cannot cancel during verification",
-        ));
-    }
-    if sqlx::query("UPDATE uploads SET state='canceling' WHERE id=? AND state='uploading'")
-        .bind(&id)
-        .execute(&s.db)
-        .await?
-        .rows_affected()
-        != 1
-    {
-        return Err(Error(StatusCode::CONFLICT, "Upload changed"));
-    }
-    let v = videos::get(&s, &r.video_id).await?;
-    s.storage
-        .get()?
-        .abort(&v.private_source(), &r.upload_id)
-        .await?;
-    sqlx::query("UPDATE videos SET state='failed' WHERE id=?")
-        .bind(&r.video_id)
-        .execute(&s.db)
-        .await?;
-    sqlx::query("UPDATE uploads SET state='canceled' WHERE id=?")
-        .bind(&id)
-        .execute(&s.db)
-        .await?;
-    Ok(StatusCode::NO_CONTENT)
-}
 /// Serve or store a bounded authenticated JPEG poster.
 ///
 /// # Errors
@@ -436,6 +391,8 @@ pub async fn poster(
     body: Bytes,
 ) -> Result<StatusCode> {
     auth::require(&s, &h, true).await?;
+    // A cancellation must not delete a preview before an in-flight write recreates it.
+    let _operation = s.storage.operation().await;
     let v = videos::get(&s, &id).await?;
     if v.state != "uploading" {
         return Err(Error(

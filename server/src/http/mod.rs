@@ -37,14 +37,19 @@ fn api() -> OpenApiRouter<AppState> {
         .routes(routes!(albums::public))
         .routes(routes!(videos::public))
         .routes(routes!(videos::list))
+        .routes(routes!(videos::batch::apply))
         .routes(routes!(videos::edit, videos::delete))
         .routes(routes!(videos::content))
         .routes(routes!(videos::poster, uploads::poster))
-        .routes(routes!(uploads::create))
+        .routes(routes!(
+            uploads::create,
+            uploads::cancellation::unfinished,
+            uploads::cancellation::cancel_many
+        ))
         .routes(routes!(uploads::policy))
         .routes(routes!(uploads::part))
         .routes(routes!(uploads::complete))
-        .routes(routes!(uploads::cancel, uploads::status))
+        .routes(routes!(uploads::cancellation::cancel, uploads::status))
         .routes(routes!(jobs::status))
 }
 /// Generate a deterministic contract with globally unique operation identifiers.

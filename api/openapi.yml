@@ -251,6 +251,23 @@ paths:
       security:
       - session: []
   /v1/admin/uploads:
+    get:
+      summary: Discover reservations independently of optional local resume fingerprints.
+      description: |-
+        # Errors
+        Returns authentication or database failures.
+      operationId: get_v1_admin_uploads
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UnfinishedUpload'
+      security:
+      - session: []
     post:
       summary: Create a private multipart session with independent random name and URL token.
       description: |-
@@ -270,6 +287,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Upload'
+      security:
+      - csrf: []
+        origin: []
+        session: []
+    delete:
+      summary: Cancel an explicit queue snapshot, retaining successful cancellations if storage requires retry.
+      description: |-
+        # Errors
+        Returns authentication, CSRF, invalid selection, verification conflicts, or storage failures.
+      operationId: delete_v1_admin_uploads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelUploads'
+        required: true
+      responses:
+        '204':
+          description: Uploads cancelled
       security:
       - csrf: []
         origin: []
@@ -297,10 +333,10 @@ paths:
       security:
       - session: []
     delete:
-      summary: Stop a resumable multipart upload and persist cancellation progress.
+      summary: Cancel one original; retrying a cancelled or interrupted cancellation remains safe.
       description: |-
         # Errors
-        Returns authentication, CSRF, state-conflict, S3-abort, or database errors.
+        Returns authentication, CSRF, missing reservation, verification conflicts, or storage failures.
       operationId: delete_v1_admin_uploads_id
       parameters:
       - name: id
@@ -406,6 +442,32 @@ paths:
                 $ref: '#/components/schemas/VideoPage'
       security:
       - session: []
+  /v1/admin/videos/batch:
+    post:
+      summary: Apply exactly one atomic operation to a bounded, authorized selection.
+      description: |-
+        # Errors
+        Returns authentication, CSRF, invalid selection/album, missing records, or state conflicts.
+      operationId: post_v1_admin_videos_batch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchInput'
+        required: true
+      responses:
+        '202':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResult'
+        '409':
+          description: Media changed
+      security:
+      - csrf: []
+        origin: []
+        session: []
   /v1/admin/videos/{id}:
     delete:
       summary: Schedule revision-guarded deletion and confirmed withdrawal of any public copies.
@@ -747,6 +809,95 @@ components:
           items:
             $ref: '#/components/schemas/Video'
           description: Visibility-filtered page of video records.
+    BatchAction:
+      oneOf:
+      - type: object
+        description: Set album membership; a null identifier detaches originals into Gallery.
+        required:
+        - type
+        properties:
+          album_id:
+            type:
+            - string
+            - 'null'
+            description: Existing album identifier or explicit standalone membership.
+          type:
+            type: string
+            enum:
+            - move
+      - type: object
+        description: Validate and create an album in the same transaction as all membership changes.
+        required:
+        - album
+        - type
+        properties:
+          album:
+            $ref: '#/components/schemas/CreateAlbum'
+            description: The normal album creation contract, including a separately validated URL slug.
+          type:
+            type: string
+            enum:
+            - create_album
+      - type: object
+        description: Queue durable deletion of every selected original without touching unselected records.
+        required:
+        - type
+        properties:
+          type:
+            type: string
+            enum:
+            - delete
+      description: Existing or newly created album membership remains independent of media visibility.
+    BatchInput:
+      type: object
+      description: One bounded, explicitly selected set; unknown fields cannot broaden destructive scope.
+      required:
+      - ids
+      - action
+      properties:
+        action:
+          $ref: '#/components/schemas/BatchAction'
+          description: Membership change, new collection, or permanently confirmed deletion.
+        ids:
+          type: array
+          items:
+            type: string
+          description: Unique internal media identifiers, capped at one hundred per operation.
+      additionalProperties: false
+    BatchResult:
+      type: object
+      description: Successful selection changes, optionally containing jobs and a newly created album.
+      required:
+      - affected
+      - job_ids
+      - album
+      properties:
+        affected:
+          type: integer
+          description: Number of distinct selected records changed atomically.
+          minimum: 0
+        album:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/Album'
+            description: New collection created by this operation; absent for existing membership or deletion.
+        job_ids:
+          type: array
+          items:
+            type: string
+          description: Persisted jobs whose completion confirms permanent object removal.
+    CancelUploads:
+      type: object
+      description: A bounded snapshot prevents a cancellation from reaching newly started unrelated sessions.
+      required:
+      - ids
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          description: Exact multipart reservations explicitly cancelled by the administrator.
+      additionalProperties: false
     ConnectionCheck:
       type: object
       description: Successful S3 write/read/delete probe, independent of `CloudFront` setup.
@@ -1060,6 +1211,34 @@ components:
       - unconfigured
       - amazon_s3
       - test
+    UnfinishedUpload:
+      type: object
+      description: Non-secret queue metadata remains available after browser storage has been cleared.
+      required:
+      - id
+      - video_id
+      - album_id
+      - name
+      - size
+      properties:
+        album_id:
+          type:
+          - string
+          - 'null'
+          description: Album whose deletion may be blocked by this upload.
+        id:
+          type: string
+          description: Multipart reservation identity; no AWS upload credentials are exposed.
+        name:
+          type: string
+          description: Server-assigned display hash for the unfinished original.
+        size:
+          type: integer
+          format: int64
+          description: Expected source length in bytes.
+        video_id:
+          type: string
+          description: Media record associated with this unfinished original.
     Upload:
       type: object
       description: Resumable upload details with the server-assigned display hash.

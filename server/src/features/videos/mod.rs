@@ -1,5 +1,7 @@
 //! Video metadata, stable sharing links, and persisted visibility transitions.
 
+/// Bounded atomic media membership changes and durable grouped deletion.
+pub mod batch;
 /// Image/video categories and original-file delivery types.
 mod format;
 /// Shared video contracts and naming conventions.
