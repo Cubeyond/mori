@@ -10,6 +10,7 @@ import type { MediaMetadata, UploadPreview } from './upload-preview';
 export function prepareImagePreview(
   file: File,
   signal: AbortSignal,
+  maximum = 1280,
 ): UploadPreview {
   const metadata = { width: 0, height: 0, duration: 0 };
   const details = Promise.withResolvers<MediaMetadata>();
@@ -53,6 +54,7 @@ export function prepareImagePreview(
             decoded.image,
             metadata.width,
             metadata.height,
+            maximum,
           ),
         );
       })

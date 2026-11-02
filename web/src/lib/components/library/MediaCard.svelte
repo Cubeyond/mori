@@ -120,6 +120,7 @@
     overflow: hidden;
     background: transparent;
     isolation: isolate;
+    border-radius: 5px;
   }
   .cover {
     display: block;
@@ -157,9 +158,21 @@
     text-shadow: 0 1px 3px #000;
     pointer-events: none;
   }
-  .card:focus-within {
-    outline: 2px solid #a5b4fc;
-    outline-offset: 3px;
+  .card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  .card:has(:global(:focus-visible))::after {
+    box-shadow: inset 0 0 0 2px #a5b4fc;
+  }
+  @media (hover: hover) {
+    .card:hover::after {
+      box-shadow: inset 0 0 0 2px #a5b4fc;
+    }
   }
   .controls {
     opacity: 0;

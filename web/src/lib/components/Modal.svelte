@@ -11,14 +11,16 @@
     title,
     onclose,
     children,
-    wide = false,
+    maxWidth = 520,
+    hideScrollbar = false,
     closeLabel = 'Close dialog',
   }: {
     open: boolean;
     title: string;
     onclose: () => void;
     children: Snippet;
-    wide?: boolean;
+    maxWidth?: number;
+    hideScrollbar?: boolean;
     closeLabel?: string;
   } = $props();
   /** Native top-layer element retains the original trigger for focus restoration. */
@@ -48,7 +50,8 @@
   bind:this={dialog}
   aria-label={title}
   class="cn-dialog-content"
-  class:wide
+  class:hide-scrollbar={hideScrollbar}
+  style:--dialog-width={String(maxWidth) + 'px'}
   oncancel={(event) => {
     event.preventDefault();
     onclose();
@@ -81,8 +84,8 @@
   dialog.cn-dialog-content {
     padding: 0;
     margin: auto;
-    width: min(520px, calc(100% - 32px));
-    max-width: min(520px, calc(100% - 32px));
+    width: min(var(--dialog-width), calc(100% - 32px));
+    max-width: min(var(--dialog-width), calc(100% - 32px));
     max-height: calc(100svh - 40px);
     overflow: auto;
     color: var(--color-paper);
@@ -91,9 +94,11 @@
     border-radius: var(--radius-xl);
     box-shadow: 0 24px 96px #0008;
   }
-  dialog.wide {
-    width: min(720px, calc(100% - 32px));
-    max-width: min(720px, calc(100% - 32px));
+  .hide-scrollbar {
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
   }
   dialog::backdrop {
     background: var(--dialog-backdrop, #070808b8);

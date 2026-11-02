@@ -1,14 +1,19 @@
 <script lang="ts">
-  import Button from '#lib/components/ui/button/button.svelte';
-  import NativeSelect from '#lib/components/ui/native-select/native-select.svelte';
-  /** Persistent upload controller; closing its dialog does not interrupt a transfer. */
+  /** The editable local queue survives dismissal and stays separate from one active transfer. */
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { preferences } from '#lib/features/preferences';
-  import { Images, Check, ArrowUp, Pause, FolderCog } from '@lucide/svelte';
+  import { Images, ArrowUp, Pause, FolderCog, Upload } from '@lucide/svelte';
+  import Button from '#lib/components/ui/button/button.svelte';
+  import NativeSelect from '#lib/components/ui/native-select/native-select.svelte';
   import Modal from '../Modal.svelte';
+  import UploadSelection from './UploadSelection.svelte';
+  import { preferences } from '#lib/features/preferences';
   import type { Album, UploadPolicy } from '#lib/api/client';
   import { message } from '#lib/api/client';
+  import {
+    appendUploadFiles,
+    uploadKind,
+  } from '#lib/features/upload-selection';
   import { runUploadQueue } from '#lib/features/upload-queue';
   import {
     uploadVideo,
@@ -17,8 +22,7 @@
     type PendingUpload,
     type TransferStatus,
   } from '#lib/features/upload';
-
-  /** Controlled dialog state and page callbacks; authorization remains server-enforced. */
+  /** The persistent controller owns navigation, storage discovery and collection refreshes. */
   let {
     open,
     albums,
@@ -34,9 +38,7 @@
     open: boolean;
     albums: Album[];
     policy: UploadPolicy | null;
-    /** Unknown during setup discovery; false leads to the server storage settings. */
     storageConfigured: boolean | null;
-    /** Fresh album-page uploads start in this collection without replacing an existing draft. */
     initialAlbumId: string | null;
     onclose: () => void;
     oncomplete: () => Promise<void>;
@@ -44,84 +46,78 @@
     onnotice: (notice: string) => void;
     onalbums: () => void;
   } = $props();
-  /** Local file selection is never used as the video's server-generated display name. */
-  let files = $state<File[]>([]);
-  /** The first remaining entry is also the file used when resuming a paused session. */
+  /** Original File objects remain intact while picker additions replace only the queue array. */
+  let files = $state<File[]>([]),
+    activeFile = $state<File | null>(null);
+  /** Resume always targets the first remaining original file. */
   const file = $derived(files[0] ?? null);
-  /** Optional explicit album membership and safe default access policy. */
+  /** Album and visibility are fixed while a resumable or active transfer owns them. */
   let albumId = $state(''),
     visibility = $state('private');
+  /** Saved session metadata contains no media bytes or AWS credentials. */
+  let pending = $state<PendingUpload | null>(null),
+    busy = $state(false);
+  /** Progress belongs to the modal or its background pill, never the gallery layout. */
+  let progress = $state(0),
+    phase = $state(''),
+    error = $state(''),
+    dragging = $state(false);
+  /** Pausing affects transfer rather than ordinary modal dismissal. */
+  let controller: AbortController | undefined;
   $effect(() => {
     if (open && file === null && pending === null && !busy) {
       albumId = initialAlbumId ?? '';
       visibility = $preferences.uploadVisibility;
     }
   });
-  /** Current resumable session and transfer state survive dialog dismissal. */
-  let pending = $state<PendingUpload | null>(null),
-    busy = $state(false);
-  /** Progress and errors belong to this transfer rather than the gallery's flow. */
-  let progress = $state(0),
-    phase = $state(''),
-    error = $state('');
-  /** Cancellation is explicit; ordinary dialog dismissal leaves this controller running. */
-  let controller: AbortController | undefined;
-  /** File field is reset after successful transfer so the same local file can be selected again. */
-  let input = $state<HTMLInputElement>();
-  /** Drag appearance is limited to the native file input's drop target. */
-  let dragging = $state(false);
   onMount(() => {
     pending = savedUpload();
     if (pending !== null)
       onstatus({ progress: 0, phase: 'Resume upload', paused: true });
     return () => controller?.abort();
   });
-
-  /** Validate the selected local file before opening a multipart upload session. */
+  /** Invalid additions preserve the existing selection instead of silently clearing it. */
   function selectFiles(selected: File[]): void {
+    if (selected.length === 0) return;
     error = '';
-    if (selected.length > 0 && policy === null) {
-      error = 'Upload settings are loading.';
-    } else if (policy !== null) {
-      for (const file of selected) {
-        const extension = file.name.split('.').at(-1)?.toLowerCase() ?? '';
-        const image = policy.image_extensions.includes(extension);
-        const limit = image
-          ? policy.max_image_upload_bytes
-          : policy.max_upload_bytes;
-        if (!policy.allowed_extensions.includes(extension)) {
-          error = 'Choose an enabled image or video format.';
-          break;
-        }
-        if (file.size < 16 || file.size > limit) {
-          error =
-            (image ? 'Image' : 'Video') +
-            ' exceeds the ' +
-            (limit / 1_048_576).toLocaleString(undefined, {
-              maximumFractionDigits: 1,
-            }) +
-            ' MiB upload limit.';
-          break;
-        }
-      }
+    try {
+      if (policy === null) throw new Error('Upload settings are loading.');
+      files = appendUploadFiles(files, selected, policy);
+    } catch (failure) {
+      error = message(failure);
     }
-    if (error) {
-      files = [];
-      if (input !== undefined) input.value = '';
-      return;
-    }
-    files = selected;
   }
-  /** Accept a dropped file using the same validation and transfer path as the file picker. */
-  function dropFile(event: DragEvent): void {
+  /** Picker and drop gestures append through exactly the same validation path. */
+  function dropFiles(event: DragEvent): void {
     event.preventDefault();
     dragging = false;
-    if (!busy) selectFiles(Array.from(event.dataTransfer?.files ?? []));
+    selectFiles(Array.from(event.dataTransfer?.files ?? []));
   }
-  /** Upload checksummed parts and keep the transfer alive when the modal closes. */
+  /** Removing a paused first file first cancels its multipart reservation; successors stay intact. */
+  async function removeFile(selected: File): Promise<void> {
+    if (selected === activeFile) return;
+    try {
+      if (selected === files[0] && pending !== null) {
+        await cancelUpload();
+        pending = null;
+      }
+      files = files.filter((entry) => entry !== selected);
+      error = '';
+      if (!busy)
+        onstatus(
+          files.length === 0
+            ? null
+            : { progress: 0, phase: 'Continue uploads', paused: true },
+        );
+    } catch (failure) {
+      error = message(failure);
+    }
+  }
+  /** Consume a live queue so appending or removing waiting files cannot shift the active upload. */
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     if (file === null || policy === null || busy) return;
+    const transferPolicy = policy;
     busy = true;
     error = '';
     progress = 0;
@@ -129,30 +125,27 @@
     onstatus({ progress, phase });
     controller = new AbortController();
     const signal = controller.signal;
-    const count = files.length;
     try {
-      await runUploadQueue(
-        files,
-        async (entry, position, total) => {
+      const completed = await runUploadQueue(
+        () => files,
+        async (entry, position) => {
+          activeFile = entry;
           await uploadVideo(
             entry,
             albumId || null,
             visibility,
             (value, label) => {
               progress = value;
+              const total = position - 1 + files.length;
               phase =
                 total > 1
                   ? `${String(position)} of ${String(total)} · ${label}`
                   : label;
-              onstatus({ progress: value, phase });
+              onstatus({ progress, phase });
             },
             signal,
             pending,
-            policy.image_extensions.includes(
-              entry.name.split('.').at(-1)?.toLowerCase() ?? '',
-            )
-              ? 'image'
-              : 'video',
+            uploadKind(entry, transferPolicy),
           );
           pending = null;
           void oncomplete().catch((failure: unknown) => {
@@ -161,10 +154,11 @@
         },
         signal,
       );
-      if (input !== undefined) input.value = '';
       onclose();
       onnotice(
-        count === 1 ? 'Media uploaded.' : `${String(count)} files uploaded.`,
+        completed === 1
+          ? 'Media uploaded.'
+          : `${String(completed)} files uploaded.`,
       );
       await oncomplete();
     } catch (failure) {
@@ -176,6 +170,7 @@
       pending = savedUpload();
       if (!open) onnotice('Upload interrupted. Open Upload to continue.');
     } finally {
+      activeFile = null;
       busy = false;
       onstatus(
         pending === null && files.length === 0
@@ -188,13 +183,17 @@
       );
     }
   }
-  /** Explicitly discard the saved session rather than conflating close with cancel. */
+  /** Discard the paused multipart session without discarding unrelated queued originals. */
   async function discard(): Promise<void> {
     try {
       await cancelUpload();
       pending = null;
       files.shift();
-      onstatus(null);
+      onstatus(
+        files.length === 0
+          ? null
+          : { progress: 0, phase: 'Continue uploads', paused: true },
+      );
       error = '';
       await oncomplete();
     } catch (failure) {
@@ -203,11 +202,18 @@
   }
 </script>
 
-<Modal {open} title="Upload media" {onclose} closeLabel="Close upload">
-  {#if storageConfigured === null}
-    <p class="storage-setup muted" role="status">Loading upload settings…</p>
-  {:else if !storageConfigured}
-    <div class="storage-setup">
+<Modal
+  {open}
+  title="Upload media"
+  {onclose}
+  closeLabel="Close upload"
+  maxWidth={600}
+  hideScrollbar
+>
+  {#if storageConfigured === null}<p class="storage-setup muted" role="status">
+      Loading upload settings…
+    </p>
+  {:else if !storageConfigured}<div class="storage-setup">
       <p>Connect Amazon S3 to start uploading.</p>
       <Button
         href={resolve('/settings/storage')}
@@ -215,12 +221,16 @@
         onclick={onclose}>Set up storage</Button
       >
     </div>
-  {:else}
-    <form onsubmit={submit}>
-      {#if pending !== null}<div class="resume">
-          <p>Continue your unfinished upload</p>
-          <span>Choose the same original file to resume.</span>
-          <Button
+  {:else}<form onsubmit={submit}>
+      {#if pending !== null && !busy}<div class="resume">
+          <p>
+            {file === null
+              ? 'Continue your unfinished upload'
+              : 'Upload paused'}
+          </p>
+          {#if file === null}<span
+              >Choose the same original file to resume.</span
+            >{/if}<Button
             variant="ghost"
             type="button"
             class="text-action"
@@ -228,51 +238,40 @@
             onclick={discard}>Discard upload</Button
           >
         </div>{/if}
-      <label class="drop-zone" class:dragging class:selected={file !== null}>
+      {#if files.length > 0 && policy !== null}<UploadSelection
+          {files}
+          {policy}
+          {activeFile}
+          onremove={(selected: File) => {
+            void removeFile(selected);
+          }}
+        />{/if}
+      <label class="drop-zone" class:compact={files.length > 0} class:dragging>
         <input
-          bind:this={input}
           type="file"
           multiple
           accept={policy?.allowed_extensions
             .map((extension) => '.' + extension)
-            .join(',') ?? 'video/*'}
+            .join(',') ?? 'image/*,video/*'}
           aria-label="Media files"
-          disabled={busy || policy === null}
+          disabled={policy === null}
           onchange={(event) => {
-            selectFiles(Array.from(event.currentTarget.files ?? []));
+            const selected = Array.from(event.currentTarget.files ?? []);
+            event.currentTarget.value = '';
+            selectFiles(selected);
           }}
           ondragover={(event) => {
             event.preventDefault();
             dragging = true;
           }}
           ondragleave={() => (dragging = false)}
-          ondrop={dropFile}
+          ondrop={dropFiles}
         />
-        {#if file !== null}<Check size={25} strokeWidth={1.25} />{:else}<Images
-            size={28}
-            strokeWidth={1.25}
-          />{/if}
-        <strong
-          >{busy
-            ? file?.name
-            : files.length > 1
-              ? `${String(files.length)} files selected`
-              : (file?.name ?? 'Drop images or videos here')}</strong
-        >
-        <span
-          >{file !== null
-            ? `${(files.reduce((bytes, file) => bytes + file.size, 0) / 1_048_576).toFixed(1)} MiB · ${busy ? 'Uploading in order' : 'Click to change selection'}`
-            : 'or click to choose files'}</span
-        >
-        <small
-          >{policy === null
-            ? 'Loading upload settings…'
-            : 'Images ' +
-              String(policy.max_image_upload_bytes / 1_048_576) +
-              ' MiB · Videos ' +
-              String(policy.max_upload_bytes / 1_000_000_000) +
-              ' GB'}</small
-        >
+        {#if files.length > 0}<Upload size={20} /><span
+            >Drop more files here</span
+          >
+        {:else}<Images size={28} /><strong>Drop images or videos here</strong
+          ><span>or click to choose files</span>{/if}
       </label>
       <div class="options">
         <div class="field">
@@ -311,7 +310,15 @@
           >
         </div>
       </div>
-
+      <p class="limits">
+        {policy === null
+          ? 'Loading upload settings…'
+          : 'Images ' +
+            String(policy.max_image_upload_bytes / 1_048_576) +
+            ' MiB · Videos ' +
+            String(policy.max_upload_bytes / 1_000_000_000) +
+            ' GB'}
+      </p>
       {#if error}<p class="error mb-4" role="alert">{error}</p>{/if}
       {#if busy}<div class="transfer" role="status">
           <div><span>{phase}</span><span>{progress}%</span></div>
@@ -339,11 +346,14 @@
             disabled={file === null || policy === null}
             ><ArrowUp size={17} />{pending !== null
               ? 'Resume upload'
-              : 'Upload media'}</Button
+              : files.length > 0
+                ? 'Upload ' +
+                  String(files.length) +
+                  (files.length === 1 ? ' file' : ' files')
+                : 'Upload media'}</Button
           >{/if}
       </footer>
-    </form>
-  {/if}
+    </form>{/if}
 </Modal>
 
 <style>
@@ -364,17 +374,22 @@
     justify-content: center;
     gap: 10px;
     border: 1px dashed #ffffff38;
-    background: #0c0d17;
+    background: #0c0d1755;
     border-radius: 5px;
     text-align: center;
     padding: 24px;
-    margin-bottom: 24px;
+    margin-bottom: 18px;
+  }
+  .drop-zone.compact {
+    min-height: 48px;
+    flex-direction: row;
+    padding: 10px 16px;
   }
   .drop-zone:hover,
   .dragging,
   .drop-zone:focus-within {
     border-color: #a5b4fc;
-    background: #181926;
+    background: #18192699;
   }
   .drop-zone:focus-within {
     outline: 2px solid #a5b4fc;
@@ -394,34 +409,27 @@
     color: #ebe8df;
     font-size: 15px;
     font-weight: 400;
-    overflow-wrap: anywhere;
   }
-  .drop-zone span,
-  .drop-zone small {
-    font-size: 13px;
-    color: #a7a79e;
-  }
-  .drop-zone small {
-    margin-top: 5px;
-    font-size: 12px;
-    color: #777a72;
+  .drop-zone span {
+    font-size: 14px;
+    color: #a7a7b2;
   }
   .options {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 14px;
+    gap: 16px;
   }
   .album-label {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 40px;
+    height: 36px;
   }
   .album-action {
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     margin: 0;
     color: #a9ad9e;
   }
@@ -430,11 +438,15 @@
     margin: 0;
   }
   .optional {
-    color: #85877f;
+    color: #858593;
     font-size: 12px;
     margin-left: 4px;
   }
-
+  .limits {
+    font-size: 12px;
+    color: #92929e;
+    margin: 0 0 18px;
+  }
   footer {
     display: flex;
     justify-content: space-between;
@@ -442,9 +454,9 @@
     gap: 12px;
   }
   .resume {
-    padding: 14px;
+    padding: 12px;
     border: 1px solid #ffffff1f;
-    border-radius: 4px;
+    border-radius: 5px;
     margin-bottom: 16px;
     font-size: 14px;
   }
@@ -455,11 +467,12 @@
     font-size: 13px;
   }
   .transfer {
-    margin-bottom: 22px;
+    margin-bottom: 18px;
   }
   .transfer div {
     display: flex;
     justify-content: space-between;
+    gap: 12px;
     font-size: 13px;
     margin-bottom: 8px;
   }
@@ -471,13 +484,17 @@
   }
   .transfer p {
     font-size: 12px;
-    color: #a3a59b;
-    margin-top: 10px;
+    color: #a3a3b0;
+    margin-top: 8px;
   }
   @media (max-width: 380px) {
-    .options {
-      grid-template-columns: 1fr;
-      gap: 0;
+    :global(#upload-album),
+    :global(#upload-visibility) {
+      font-size: 14px;
+      padding-right: 30px;
+    }
+    .optional {
+      display: none;
     }
   }
 </style>

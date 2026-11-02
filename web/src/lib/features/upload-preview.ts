@@ -23,8 +23,9 @@ export function prepareUploadPreview(
   file: File,
   signal: AbortSignal,
   kind: 'image' | 'video' = 'video',
+  maximum = 1280,
 ): UploadPreview {
-  if (kind === 'image') return prepareImagePreview(file, signal);
+  if (kind === 'image') return prepareImagePreview(file, signal, maximum);
   const video = document.createElement('video');
   const url = URL.createObjectURL(file);
   const metadata = { width: 0, height: 0, duration: 0 };
@@ -73,7 +74,11 @@ export function prepareUploadPreview(
     )
       return;
     const canvas = document.createElement('canvas');
-    const scale = Math.min(1, 1280 / metadata.width, 1280 / metadata.height);
+    const scale = Math.min(
+      1,
+      maximum / metadata.width,
+      maximum / metadata.height,
+    );
     canvas.width = Math.round(metadata.width * scale);
     canvas.height = Math.round(metadata.height * scale);
     const context = canvas.getContext('2d');

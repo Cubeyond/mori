@@ -11,7 +11,7 @@ void test('a batch is sequential and resumes at the failed file', async () => {
   let active = 0;
   await assert.rejects(
     runUploadQueue(
-      files,
+      () => files,
       async (file) => {
         assert.equal(++active, 1);
         await Promise.resolve();
@@ -28,7 +28,7 @@ void test('a batch is sequential and resumes at the failed file', async () => {
     ['second', 'third'],
   );
   await runUploadQueue(
-    files,
+    () => files,
     (file) => {
       transferred.push(file.name);
       return Promise.resolve();
@@ -44,7 +44,7 @@ void test('pausing a batch does not start or discard the next file', async () =>
   const controller = new AbortController();
   await assert.rejects(
     runUploadQueue(
-      files,
+      () => files,
       () => {
         controller.abort();
         return Promise.resolve();
@@ -57,4 +57,31 @@ void test('pausing a batch does not start or discard the next file', async () =>
     files.map((file) => file.name),
     ['second'],
   );
+});
+
+void test('later additions and removals affect only waiting entries during an active transfer', async () => {
+  const first = new File(['video'], 'first');
+  const removed = new File(['video'], 'removed');
+  const added = new File(['image'], 'added');
+  let files = [first, removed];
+  const started = Promise.withResolvers<undefined>();
+  const finish = Promise.withResolvers<undefined>();
+  const transferred: string[] = [];
+  const pending = runUploadQueue(
+    () => files,
+    async (file) => {
+      transferred.push(file.name);
+      if (file === first) {
+        started.resolve(undefined);
+        await finish.promise;
+      }
+    },
+    new AbortController().signal,
+  );
+  await started.promise;
+  files = [first, added];
+  finish.resolve(undefined);
+  assert.equal(await pending, 2);
+  assert.deepEqual(transferred, ['first', 'added']);
+  assert.deepEqual(files, []);
 });
