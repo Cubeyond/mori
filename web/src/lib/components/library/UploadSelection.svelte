@@ -129,8 +129,8 @@
     font-variant-numeric: tabular-nums;
   }
   nav button {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     display: grid;
     place-items: center;
     border-radius: 5px;
@@ -143,7 +143,7 @@
     opacity: 0.3;
   }
   .selection-viewport {
-    --page-height: clamp(176px, calc(100svh - 550px), 384px);
+    --page-height: clamp(240px, 32dvh, 320px);
     --rows: 2;
     height: var(--page-height);
     overflow-y: auto;
@@ -173,12 +173,18 @@
     scroll-snap-align: start;
     scroll-snap-stop: always;
   }
+  @media (pointer: coarse) {
+    nav button {
+      width: 44px;
+      height: 44px;
+    }
+  }
   @media (max-width: 480px) {
     .summary {
       flex-direction: column;
       align-items: flex-start;
       gap: 0;
-      font-size: 13px;
+      font-size: 14px;
     }
     .total-size {
       font-size: 12px;

@@ -73,9 +73,9 @@
     <Button
       variant="ghost"
       size="icon"
-      class="icon-button"
+      class="icon-button navigation-close"
       aria-label="Close navigation"
-      onclick={onclose}><X size={20} /></Button
+      onclick={onclose}><X class="size-6" size={24} /></Button
     >
   </header>
   <div class="drawer-content">
@@ -111,6 +111,10 @@
     justify-content: space-between;
     padding: 0 16px 0 20px;
     border-bottom: 1px solid var(--border);
+  }
+  header :global(.navigation-close) {
+    width: 48px;
+    height: 48px;
   }
   .drawer-content {
     padding: 28px 20px max(28px, env(safe-area-inset-bottom));

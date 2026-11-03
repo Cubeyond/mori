@@ -319,4 +319,15 @@
       gap: 0;
     }
   }
+  @media (max-width: 480px) {
+    footer {
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 8px;
+    }
+    footer :global(button) {
+      width: 100%;
+      min-height: 44px;
+    }
+  }
 </style>

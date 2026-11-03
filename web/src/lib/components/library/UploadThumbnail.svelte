@@ -203,20 +203,20 @@
   }
   @media (max-width: 480px) {
     .file-info {
-      height: 35px;
+      height: 38px;
     }
     .filename {
-      font-size: 13px;
-      line-height: 18px;
+      font-size: 14px;
+      line-height: 20px;
     }
     .metadata {
-      font-size: 11px;
+      font-size: 12px;
     }
   }
   @media (pointer: coarse) {
     .remove-file {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
     }
   }
 </style>

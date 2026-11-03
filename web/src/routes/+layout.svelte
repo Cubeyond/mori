@@ -48,7 +48,7 @@
   <a class="skip-link" href="#page-content">Skip to content</a>
   <header class="topbar">
     <div class="header-inner">
-      <div class="brand">
+      <div class="brand" class:has-navigation={dashboard}>
         {#if dashboard}<Button
             variant="ghost"
             size="icon"
@@ -60,9 +60,9 @@
             aria-controls="mobile-navigation"
             onclick={() => (navigationOpen = true)}
           >
-            <Menu size={20} />
+            <Menu class="size-6" size={24} strokeWidth={2.2} />
           </Button>{/if}
-        <Wordmark />
+        <span class="header-wordmark"><Wordmark /></span>
       </div>
       <nav aria-label="Account navigation">
         <div class="account-slot">
@@ -174,10 +174,21 @@
       height: 56px;
     }
     .header-inner {
-      padding: 0 20px;
+      padding: 0 12px;
     }
-    :global(.navigation-toggle) {
+    .brand :global(.navigation-toggle) {
       display: inline-flex;
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      min-height: 48px;
+    }
+    .has-navigation .header-wordmark {
+      display: none;
+    }
+    :global(.navigation-toggle svg) {
+      width: 24px;
+      height: 24px;
     }
     .workspace,
     .workspace.dashboard {

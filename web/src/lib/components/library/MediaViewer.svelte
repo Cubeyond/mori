@@ -9,10 +9,6 @@
     Minus,
     ChevronLeft,
     ChevronRight,
-    ArrowLeft,
-    ArrowRight,
-    ArrowUp,
-    ArrowDown,
     RotateCcw,
   } from '@lucide/svelte';
   import type { MediaItem } from '#lib/api/client';
@@ -45,6 +41,39 @@
   let exitedAt = Number.NEGATIVE_INFINITY;
   let notice = $state(''),
     expanded = $state(false);
+  /** Fullscreen hides chrome until pointer, touch, or keyboard interaction requests it. */
+  let toolbarVisible = $state(true);
+  let toolbarTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Only one idle timer can hide the fullscreen toolbar. */
+  function scheduleHide(delay = 600): void {
+    if (toolbarTimer !== undefined) clearTimeout(toolbarTimer);
+    toolbarTimer = setTimeout(() => {
+      toolbarVisible = false;
+      toolbarTimer = undefined;
+    }, delay);
+  }
+  /** The top edge reveals controls without reserving space above the media. */
+  function pointer(event: PointerEvent): void {
+    if (!expanded || event.pointerType === 'touch') return;
+    if (event.clientY - frame.getBoundingClientRect().top <= 72) {
+      toolbarVisible = true;
+      if (toolbarTimer !== undefined) {
+        clearTimeout(toolbarTimer);
+        toolbarTimer = undefined;
+      }
+    } else if (toolbarVisible && toolbarTimer === undefined) scheduleHide();
+  }
+  /** A stationary touch first reveals hidden chrome; drags and pinches never reach this callback. */
+  function touch(event: MouseEvent): void {
+    if (!expanded || !('pointerType' in event) || event.pointerType !== 'touch')
+      return;
+    if (!toolbarVisible) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    toolbarVisible = true;
+    scheduleHide(2500);
+  }
   /** Intrinsic sizes may be corrected by the browser for legacy metadata. */
   let width = $state(16),
     height = $state(9);
@@ -61,9 +90,12 @@
   async function fullscreen(): Promise<void> {
     try {
       if (document.fullscreenElement !== null) await document.exitFullscreen();
-      else if (typeof frame.requestFullscreen === 'function')
+      else if (typeof frame.requestFullscreen === 'function') {
         await frame.requestFullscreen();
-      else {
+        frame.focus({ preventScroll: true });
+        toolbarVisible = true;
+        scheduleHide(1200);
+      } else {
         const native = frame.querySelector('video');
         const safari:
           (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null =
@@ -131,11 +163,19 @@
       const current = document.fullscreenElement === frame;
       if (expanded && !current) exitedAt = performance.now();
       expanded = current;
+      if (!current) {
+        toolbarVisible = true;
+        if (toolbarTimer !== undefined) {
+          clearTimeout(toolbarTimer);
+          toolbarTimer = undefined;
+        }
+      }
     };
     dialog.showModal();
     document.addEventListener('fullscreenchange', changed);
     return () => {
       document.removeEventListener('fullscreenchange', changed);
+      if (toolbarTimer !== undefined) clearTimeout(toolbarTimer);
       dialog.close();
       unlock();
       if (opener instanceof HTMLElement && opener.isConnected)
@@ -151,7 +191,16 @@
   oncancel={cancel}
   onkeydown={keyboard}
 >
-  <div class="viewer" bind:this={frame}>
+  <div
+    class="viewer"
+    role="group"
+    aria-label="Media preview"
+    class:is-fullscreen={expanded}
+    class:toolbar-visible={toolbarVisible}
+    bind:this={frame}
+    tabindex="-1"
+    onpointermove={pointer}
+  >
     <header class="viewer-toolbar">
       <div class="zoom-tools" role="group" aria-label="Zoom">
         <button
@@ -212,12 +261,14 @@
           bind:view
           bind:this={zoom}
           doubleTap={video.kind === 'image'}
+          ontap={touch}
         >
           {#snippet children(transform)}
             {#if video.kind === 'image'}
               <img
                 src={video.media_url}
-                alt={video.name}
+                alt="Shared media"
+                class:decoded={!loading && !failed}
                 draggable="false"
                 decoding="async"
                 referrerpolicy="no-referrer"
@@ -264,45 +315,11 @@
           aria-label="Next media"
           onclick={onnext}><ChevronRight size={24} /></button
         >{/if}
-      {#if view.scale > 1}<div
-          class="pan-tools"
-          role="group"
-          aria-label="Pan zoomed media"
-        >
-          <button
-            type="button"
-            aria-label="Pan left"
-            onclick={() => {
-              zoom?.pan(100, 0);
-            }}><ArrowLeft size={18} /></button
-          >
-          <button
-            type="button"
-            aria-label="Pan up"
-            onclick={() => {
-              zoom?.pan(0, 100);
-            }}><ArrowUp size={18} /></button
-          >
-          <button
-            type="button"
-            aria-label="Pan down"
-            onclick={() => {
-              zoom?.pan(0, -100);
-            }}><ArrowDown size={18} /></button
-          >
-          <button
-            type="button"
-            aria-label="Pan right"
-            onclick={() => {
-              zoom?.pan(-100, 0);
-            }}><ArrowRight size={18} /></button
-          >
-        </div>{/if}
     </div>
     <p id="viewer-help" class="sr-only">
-      Scroll or pinch to zoom. Drag to pan, or use the pan buttons. Use plus,
-      minus, or zero to zoom and fit. Arrow keys browse media at fit, or pan
-      when zoomed. Escape closes the viewer.
+      Scroll or pinch to zoom. Drag to pan. Use plus, minus, or zero to zoom and
+      fit. Arrow keys browse media at fit, or pan when zoomed. Escape closes the
+      viewer.
     </p>
     {#if notice}<p class="notice" role="status">{notice}</p>{/if}
   </div>
@@ -331,6 +348,30 @@
     height: 100%;
     background: #101113;
     color: #f5f5f5;
+  }
+  .viewer:focus {
+    outline: none;
+  }
+  .is-fullscreen .viewer-toolbar {
+    position: absolute;
+    inset: 0 0 auto;
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform 150ms cubic-bezier(0.2, 0, 0.38, 0.9),
+      opacity 150ms ease-out;
+  }
+  .is-fullscreen.toolbar-visible .viewer-toolbar,
+  .is-fullscreen .viewer-toolbar:has(:focus-visible) {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .is-fullscreen .viewer-toolbar {
+      transition: none;
+    }
   }
   .viewer-toolbar {
     display: flex;
@@ -404,7 +445,11 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
+    opacity: 0;
     transform-origin: center;
+  }
+  img.decoded {
+    opacity: 1;
   }
   .navigate {
     position: absolute;
@@ -418,17 +463,6 @@
   }
   .next {
     right: max(12px, env(safe-area-inset-right));
-  }
-  .pan-tools {
-    position: absolute;
-    bottom: max(72px, env(safe-area-inset-bottom));
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    background: #1b1d20;
-    border: 1px solid #ffffff20;
-    border-radius: 9px;
-    z-index: 3;
   }
   .loading {
     position: absolute;
@@ -467,6 +501,9 @@
     font-size: 14px;
   }
   @media (max-width: 480px) {
+    .is-fullscreen .position {
+      display: none;
+    }
     .position {
       position: absolute;
       bottom: max(14px, env(safe-area-inset-bottom));

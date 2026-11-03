@@ -194,8 +194,8 @@
     grid-area: description;
     align-self: start;
     margin: 0;
-    font-size: 17px;
-    line-height: 26px;
+    font-size: 1.125rem;
+    line-height: 28px;
     color: var(--muted-foreground);
     white-space: pre-line;
   }
@@ -310,8 +310,8 @@
       line-height: 30px;
     }
     p {
-      font-size: 16px;
-      line-height: 25px;
+      font-size: 1.0625rem;
+      line-height: 26px;
     }
   }
   @media (pointer: coarse) {

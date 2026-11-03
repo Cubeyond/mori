@@ -224,7 +224,9 @@
   }
   .controls {
     opacity: 0;
-    transition: opacity 140ms;
+    transition:
+      opacity 150ms cubic-bezier(0.2, 0, 0.38, 0.9),
+      translate 150ms cubic-bezier(0.2, 0, 0.38, 0.9);
     pointer-events: none;
   }
   .card:hover .controls,
@@ -241,7 +243,7 @@
     padding: 3px;
     display: flex;
     justify-content: flex-end;
-    background: linear-gradient(#0009, transparent);
+    translate: 0 -2px;
   }
   .play {
     display: grid;
@@ -263,14 +265,32 @@
     display: flex;
     justify-content: space-between;
     padding: 24px 12px 10px;
-    background: linear-gradient(transparent, #0009);
+    translate: 0 2px;
+    text-shadow:
+      0 1px 2px #000,
+      0 0 1px #000;
     font-size: 13px;
     font-variant-numeric: tabular-nums;
   }
   .actions :global(.icon-button) {
     color: #fff;
+    filter: drop-shadow(0 1px 1px #000) drop-shadow(0 0 1px #000);
   }
 
+  .card:hover .actions,
+  .card:hover .details,
+  .card:focus-within .actions,
+  .card:focus-within .details,
+  .revealed .actions,
+  .revealed .details {
+    translate: 0 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .controls {
+      transition: none;
+      translate: none;
+    }
+  }
   .actions :global(.icon-button:hover) {
     background: transparent;
   }

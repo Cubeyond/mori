@@ -257,4 +257,28 @@
     flex-wrap: wrap;
     justify-content: flex-end;
   }
+  @media (max-width: 480px) {
+    footer {
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 8px;
+    }
+    .submit-actions {
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: stretch;
+      width: 100%;
+      margin: 0;
+      gap: 8px;
+    }
+    .submit-actions :global(button),
+    footer > :global(button) {
+      width: 100%;
+      min-height: 44px;
+    }
+    .submit-actions :global(button:first-child) {
+      background: transparent;
+      border-color: transparent;
+    }
+  }
 </style>

@@ -3,7 +3,7 @@
   import Button from '#lib/components/ui/button/button.svelte';
   /** Minimal public collection; the API authorizes album and member visibility independently. */
   import { resolve } from '$app/paths';
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { page } from '$app/state';
   import { takeInitialPage } from '#lib/api/bootstrap';
   import {
@@ -13,12 +13,23 @@
     type Video,
     type Album,
   } from '#lib/api/client';
+  import { CollectionSearch } from '#lib/features/collection-search';
   import CollectionToolbar from '#lib/components/library/CollectionToolbar.svelte';
   import Gallery from '#lib/components/Gallery.svelte';
   /** Public collection data is visibility-filtered by Rust before the first render. */
   const initial = untrack(
     () => takeInitialPage(page.url.pathname)?.album_page ?? null,
   );
+  /** This instance contains only metadata authorized for the active public route/session. */
+  const search = new CollectionSearch((offset, limit, q, signal) => {
+    const slug = page.params.slug ?? '';
+    return apiData(
+      api.GET('/v1/albums/{slug}', {
+        params: { path: { slug }, query: { offset, limit, q } },
+        signal,
+      }),
+    );
+  });
   /** Seed authorization must match the current session before it can be reused. */
   const initialAuthenticated = untrack(() => $session.authenticated);
   /** Re-entering a collection later must use a fresh request. */
@@ -39,9 +50,9 @@
   let controller: AbortController | undefined;
   /** Fetch public members while ignoring obsolete or aborted responses. */
   async function load(
-    slug: string,
     routeSignal: AbortSignal,
     append = false,
+    authoritative = false,
   ): Promise<void> {
     request?.abort();
     request = new AbortController();
@@ -50,17 +61,15 @@
     searched = q;
     busy = true;
     try {
-      const data = await apiData(
-        api.GET('/v1/albums/{slug}', {
-          params: {
-            path: { slug },
-            query: { offset: append ? videos.length : 0, q },
-          },
-          signal,
-        }),
+      const data = await search.read(
+        q,
+        append ? videos.length : 0,
+        30,
+        signal,
+        authoritative,
       );
       if (signal.aborted) return;
-      album = data.album;
+      if (data.album !== undefined) album = data.album;
       videos = append ? [...videos, ...data.videos] : data.videos;
       total = data.total;
       more = data.has_more;
@@ -76,8 +85,7 @@
   }
   /** Continue only the active collection's bounded result set. */
   function next(): void {
-    if (!busy && controller !== undefined)
-      void load(page.params.slug ?? '', controller.signal, true);
+    if (!busy && controller !== undefined) void load(controller.signal, true);
   }
   $effect(() => {
     const slug = page.params.slug;
@@ -93,6 +101,7 @@
         authenticated === initialAuthenticated
       ) {
         seeded = true;
+        search.seed(initial);
         return;
       }
       query = '';
@@ -102,22 +111,42 @@
       album = null;
       failed = false;
       more = false;
-      if (slug !== undefined) void load(slug, lifecycle.signal);
+      if (slug !== undefined) void load(lifecycle.signal);
     });
     return () => {
       lifecycle.abort();
       request?.abort();
+      search.clear();
     };
   });
   $effect(() => {
     const q = query.trim();
     if (album === null || q === untrack(() => searched)) return;
+    if (untrack(() => search.complete || search.cached(q) !== null)) {
+      untrack(() => {
+        if (controller !== undefined) void load(controller.signal);
+      });
+      return;
+    }
     const timer = setTimeout(() => {
-      if (controller !== undefined)
-        void load(page.params.slug ?? '', controller.signal);
-    }, 180);
+      if (controller !== undefined) void load(controller.signal);
+    }, 80);
     return () => {
       clearTimeout(timer);
+    };
+  });
+  onMount(() => {
+    const timer = setInterval(() => {
+      if (
+        !busy &&
+        !document.hidden &&
+        controller !== undefined &&
+        album !== null
+      )
+        void load(controller.signal, false, true);
+    }, 15000);
+    return () => {
+      clearInterval(timer);
     };
   });
 </script>

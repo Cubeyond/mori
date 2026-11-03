@@ -51,7 +51,8 @@
   });
   onMount(() => {
     const timer = setInterval(() => {
-      if ($session.authenticated && editor === null) void refresh();
+      if (!document.hidden && $session.authenticated && editor === null)
+        void refresh();
     }, 15000);
     return () => {
       clearInterval(timer);

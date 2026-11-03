@@ -1,6 +1,8 @@
 <script lang="ts">
   import { pageTitle } from '#lib/features/page-title';
   import Button from '#lib/components/ui/button/button.svelte';
+  import { CollectionSearch } from '#lib/features/collection-search';
+  import { bootstrap } from '#lib/api/bootstrap';
   import CollectionToolbar from './CollectionToolbar.svelte';
   import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
   /** Authenticated gallery orchestration; administration never enters its document flow. */
@@ -27,6 +29,15 @@
   import { openUploader } from '#lib/features/upload';
   import MediaDialog from '#lib/components/library/MediaDialog.svelte';
 
+  /** Metadata never crosses this mounted administrator library. */
+  const search = new CollectionSearch((offset, limit, q, signal) =>
+    apiData(
+      api.GET('/v1/admin/videos', {
+        params: { query: { offset, limit, q } },
+        signal,
+      }),
+    ),
+  );
   /** Search applies to the entire authorized collection, not just loaded pages. */
   let query = $state('');
   /** Selection mode leaves individual playback and sharing intact when dismissed. */
@@ -59,28 +70,20 @@
     const q = query.trim();
     searched = q;
     refreshing = true;
+    error = '';
     try {
       const target = append || reset ? 30 : Math.max(30, videos.length);
-      const rows: MediaItem[] = [];
-      let offset = append ? videos.length : 0;
-      let hasMore = false;
-      do {
-        const limit = Math.min(60, target - rows.length);
-        const list = await apiData(
-          api.GET('/v1/admin/videos', {
-            params: { query: { offset, limit, q } },
-            signal,
-          }),
-        );
-        if (signal.aborted) return;
-        total = list.total;
-        rows.push(...list.videos);
-        offset += list.videos.length;
-        hasMore = list.has_more;
-      } while (hasMore && rows.length < target);
-      videos = append ? [...videos, ...rows] : rows;
-      more = hasMore;
-      albums = await apiData(api.GET('/v1/admin/albums', { signal }));
+      const list = await search.read(
+        q,
+        append ? videos.length : 0,
+        target,
+        signal,
+        !append && !reset,
+      );
+      if (signal.aborted) return;
+      total = list.total;
+      videos = append ? [...videos, ...list.videos] : list.videos;
+      more = list.has_more;
     } catch (failure) {
       if (!signal.aborted) error = message(failure);
     } finally {
@@ -89,7 +92,26 @@
   }
   /** Refresh mounted metadata after a background upload or album mutation. */
   function syncLibrary(): void {
+    request?.abort();
+    refreshing = false;
+    search.clear();
     void refresh();
+    void loadAlbums();
+  }
+  /** Album choices change on initial load and mutations, never on each keystroke. */
+  async function loadAlbums(): Promise<void> {
+    try {
+      albums = await apiData(api.GET('/v1/admin/albums'));
+    } catch (failure) {
+      error = message(failure);
+    }
+  }
+  /** Editors invalidate cached metadata before the authoritative refresh. */
+  async function changed(): Promise<void> {
+    request?.abort();
+    refreshing = false;
+    search.clear();
+    await Promise.all([refresh(), loadAlbums()]);
   }
   /** The video's own menu is the sole entry point for editing and sharing. */
   function edit(video: MediaItem): void {
@@ -105,12 +127,28 @@
   }
 
   $effect(() => {
+    if (!$session.authenticated)
+      untrack(() => {
+        request?.abort();
+        search.clear();
+        videos = [];
+        total = 0;
+        more = false;
+      });
+  });
+  $effect(() => {
     const q = query.trim();
     if (!loaded || !$session.authenticated || q === untrack(() => searched))
       return;
+    if (untrack(() => search.complete || search.cached(q) !== null)) {
+      untrack(() => {
+        void refresh(false, true);
+      });
+      return;
+    }
     const timer = setTimeout(() => {
       void refresh(false, true);
-    }, 180);
+    }, 80);
     return () => {
       clearTimeout(timer);
     };
@@ -126,9 +164,9 @@
     const lifecycle = new AbortController();
     void (async () => {
       try {
-        await loadSession();
+        if (bootstrap === null) await loadSession();
         if (!lifecycle.signal.aborted && $session.authenticated) {
-          await refresh();
+          await Promise.all([refresh(), loadAlbums()]);
           if (page.url.searchParams.has('upload')) openUploader();
 
           if (
@@ -148,15 +186,23 @@
       }
     })();
     window.addEventListener('mori:library-changed', syncLibrary);
+    /** A returning tab refreshes metadata once instead of polling while hidden. */
+    const visible = (): void => {
+      if (!document.hidden && $session.authenticated) void refresh();
+    };
+    document.addEventListener('visibilitychange', visible);
 
     const timer = setInterval(() => {
-      if ($session.authenticated && editing === null) void refresh();
+      if (!document.hidden && $session.authenticated && editing === null)
+        void refresh();
     }, 10000);
     return () => {
       lifecycle.abort();
       request?.abort();
+      search.clear();
       clearInterval(timer);
       window.removeEventListener('mori:library-changed', syncLibrary);
+      document.removeEventListener('visibilitychange', visible);
     };
   });
 </script>
@@ -205,7 +251,7 @@
       {albums}
       bind:selecting
       onmanage={edit}
-      oncomplete={refresh}
+      oncomplete={changed}
     />
     {#if more}<div class="more">
         <Button
@@ -230,7 +276,7 @@
       video={editing}
       {albums}
       onclose={() => (editing = null)}
-      oncomplete={refresh}
+      oncomplete={changed}
       onnotice={notify}
       onupdate={updateSelected}
     />{/if}

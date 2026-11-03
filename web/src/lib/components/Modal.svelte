@@ -11,6 +11,7 @@
     title,
     onclose,
     children,
+    footer,
     maxWidth = 520,
     hideScrollbar = false,
     closeLabel = 'Close dialog',
@@ -19,6 +20,8 @@
     title: string;
     onclose: () => void;
     children: Snippet;
+    /** Optional actions remain reachable while the body scrolls on short screens. */
+    footer?: Snippet;
     maxWidth?: number;
     hideScrollbar?: boolean;
     closeLabel?: string;
@@ -73,7 +76,8 @@
         <X size={20} strokeWidth={1.5} />
       </Button>
     </header>
-    {@render children()}
+    <div class="dialog-body">{@render children()}</div>
+    {#if footer !== undefined}{@render footer()}{/if}
   </div>
 </dialog>
 
@@ -86,8 +90,8 @@
     margin: auto;
     width: min(var(--dialog-width), calc(100% - 32px));
     max-width: min(var(--dialog-width), calc(100% - 32px));
-    max-height: calc(100svh - 40px);
-    overflow: auto;
+    max-height: calc(100dvh - 32px);
+    overflow: hidden;
     color: var(--color-paper);
     background: var(--popover);
     border: 1px solid var(--border);
@@ -97,6 +101,10 @@
   .hide-scrollbar {
     scrollbar-width: none;
   }
+  .hide-scrollbar .dialog-body {
+    scrollbar-width: none;
+  }
+  .hide-scrollbar .dialog-body::-webkit-scrollbar,
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -109,8 +117,17 @@
   }
   .sheet {
     padding: 28px;
+    display: flex;
+    flex-direction: column;
+    max-height: inherit;
+  }
+  .dialog-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   header {
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -133,8 +150,40 @@
     }
   }
   @media (max-width: 480px) {
+    dialog.cn-dialog-content {
+      width: calc(100% - 24px);
+      max-width: calc(100% - 24px);
+      max-height: calc(100dvh - 24px);
+    }
     .sheet {
       padding: 20px;
+    }
+    .sheet :global(.form-actions) {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 8px;
+    }
+    .sheet :global(.form-actions > button) {
+      width: 100%;
+      min-height: 44px;
+    }
+    .sheet :global(.form-actions > button:first-child) {
+      border-color: transparent;
+      background: transparent;
+    }
+
+    header {
+      margin: -2px -4px 20px 0;
+      gap: 12px;
+    }
+    header :global(.icon-button) {
+      width: 44px;
+      height: 44px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    dialog[open] {
+      animation: none;
     }
   }
 </style>

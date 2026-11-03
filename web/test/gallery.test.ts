@@ -3,30 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { arrangeGallery } from '../src/lib/features/gallery.ts';
 import type { Video } from '../src/lib/api/client';
-/** Complete metadata fixture preserves the generated contract in geometry tests. */
-function videoFixture(index: number): Video {
-  const id = String(index).padStart(32, '0');
-  return {
-    kind: 'video',
-    id,
-    token: id,
-    extension: 'mp4',
-    name: id,
-    album_id: null,
-    width: index % 2 === 0 ? 1920 : 540,
-    height: 1080,
-    visibility: 'private',
-    state: 'ready',
-    size: 1024,
-    duration: 20,
-    poster: 0,
-    created_at: index,
-    revision: 0,
-    last_error: null,
-    media_url: '/file/' + id + '.mp4',
-    poster_url: null,
-  };
-}
+import { videoFixture } from './support/media.ts';
 /** Allow floating point subpixels without accepting visible gutter drift. */
 function near(actual: number, expected: number): void {
   assert.ok(Math.abs(actual - expected) < 0.001);

@@ -16,12 +16,14 @@
     view = $bindable({ scale: 1, x: 0, y: 0 }),
     doubleTap = false,
     children,
+    ontap,
   }: {
     width: number;
     height: number;
     view?: View;
     doubleTap?: boolean;
     children: Snippet<[string]>;
+    ontap?: ((event: MouseEvent) => void) | undefined;
   } = $props();
   /** The entire available stage is measured, independently of the fitted source. */
   let stage: HTMLDivElement;
@@ -175,7 +177,7 @@
       if (!interactive(event.target) && performance.now() < suppressUntil) {
         event.preventDefault();
         event.stopPropagation();
-      }
+      } else if (!interactive(event.target)) ontap?.(event);
     };
     /** Image double click is independent of video playback behavior. */
     const dblclick = (event: MouseEvent): void => {
@@ -235,6 +237,12 @@
   }
   .zoomed {
     cursor: grab;
+  }
+  .zoomed :global(.surface) {
+    cursor: grab;
+  }
+  .zoomed:active :global(.surface) {
+    cursor: grabbing;
   }
   .zoomed:active {
     cursor: grabbing;

@@ -78,7 +78,6 @@
   }
   onMount(() => {
     window.addEventListener('mori:upload', show);
-    void refreshAlbums();
     return () => {
       window.removeEventListener('mori:upload', show);
     };

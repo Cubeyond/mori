@@ -225,6 +225,12 @@
   /** Cancel every queued original and persisted reservation, including server-only orphans. */
   async function cancelAll(): Promise<void> {
     if (cancelling) return;
+    if (!busy && pending.length === 0 && unfinished.length === 0) {
+      files = [];
+      error = '';
+      onstatus(null);
+      return;
+    }
     cancelling = true;
     error = '';
     controller?.abort();
@@ -255,6 +261,49 @@
   maxWidth={600}
   hideScrollbar
 >
+  {#snippet footer()}{#if storageConfigured === true}
+      <footer>
+        {#if hasQueue}<div class="secondary-actions">
+            <Button
+              variant="ghost"
+              type="button"
+              class="cancel-action"
+              disabled={cancelling}
+              onclick={cancelAll}
+              >{cancelling
+                ? 'Cancelling…'
+                : busy || pending.length > 0 || unfinished.length > 0
+                  ? 'Cancel uploads'
+                  : 'Clear selection'}</Button
+            >
+            {#if busy}<Button variant="ghost" type="button" onclick={onclose}
+                >Hide</Button
+              >{/if}
+          </div>{/if}
+        {#if busy}<Button
+            variant="outline"
+            type="button"
+            class="upload-action"
+            disabled={cancelling}
+            onclick={() => controller?.abort()}
+            ><Pause size={16} />Pause uploads</Button
+          >
+        {:else}<Button
+            variant="default"
+            type="submit"
+            form="media-upload-form"
+            class="upload-action"
+            disabled={file === null || policy === null || cancelling}
+            ><ArrowUp size={17} />{pending.length > 0
+              ? 'Continue uploads'
+              : files.length > 0
+                ? 'Upload ' +
+                  String(files.length) +
+                  (files.length === 1 ? ' file' : ' files')
+                : 'Upload media'}</Button
+          >{/if}
+      </footer>
+    {/if}{/snippet}
   {#if storageConfigured === null}<p class="storage-setup muted" role="status">
       Loading upload settings…
     </p>
@@ -266,7 +315,7 @@
         onclick={onclose}>Set up storage</Button
       >
     </div>
-  {:else}<form onsubmit={submit}>
+  {:else}<form id="media-upload-form" onsubmit={submit}>
       {#if (pending.length > 0 || unfinished.length > 0) && !busy}<div
           class="resume"
         >
@@ -310,7 +359,13 @@
           event.preventDefault();
           dragging = true;
         }}
-        ondragleave={() => (dragging = false)}
+        ondragleave={(event) => {
+          if (
+            !(event.relatedTarget instanceof Node) ||
+            !event.currentTarget.contains(event.relatedTarget)
+          )
+            dragging = false;
+        }}
         ondrop={dropFiles}
       >
         {#if files.length > 0}<Upload size={20} /><span
@@ -371,42 +426,6 @@
           ></progress>
           <p>You can close this window while the upload continues.</p>
         </div>{/if}
-      <footer>
-        <Button
-          variant="ghost"
-          class="text-action"
-          type="button"
-          onclick={onclose}>{busy ? 'Continue in background' : 'Close'}</Button
-        >
-        <div class="footer-actions">
-          {#if hasQueue}<Button
-              variant="destructive"
-              type="button"
-              disabled={cancelling}
-              onclick={cancelAll}
-              >{cancelling ? 'Cancelling…' : 'Cancel uploads'}</Button
-            >{/if}
-          {#if busy}<Button
-              variant="outline"
-              type="button"
-              disabled={cancelling}
-              onclick={() => controller?.abort()}
-              ><Pause size={16} />Pause</Button
-            >
-          {:else}<Button
-              variant="default"
-              type="submit"
-              disabled={file === null || policy === null || cancelling}
-              ><ArrowUp size={17} />{pending.length > 0
-                ? 'Continue uploads'
-                : files.length > 0
-                  ? 'Upload ' +
-                    String(files.length) +
-                    (files.length === 1 ? ' file' : ' files')
-                  : 'Upload media'}</Button
-            >{/if}
-        </div>
-      </footer>
     </form>{/if}
 </Modal>
 
@@ -421,7 +440,7 @@
   }
   .drop-zone {
     position: relative;
-    min-height: 190px;
+    min-height: 176px;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -452,8 +471,8 @@
   }
   .drop-zone strong {
     color: var(--foreground);
-    font-size: 15px;
-    font-weight: 400;
+    font-size: 16px;
+    font-weight: 500;
   }
   .drop-zone span {
     font-size: 14px;
@@ -461,20 +480,33 @@
   }
   .options {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
     gap: 16px;
   }
   .album-label {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 36px;
+    height: 44px;
+    margin-bottom: 4px;
+  }
+  .options .field {
+    min-width: 0;
+    margin: 0;
+  }
+  .album-label label {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    line-height: 24px;
+    font-size: 15px;
   }
   .album-action {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     margin: 0;
     color: var(--muted-foreground);
   }
@@ -490,20 +522,66 @@
   .limits {
     font-size: 12px;
     color: var(--muted-foreground);
-    margin: 0 0 18px;
+    margin: 12px 0 0;
   }
   footer {
     display: flex;
-    justify-content: space-between;
+    flex: none;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
+    padding-top: 20px;
+    margin-top: 20px;
+    border-top: 1px solid var(--border);
   }
-  .footer-actions {
+  .secondary-actions {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-    justify-content: flex-end;
+  }
+  footer :global(.upload-action) {
+    margin-left: auto;
+    min-height: 44px;
+  }
+  .secondary-actions :global(.cancel-action) {
+    color: var(--muted-foreground);
+  }
+  .secondary-actions :global(.cancel-action:hover) {
+    color: var(--destructive);
+  }
+  @media (max-width: 480px) {
+    footer {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+      padding-top: 16px;
+      margin-top: 16px;
+    }
+    footer :global(.upload-action) {
+      width: 100%;
+      margin: 0;
+      grid-row: 1;
+      min-height: 46px;
+    }
+    .secondary-actions {
+      grid-row: 2;
+      justify-content: center;
+    }
+    .secondary-actions :global(button) {
+      min-height: 44px;
+    }
+    .drop-zone {
+      min-height: 152px;
+      padding: 20px 12px;
+    }
+    .drop-zone.compact {
+      min-height: 48px;
+      padding: 10px 12px;
+    }
+    .options {
+      gap: 12px;
+    }
   }
   .resume {
     padding: 12px;
@@ -542,8 +620,8 @@
   @media (max-width: 380px) {
     :global(#upload-album),
     :global(#upload-visibility) {
-      font-size: 14px;
-      padding-right: 30px;
+      font-size: 16px;
+      padding-right: 32px;
     }
     .optional {
       display: none;

@@ -16,6 +16,7 @@
   } from '#lib/api/client';
   import AccessGate from '#lib/components/AccessGate.svelte';
   import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
+  import { CollectionSearch } from '#lib/features/collection-search';
   import CollectionToolbar from '#lib/components/library/CollectionToolbar.svelte';
   import MediaSelection from '#lib/components/library/MediaSelection.svelte';
   import AlbumEditor from '#lib/components/library/AlbumEditor.svelte';
@@ -26,6 +27,16 @@
   const initialPage = untrack(() => takeInitialPage(page.url.pathname));
   /** Only this initial route may consume its collection data. */
   const initial = initialPage?.album_page ?? null;
+  /** Each route lifecycle clears metadata before another album or session can reuse it. */
+  const search = new CollectionSearch((offset, limit, q, signal) => {
+    const id = page.params.id ?? '';
+    return apiData(
+      api.GET('/v1/admin/albums/{id}', {
+        params: { path: { id }, query: { offset, limit, q } },
+        signal,
+      }),
+    );
+  });
   /** Active collection, member metadata, and album choices for video editing. */
   let album = $state<Album | null>(initial?.album ?? null),
     albums = $state<Album[]>(initialPage?.albums ?? []),
@@ -75,32 +86,20 @@
     busy = true;
     error = '';
     try {
-      const rows: Video[] = [];
       const target = append || reset ? 30 : Math.max(30, videos.length);
-      let offset = append ? videos.length : 0,
-        hasMore = false;
-      do {
-        const result = await apiData(
-          api.GET('/v1/admin/albums/{id}', {
-            params: {
-              path: { id },
-              query: { offset, limit: Math.min(60, target - rows.length), q },
-            },
-            signal,
-          }),
-        );
-        if (!active()) return;
-        album = result.album;
-        total = result.total;
-        rows.push(...result.videos);
-        offset += result.videos.length;
-        hasMore = result.has_more;
-      } while (hasMore && rows.length < target);
+      const result = await search.read(
+        q,
+        append ? videos.length : 0,
+        target,
+        signal,
+        !append && !reset,
+      );
       if (!active()) return;
-      videos = append ? [...videos, ...rows] : rows;
-      more = hasMore;
+      if (result.album !== undefined) album = result.album;
+      total = result.total;
+      videos = append ? [...videos, ...result.videos] : result.videos;
+      more = result.has_more;
       loaded = true;
-      albums = await apiData(api.GET('/v1/admin/albums', { signal }));
     } catch (failure) {
       if (active()) error = message(failure);
     } finally {
@@ -109,7 +108,26 @@
   }
   /** Refresh in response to a completed application-wide upload. */
   function changed(): void {
+    request?.abort();
+    busy = false;
+    search.clear();
     void refresh();
+    void loadAlbums();
+  }
+  /** Refresh editing choices only when collection membership can have changed. */
+  async function loadAlbums(): Promise<void> {
+    try {
+      albums = await apiData(api.GET('/v1/admin/albums'));
+    } catch (failure) {
+      error = message(failure);
+    }
+  }
+  /** Mutations invalidate all cached search windows before refetching. */
+  async function updated(): Promise<void> {
+    request?.abort();
+    busy = false;
+    search.clear();
+    await Promise.all([refresh(), loadAlbums()]);
   }
   $effect(() => {
     const id = page.params.id,
@@ -119,6 +137,7 @@
     untrack(() => {
       if (!seeded && initial !== null && initial.album.id === id) {
         seeded = true;
+        search.seed(initial);
         return;
       }
       query = '';
@@ -130,19 +149,29 @@
       loaded = false;
       error = '';
       busy = false;
-      if (authenticated && id !== undefined) void refresh();
+      if (authenticated && id !== undefined) {
+        void refresh();
+        void loadAlbums();
+      }
     });
     return () => {
       controller.abort();
       request?.abort();
+      search.clear();
     };
   });
   $effect(() => {
     const q = query.trim();
     if (!loaded || !isAuthenticated || q === untrack(() => searched)) return;
+    if (untrack(() => search.complete || search.cached(q) !== null)) {
+      untrack(() => {
+        void refresh(false, true);
+      });
+      return;
+    }
     const timer = setTimeout(() => {
       void refresh(false, true);
-    }, 180);
+    }, 80);
     return () => {
       clearTimeout(timer);
     };
@@ -150,7 +179,12 @@
   onMount(() => {
     window.addEventListener('mori:library-changed', changed);
     const timer = setInterval(() => {
-      if ($session.authenticated && !editingAlbum && editingVideo === null)
+      if (
+        !document.hidden &&
+        $session.authenticated &&
+        !editingAlbum &&
+        editingVideo === null
+      )
         void refresh();
     }, 10000);
     return () => {
@@ -225,7 +259,7 @@
         {videos}
         {albums}
         bind:selecting
-        oncomplete={refresh}
+        oncomplete={updated}
         onmanage={(video: Video) => (editingVideo = video)}
       />{:else if busy && !loaded}<p class="empty-state muted" role="status">
         Loading album…
@@ -250,13 +284,13 @@
 {#if editingAlbum && album !== null}<AlbumEditor
     {album}
     onclose={() => (editingAlbum = false)}
-    oncomplete={refresh}
+    oncomplete={updated}
   />{/if}
 {#if editingVideo !== null}<MediaDialog
     video={editingVideo}
     {albums}
     onclose={() => (editingVideo = null)}
-    oncomplete={refresh}
+    oncomplete={updated}
     onnotice={(value: string) => (notice = value)}
     onupdate={(video: Video) => (editingVideo = video)}
   />{/if}
