@@ -7,6 +7,7 @@ const directoryName = 'mori-upload-copies-v1';
 export function hasPreparedStorage(): boolean {
   return (
     typeof navigator !== 'undefined' &&
+    typeof navigator.storage !== 'undefined' &&
     typeof navigator.storage.getDirectory === 'function'
   );
 }

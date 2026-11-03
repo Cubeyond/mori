@@ -123,6 +123,21 @@ void test('preparation bounds image workers, serializes video, cancels waiters a
       ).file,
       unsupported,
     );
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { hardwareConcurrency: 4 },
+    });
+    const noStorage = original();
+    assert.equal(
+      (
+        await new OptimizationBatch('balanced', ['mp4']).prepare(
+          noStorage,
+          'video',
+          new AbortController().signal,
+        )
+      ).file,
+      noStorage,
+    );
   } finally {
     LocalWorker.blocked = false;
     await discardPrepared();
