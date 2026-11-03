@@ -1,0 +1,4 @@
+Mediabunny 1.65.1 (unmodified runtime source)
+Copyright (c) Vanilagy and contributors
+License: MPL-2.0 (see mediabunny.txt)
+Source: https://github.com/Vanilagy/mediabunny/tree/v1.65.1

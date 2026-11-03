@@ -3,9 +3,7 @@
   /** Administrator-only S3 setup keeps write-only credentials out of browser persistence. */
   import { onMount } from 'svelte';
   import { CircleCheck, LoaderCircle, LockKeyhole } from '@lucide/svelte';
-  import { resolve } from '$app/paths';
   import AccessGate from '#lib/components/AccessGate.svelte';
-  import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
   import Button from '#lib/components/ui/button/button.svelte';
   import Input from '#lib/components/ui/input/input.svelte';
   import {
@@ -106,12 +104,6 @@
 
 <svelte:head><title>{pageTitle('Storage')}</title></svelte:head>
 <main>
-  <Breadcrumbs
-    items={[
-      { label: 'Settings', href: resolve('/settings') },
-      { label: 'Storage', href: resolve('/settings/storage') },
-    ]}
-  />
   <div class="page-heading">
     <h1>Storage</h1>
   </div>

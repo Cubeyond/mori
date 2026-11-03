@@ -164,6 +164,9 @@ settings:
 
 packageExtensionsChecksum: sha256-mjhKcuHK/QEXQmoUsVAERUweeYGsGMpF9yCR+kEvSSg=
 
+patchedDependencies:
+  '@types/dom-webcodecs@0.1.13': 7c7130fc24221bfeae3d8d0a280e1778243c871a309e0013b6c76ac02597a6cc
+
 importers:
 
   .:
@@ -174,6 +177,9 @@ importers:
       cn:
         specifier: ^0.5.1
         version: 0.5.1
+      mediabunny:
+        specifier: 1.65.1
+        version: 1.65.1
       openapi-fetch:
         specifier: ^0.17.0
         version: 0.17.0
@@ -643,6 +649,12 @@ packages:
     resolution: {integrity: sha512-yYU8cogLeSh/ms2jh8Fj7jaba/EWa7Ja6GoUqYZaraEuCI5YS6ms6ObZgjjedm+jm6XZjdNRWBpPP6Z86oOxcw==}
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
+
+  '@types/dom-mediacapture-transform@0.1.12':
+    resolution: {integrity: sha512-d7/QsLRwF864A5mgIM/YrfiglHoYn7zgCcAoJgW404r+2DwnNr7EBbLnCWpmOMgH8y0te73L1AV6H1bmauaWFw==}
+
+  '@types/dom-webcodecs@0.1.13':
+    resolution: {integrity: sha512-O5hkiFIcjjszPIYyUSyvScyvrBoV3NOEEZx/pMlsu44TKzWNkLVBBxnxJz42in5n3QIolYOcBYFCPZZ0h8SkwQ==}
 
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
@@ -1250,6 +1262,9 @@ packages:
 
   magic-string@1.4.5:
     resolution: {integrity: sha512-oLLC2+YvQUfAa+vxoufE/yc1icb87M9iXIRqAoR/2EhE/8cb3SF/+Gi0c2By1B+5Vz2e2vQtUvHiu1+63Znh+w==}
+
+  mediabunny@1.65.1:
+    resolution: {integrity: sha512-SDyhXooCNd8TYKNLf9jC4o/0I0MTft1pYc5/k4ztkKbGEMvcbYXWrAri5SozEu7DHI8PsG9IfN9XwKmPOg/VkQ==}
 
   minimatch@10.2.6:
     resolution: {integrity: sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==}
@@ -1944,6 +1959,12 @@ snapshots:
       tailwindcss: 4.3.3
       vite: 8.3.5(@types/node@26.6.6)(jiti@2.7.0)
 
+  '@types/dom-mediacapture-transform@0.1.12':
+    dependencies:
+      '@types/dom-webcodecs': 0.1.13(patch_hash=7c7130fc24221bfeae3d8d0a280e1778243c871a309e0013b6c76ac02597a6cc)
+
+  '@types/dom-webcodecs@0.1.13(patch_hash=7c7130fc24221bfeae3d8d0a280e1778243c871a309e0013b6c76ac02597a6cc)': {}
+
   '@types/esrecurse@4.3.1': {}
 
   '@types/estree@1.0.10': {}
@@ -2504,6 +2525,11 @@ snapshots:
   magic-string@1.4.5:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
+
+  mediabunny@1.65.1:
+    dependencies:
+      '@types/dom-mediacapture-transform': 0.1.12
+      '@types/dom-webcodecs': 0.1.13(patch_hash=7c7130fc24221bfeae3d8d0a280e1778243c871a309e0013b6c76ac02597a6cc)
 
   minimatch@10.2.6:
     dependencies:

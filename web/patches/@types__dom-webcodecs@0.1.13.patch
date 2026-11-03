@@ -1,0 +1,29 @@
+diff --git a/webcodecs.generated.d.ts b/webcodecs.generated.d.ts
+index a30ca8333a5b65ae6a1b0d6667bee74b08c52859..d041827f3f0506b4b062eab9646377ff2e75ce17 100644
+--- a/webcodecs.generated.d.ts
++++ b/webcodecs.generated.d.ts
+@@ -10,7 +10,7 @@ interface AudioDataCopyToOptions {
+ }
+ 
+ interface AudioDataInit {
+-    data: AllowSharedBufferSource;
++    data: BufferSource;
+     format: AudioSampleFormat;
+     numberOfChannels: number;
+     numberOfFrames: number;
+@@ -352,7 +352,6 @@ interface ImageTrackList {
+     readonly ready: Promise<void>;
+     readonly selectedIndex: number;
+     readonly selectedTrack: ImageTrack | null;
+-    [index: number]: ImageTrack;
+ }
+ 
+ declare var ImageTrackList: {
+@@ -502,7 +501,6 @@ interface WebCodecsErrorCallback {
+ 
+ // type AllowSharedBufferSource = ArrayBuffer | ArrayBufferView;
+ // type BitrateMode = "constant" | "variable";
+-type ImageBufferSource = ArrayBuffer | ArrayBufferView | ReadableStream;
+ // type AlphaOption = "discard" | "keep";
+ // type AudioSampleFormat = "f32" | "f32-planar" | "s16" | "s16-planar" | "s32" | "s32-planar" | "u8" | "u8-planar";
+ // type AvcBitstreamFormat = "annexb" | "avc";

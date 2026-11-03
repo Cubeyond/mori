@@ -1,4 +1,8 @@
 /** Browser-scoped presentation and upload defaults; access control remains server-enforced. */
+import {
+  parseOptimizationMode,
+  type OptimizationMode,
+} from '#lib/features/optimization/model';
 import { writable } from 'svelte/store';
 import {
   applyTheme,
@@ -15,6 +19,8 @@ export interface Preferences {
   accent: Accent;
   /** Visibility applied only to new uploads. */
   uploadVisibility: 'private' | 'public';
+  /** Local media preparation preset; resumable sessions keep their existing bytes. */
+  uploadOptimization: OptimizationMode;
   /** Local spacing and width of masonry columns. */
   density: 'comfortable' | 'compact';
   /** Image alpha; a conservative default preserves the dark interface. */
@@ -31,6 +37,7 @@ const defaults: Preferences = {
   theme: 'mori',
   accent: 'green',
   uploadVisibility: 'private',
+  uploadOptimization: 'balanced',
   density: 'comfortable',
   backgroundOpacity: 0.1,
   translucentThumbnails: false,
@@ -62,6 +69,9 @@ export function parsePreferences(raw: unknown): Preferences {
       'uploadVisibility' in raw && raw.uploadVisibility === 'public'
         ? 'public'
         : 'private',
+    uploadOptimization: parseOptimizationMode(
+      'uploadOptimization' in raw ? raw.uploadOptimization : undefined,
+    ),
     density:
       'density' in raw && raw.density === 'compact' ? 'compact' : 'comfortable',
     backgroundOpacity: opacity(raw, 'backgroundOpacity'),

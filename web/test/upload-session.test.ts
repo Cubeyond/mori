@@ -86,3 +86,24 @@ void test('legacy single sessions migrate and concurrent completion never clears
     else Reflect.deleteProperty(globalThis, 'localStorage');
   }
 });
+
+void test('transformed uploads retain exact local bytes while malformed descriptors cannot resume originals', () => {
+  const prepared = {
+    id: 'e'.repeat(32),
+    extension: 'mp4',
+    size: 700,
+    created_at: 123,
+  };
+  assert.deepEqual(parsePendingUpload({ ...pending, prepared }), {
+    ...pending,
+    prepared,
+  });
+  assert.deepEqual(parsePendingUpload(pending), pending);
+  for (const value of [
+    null,
+    {},
+    { ...prepared, id: '../unsafe' },
+    { ...prepared, size: Infinity },
+  ])
+    assert.equal(parsePendingUpload({ ...pending, prepared: value }), null);
+});

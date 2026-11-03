@@ -1,4 +1,8 @@
 /** Bounded local resume metadata; multipart state is always reloaded from the server. */
+import {
+  parsePreparedCopy,
+  type PreparedCopy,
+} from '#lib/features/optimization/model';
 import type { Upload } from '../api/client';
 
 /** Only the session identity and local file match are persisted in the browser. */
@@ -14,6 +18,8 @@ export interface PendingUpload extends Pick<
   fingerprint: string;
   /** Original picker name distinguishes byte-identical files in concurrent selections. */
   source_name?: string;
+  /** Immutable local payload for a transformed upload; never encode into an existing reservation. */
+  prepared?: PreparedCopy;
 }
 /** Keep the established key so existing valid browser sessions remain resumable. */
 const key = 'mori.pending-upload';
@@ -43,6 +49,9 @@ export function parsePendingUpload(value: unknown): PendingUpload | null {
     !/^[0-9a-f]{64}$/.test(value.fingerprint)
   )
     return null;
+  const prepared =
+    'prepared' in value ? parsePreparedCopy(value.prepared) : undefined;
+  if (prepared === null) return null;
   return {
     id: value.id,
     name: value.name,
@@ -50,6 +59,7 @@ export function parsePendingUpload(value: unknown): PendingUpload | null {
     size: value.size,
     modified: value.modified,
     fingerprint: value.fingerprint,
+    ...(prepared === undefined ? {} : { prepared }),
     ...('source_name' in value && typeof value.source_name === 'string'
       ? { source_name: value.source_name }
       : {}),

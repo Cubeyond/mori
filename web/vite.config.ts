@@ -12,5 +12,6 @@ export default defineConfig({
       preprocess: vitePreprocess(),
     }),
   ],
+  worker: { format: 'es' },
   server: { proxy: { '/v1': 'http://127.0.0.1:3000' } },
 });

@@ -5,6 +5,7 @@ ENV PATH="/opt/pnpm:$PATH"
 WORKDIR /src/web
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 COPY web/scripts/api/package.json ./scripts/api/
+COPY web/patches/ ./patches/
 RUN --mount=type=cache,target=/pnpm/store pnpm install --frozen-lockfile --store-dir /pnpm/store
 COPY web/ ./
 RUN pnpm run build

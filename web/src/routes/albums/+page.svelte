@@ -1,11 +1,9 @@
 <script lang="ts">
   import { pageTitle } from '#lib/features/page-title';
   import Button from '#lib/components/ui/button/button.svelte';
-  import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
   /** Explicit album administration without exposing private library metadata to visitors. */
   import { takeInitialPage } from '#lib/api/bootstrap';
   import { onMount, untrack } from 'svelte';
-  import { resolve } from '$app/paths';
   import { Plus, Library } from '@lucide/svelte';
   import AccessGate from '#lib/components/AccessGate.svelte';
   import CollectionToolbar from '#lib/components/library/CollectionToolbar.svelte';
@@ -62,7 +60,6 @@
 
 <svelte:head><title>{pageTitle('Albums')}</title></svelte:head>
 <main>
-  <Breadcrumbs items={[{ label: 'Albums', href: resolve('/albums') }]} />
   <div class="page-heading">
     <h1>Albums</h1>
     {#if $session.authenticated}<Button

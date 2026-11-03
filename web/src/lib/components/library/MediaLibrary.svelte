@@ -4,7 +4,6 @@
   import { CollectionSearch } from '#lib/features/collection-search';
   import { bootstrap } from '#lib/api/bootstrap';
   import CollectionToolbar from './CollectionToolbar.svelte';
-  import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
   /** Authenticated gallery orchestration; administration never enters its document flow. */
   import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
@@ -209,7 +208,6 @@
 
 <svelte:head><title>{pageTitle('Gallery')}</title></svelte:head>
 <main>
-  <Breadcrumbs items={[{ label: 'Gallery', href: resolve('/gallery') }]} />
   <div class="page-heading">
     <h1>Gallery</h1>
     {#if loaded && $session.authenticated}<div class="flex items-center gap-2">

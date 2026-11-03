@@ -152,20 +152,6 @@ svg.lucide {
   stroke-width: 2;
   flex-shrink: 0;
 }
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 20px;
-  margin-bottom: 16px;
-  font-size: 15px;
-  line-height: 20px;
-  color: var(--muted-foreground);
-  flex-wrap: wrap;
-}
-.breadcrumb a:hover {
-  color: var(--foreground);
-}
 .page-heading {
   display: flex;
   align-items: center;
@@ -335,7 +321,4 @@ svg.lucide {
   [data-slot='input'] {
     min-height: 44px;
   }
-}
-.breadcrumb [aria-current='page'] {
-  color: var(--foreground);
 }

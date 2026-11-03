@@ -1,5 +1,8 @@
 /** Typed frontend module for browser-side Mori behavior. */
 import { api, apiData } from '#lib/api/client';
+import { discardPrepared, type OptimizationBatch } from './optimization/client';
+import { readPrepared, removePrepared } from './optimization/storage';
+import type { PreparedUpload } from './optimization/client';
 import { prepareUploadPreview } from './upload-preview';
 import { putUploadPart } from './upload-part';
 import { waitForJob } from './jobs';
@@ -43,6 +46,10 @@ export async function uploadVideo(
   onprogress: (value: number, label: string) => void,
   signal: AbortSignal,
   kind: 'image' | 'video' = 'video',
+  preparation?: {
+    batch: OptimizationBatch;
+    onprepared: (bytes: number) => void;
+  },
 ): Promise<void> {
   const transfer = new AbortController();
   signal = AbortSignal.any([signal, transfer.signal]);
@@ -52,17 +59,31 @@ export async function uploadVideo(
   try {
     const hash = await fingerprint(file);
     signal.throwIfAborted();
-    const resume = savedUploads().find(
+    let resume = savedUploads().find(
       (upload) => !activeUploads.has(upload.id) && matches(upload, file, hash),
     );
+    let prepared: PreparedUpload = { file };
+    if (resume?.prepared !== undefined) {
+      const payload = await readPrepared(resume.prepared);
+      if (payload === null) {
+        // Missing local bytes cannot be regenerated inside an existing multipart identity.
+        await cancelUpload(file);
+        resume = undefined;
+      } else prepared = { file: payload, copy: resume.prepared };
+    }
+    if (resume === undefined && preparation !== undefined)
+      prepared = await preparation.batch.prepare(file, kind, signal);
+    signal.throwIfAborted();
+    const payload = prepared.file;
+    preparation?.onprepared(payload.size);
     if (resume !== undefined) activeUploads.add(resume.id);
     uploadId = resume?.id;
     preview =
       resume === undefined
-        ? prepareUploadPreview(file, signal, kind)
+        ? prepareUploadPreview(payload, signal, kind)
         : undefined;
     const metadata = await preview?.metadata;
-    const extension = file.name.split('.').at(-1)?.toLowerCase() ?? '';
+    const extension = payload.name.split('.').at(-1)?.toLowerCase() ?? '';
     const upload = resume
       ? await apiData(
           api.GET('/v1/admin/uploads/{id}', {
@@ -74,7 +95,7 @@ export async function uploadVideo(
           api.POST('/v1/admin/uploads', {
             body: {
               album_id,
-              size: file.size,
+              size: payload.size,
               visibility,
               extension,
               width: metadata?.width ?? 0,
@@ -93,6 +114,7 @@ export async function uploadVideo(
       modified: file.lastModified,
       fingerprint: hash,
       source_name: file.name,
+      ...(prepared.copy === undefined ? {} : { prepared: prepared.copy }),
     };
     uploadId = upload.id;
     activeUploads.add(upload.id);
@@ -120,14 +142,14 @@ export async function uploadVideo(
       const bytes =
         completed +
         Array.from(inflight.values()).reduce((sum, value) => sum + value, 0);
-      onprogress(Math.round((bytes / file.size) * 100), 'Uploading');
+      onprogress(Math.round((bytes / payload.size) * 100), 'Uploading');
     }
     /** Upload consecutive parts with checksum-based resume, bounded retries, and cancellation. */
     async function worker() {
       while (next <= upload.part_count) {
         signal.throwIfAborted();
         const part = next++;
-        const chunk = file.slice(
+        const chunk = payload.slice(
           (part - 1) * upload.part_size,
           part * upload.part_size,
         );
@@ -146,7 +168,7 @@ export async function uploadVideo(
         );
         if (existing) {
           completed += chunk.size;
-          onprogress(Math.round((completed / file.size) * 100), 'Resuming');
+          onprogress(Math.round((completed / payload.size) * 100), 'Resuming');
           continue;
         }
         for (let attempt = 0; ; attempt++) {
@@ -191,6 +213,8 @@ export async function uploadVideo(
       }),
     );
     forgetUpload(upload.id);
+    if (prepared.copy !== undefined) await removePrepared(prepared.copy);
+    await discardPrepared(file);
     if (accepted.job_id !== null) {
       try {
         await waitForJob(accepted.job_id, signal);
@@ -213,7 +237,10 @@ export async function cancelUpload(file?: File): Promise<void> {
   const local = savedUploads().filter(
     (upload) => file === undefined || matches(upload, file, hash ?? ''),
   );
-  if (file !== undefined && local.length === 0) return;
+  if (file !== undefined && local.length === 0) {
+    await discardPrepared(file);
+    return;
+  }
   const server = await apiData(api.GET('/v1/admin/uploads'));
   const active = new Set(server.map((upload) => upload.id));
   const ids =
@@ -224,7 +251,11 @@ export async function cancelUpload(file?: File): Promise<void> {
           .map((upload) => upload.id);
   if (ids.length > 0)
     await apiData(api.DELETE('/v1/admin/uploads', { body: { ids } }));
-  for (const upload of local) forgetUpload(upload.id);
+  for (const upload of local) {
+    forgetUpload(upload.id);
+    if (upload.prepared !== undefined) await removePrepared(upload.prepared);
+  }
+  await discardPrepared(file);
 }
 /** A resumed file must match its original bytes and metadata independently of queue position. */
 function matches(upload: PendingUpload, file: File, hash: string): boolean {

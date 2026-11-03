@@ -122,6 +122,10 @@
     max-height: inherit;
   }
   .dialog-body {
+    /* Reserve the outward focus ring inside the scroll clip without shifting form alignment. */
+    padding: 6px;
+    margin: -6px;
+    scroll-padding: 6px;
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;

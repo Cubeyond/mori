@@ -11,6 +11,7 @@ void test('older browser settings retain choices and receive a 10 percent backgr
       accent: 'green',
       density: 'compact',
       uploadVisibility: 'public',
+      uploadOptimization: 'balanced',
       backgroundOpacity: 0.1,
       translucentThumbnails: false,
       thumbnailOpacity: 0.92,

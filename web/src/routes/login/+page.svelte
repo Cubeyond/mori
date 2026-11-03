@@ -9,8 +9,8 @@
   import { api, apiData, session, message } from '#lib/api/client';
   /** Transient password input cleared after successful authentication. */
   let password = $state('');
-  /** The deployment's default account name remains editable for configured instances. */
-  let username = $state('root');
+  /** Credentials are entered by the administrator or restored by their password manager. */
+  let username = $state('');
   /** Safe error message for the active view. */
   let error = $state('');
   /** Whether password verification is awaiting a response. */
@@ -47,7 +47,7 @@
       You are signed in as the administrator.
     </p>
     <Button variant="default" class="button primary" href={resolve('/gallery')}
-      >Open videos</Button
+      >Open gallery</Button
     >{:else}<form onsubmit={submit}>
       <label class="field"
         >Username<Input
@@ -58,7 +58,7 @@
         /></label
       >
       <label class="field"
-        >Administrator password<Input
+        >Password<Input
           type="password"
           autocomplete="current-password"
           required

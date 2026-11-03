@@ -9,11 +9,13 @@
     files,
     policy,
     activeFiles,
+    optimizedSizes,
     onremove,
   }: {
     files: File[];
     policy: UploadPolicy;
     activeFiles: File[];
+    optimizedSizes: ReadonlyMap<File, number>;
     onremove: (file: File) => void;
   } = $props();
   /** Each page owns two columns and at most two rows. */
@@ -84,6 +86,7 @@
     >
       {#each page as file (file)}<UploadThumbnail
           {file}
+          preparedSize={optimizedSizes.get(file) ?? file.size}
           kind={uploadKind(file, policy)}
           root={viewport}
           locked={activeFiles.includes(file)}

@@ -1,9 +1,17 @@
 packages:
   - scripts/api
 
+# Exact upstream release reviewed for native WebCodecs support; do not exempt other versions.
+minimumReleaseAgeExclude:
+  - mediabunny@1.65.1
+
 # Complete the generator dependency declarations so skipLibCheck can stay disabled.
 packageExtensions:
   '@redocly/openapi-core@1':
     dependencies:
       'json-schema-to-ts': '^3.1.1'
       '@types/js-yaml': '^4.0.9'
+
+# TypeScript 6 includes these WebCodecs declarations; remove only conflicting legacy duplicates.
+patchedDependencies:
+  '@types/dom-webcodecs@0.1.13': patches/@types__dom-webcodecs@0.1.13.patch

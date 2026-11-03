@@ -2,14 +2,16 @@
   import { pageTitle } from '#lib/features/page-title';
   /** Browser-local preferences acknowledge changes beside the edited control. */
   import NativeSelect from '#lib/components/ui/native-select/native-select.svelte';
-  import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
-  import { resolve } from '$app/paths';
   import { onDestroy } from 'svelte';
   import { Check } from '@lucide/svelte';
   import AccessGate from '#lib/components/AccessGate.svelte';
   import BackgroundSettings from '#lib/components/settings/BackgroundSettings.svelte';
   import ThumbnailSettings from '#lib/components/settings/ThumbnailSettings.svelte';
   import PreferenceFeedback from '#lib/components/settings/PreferenceFeedback.svelte';
+  import {
+    optimizationModes,
+    parseOptimizationMode,
+  } from '#lib/features/optimization/model';
   import { themes, parseTheme, accents } from '#lib/features/theme';
   import {
     preferences,
@@ -41,7 +43,6 @@
 
 <svelte:head><title>{pageTitle('Preferences')}</title></svelte:head>
 <main>
-  <Breadcrumbs items={[{ label: 'Preferences', href: resolve('/settings') }]} />
   <div class="page-heading"><h1>Preferences</h1></div>
   <AccessGate>
     <div class="preferences-groups">
@@ -155,6 +156,37 @@
         <header class="settings-group-heading">
           <h2 id="uploads-heading">Uploads</h2>
         </header>
+        <div class="setting-row">
+          <div class="setting-content">
+            <span id="preference-optimization-label" class="setting-label"
+              >Upload optimization</span
+            >
+            <div class="setting-control preference-control">
+              <NativeSelect
+                id="preference-optimization"
+                aria-labelledby="preference-optimization-label"
+                value={$preferences.uploadOptimization}
+                onchange={(
+                  event: Event & { currentTarget: HTMLSelectElement },
+                ) => {
+                  update(
+                    'uploadOptimization',
+                    parseOptimizationMode(event.currentTarget.value),
+                  );
+                }}
+              >
+                {#each optimizationModes as mode (mode.value)}<option
+                    value={mode.value}>{mode.label}</option
+                  >{/each}
+              </NativeSelect>
+              <PreferenceFeedback
+                visible={changed === 'uploadOptimization' && notice !== ''}
+                {persisted}
+                {notice}
+              />
+            </div>
+          </div>
+        </div>
         <div class="setting-row">
           <div class="setting-content">
             <span id="preference-visibility-label" class="setting-label"

@@ -15,6 +15,8 @@
     appendUploadFiles,
     uploadKind,
   } from '#lib/features/upload-selection';
+  import { OptimizationBatch } from '#lib/features/optimization/client';
+  import { cleanPrepared } from '#lib/features/optimization/storage';
   import { runUploadQueue } from '#lib/features/upload-queue';
   import {
     uploadVideo,
@@ -69,6 +71,8 @@
     dragging = $state(false);
   /** Pausing affects transfer rather than ordinary modal dismissal. */
   let controller: AbortController | undefined;
+  /** Actual prepared sizes make savings visible without exposing encoder settings. */
+  const optimizedSizes = new SvelteMap<File, number>();
   /** Cancelling first settles all file workers before releasing their server reservations. */
   let running: Promise<void> | undefined;
   let cancelling = $state(false);
@@ -90,6 +94,11 @@
   });
   onMount(() => {
     pending = savedUploads();
+    void cleanPrepared(
+      pending.flatMap((entry) =>
+        entry.prepared === undefined ? [] : [entry.prepared],
+      ),
+    );
     if (pending.length > 0)
       onstatus({ progress: 0, phase: 'Resume upload', paused: true });
     return () => controller?.abort();
@@ -119,6 +128,7 @@
     try {
       await cancelUpload(selected);
       pending = savedUploads();
+      optimizedSizes.delete(selected);
       error = '';
       if (!busy)
         onstatus(
@@ -135,6 +145,10 @@
   async function transfer(): Promise<void> {
     if (file === null || policy === null || busy || cancelling) return;
     const transferPolicy = policy;
+    const batch = new OptimizationBatch(
+      $preferences.uploadOptimization,
+      transferPolicy.allowed_extensions,
+    );
     busy = true;
     error = '';
     progress = 0;
@@ -179,8 +193,15 @@
               },
               transferSignal,
               uploadKind(entry, transferPolicy),
+              {
+                batch,
+                onprepared: (bytes) => {
+                  optimizedSizes.set(entry, bytes);
+                },
+              },
             );
             completedBytes += entry.size;
+            optimizedSizes.delete(entry);
             pending = savedUploads();
             void oncomplete().catch((failure: unknown) => {
               onnotice(message(failure));
@@ -231,6 +252,7 @@
     if (cancelling) return;
     if (!hasTransfer) {
       files = [];
+      optimizedSizes.clear();
       error = '';
       onstatus(null);
       return;
@@ -242,6 +264,7 @@
       await running;
       await cancelUpload();
       files = [];
+      optimizedSizes.clear();
       pending = [];
       progress = 0;
       phase = '';
@@ -332,6 +355,7 @@
           {files}
           {policy}
           {activeFiles}
+          {optimizedSizes}
           onremove={(selected: File) => {
             void removeFile(selected);
           }}

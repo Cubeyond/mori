@@ -15,7 +15,6 @@
     type Video,
   } from '#lib/api/client';
   import AccessGate from '#lib/components/AccessGate.svelte';
-  import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
   import { CollectionSearch } from '#lib/features/collection-search';
   import CollectionToolbar from '#lib/components/library/CollectionToolbar.svelte';
   import MediaSelection from '#lib/components/library/MediaSelection.svelte';
@@ -196,15 +195,6 @@
 
 <svelte:head><title>{pageTitle(album?.name)}</title></svelte:head>
 <main>
-  <Breadcrumbs
-    items={[
-      { label: 'Albums', href: resolve('/albums') },
-      {
-        label: album?.name ?? '',
-        href: resolve('/albums/[id]', { id: page.params.id ?? '' }),
-      },
-    ]}
-  />
   <AccessGate>
     <div class="page-heading album-heading">
       <div>

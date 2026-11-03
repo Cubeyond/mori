@@ -10,10 +10,11 @@
   import { prepareUploadPreview } from '#lib/features/upload-preview';
   import { previewSlot } from '#lib/features/preview-slots';
   import { formatBytes } from '#lib/features/upload-selection';
-  /** The selected File remains the unmodified multipart upload source. */
+  /** The selected original remains untouched; optional preparation has a separate size. */
   let {
     file,
     kind,
+    preparedSize,
     root,
     locked,
     active,
@@ -21,6 +22,7 @@
   }: {
     file: File;
     kind: 'image' | 'video';
+    preparedSize: number;
     root: HTMLElement | undefined;
     locked: boolean;
     active: boolean;
@@ -109,7 +111,11 @@
   <div class="file-info">
     <span class="filename" title={file.name}>{file.name}</span>
     <span class="metadata"
-      >{formatBytes(file.size)} · {kind === 'image' ? 'Image' : 'Video'}</span
+      >{formatBytes(preparedSize)} · {preparedSize < file.size
+        ? String(Math.round((1 - preparedSize / file.size) * 100)) + '% smaller'
+        : kind === 'image'
+          ? 'Image'
+          : 'Video'}</span
     >
   </div>
 </div>
@@ -196,6 +202,8 @@
     line-height: 20px;
   }
   .metadata {
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--muted-foreground);
     font-size: 12px;
     line-height: 17px;
