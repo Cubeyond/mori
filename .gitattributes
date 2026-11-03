@@ -4,3 +4,5 @@
 *.webm binary
 *.woff2 binary
 *.ttf binary
+# Unified diffs intentionally use a space for empty context lines.
+web/patches/*.patch whitespace=-blank-at-eol
