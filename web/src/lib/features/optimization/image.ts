@@ -39,7 +39,18 @@ export function inspectImage(bytes: Uint8Array): ImageShape | null {
         (length !== 4 || end > bytes.length || data.getUint32(at + 8) !== 45455)
       )
         return null;
-      if (marker(bytes, at + 4, 'cHRM')) return null;
+      if (marker(bytes, at + 4, 'cHRM')) {
+        // W3C PNG Table 17 defines these exact standard sRGB chromaticities.
+        const srgb = [31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000];
+        if (
+          length !== 32 ||
+          end > bytes.length ||
+          !srgb.every(
+            (value, index) => data.getUint32(at + 8 + index * 4) === value,
+          )
+        )
+          return null;
+      }
       if (marker(bytes, at + 4, 'IDAT'))
         return {
           width: data.getUint32(16),

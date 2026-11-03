@@ -75,3 +75,35 @@ void test('balanced defaults migrate safely and worker concurrency always leaves
   ])
     assert.equal(optimizationConcurrency(cores ?? 1), expected);
 });
+
+/** A normal PNG cHRM block uses the standard sRGB white point and RGB primaries. */
+function chromaticPng(values: readonly number[]): Uint8Array {
+  const bytes = new Uint8Array(89),
+    view = new DataView(bytes.buffer);
+  bytes.set(png().subarray(0, 33));
+  view.setUint32(33, 32);
+  bytes.set(new TextEncoder().encode('cHRM'), 37);
+  values.forEach((value, index) => {
+    view.setUint32(41 + index * 4, value);
+  });
+  bytes.set(new TextEncoder().encode('IDAT'), 81);
+  return bytes;
+}
+void test('standard sRGB chromaticities remain eligible while wide-gamut and malformed headers stay original', () => {
+  const standard = [31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000];
+  assert.deepEqual(inspectImage(chromaticPng(standard)), {
+    width: 800,
+    height: 600,
+    png: true,
+  });
+  assert.equal(
+    inspectImage(
+      chromaticPng([31270, 32900, 68000, 32000, 26500, 69000, 15000, 6000]),
+    ),
+    null,
+  );
+  const broken = chromaticPng(standard);
+  new DataView(broken.buffer).setUint32(33, 28);
+  assert.equal(inspectImage(broken), null);
+  assert.equal(inspectImage(chromaticPng(standard).subarray(0, 65)), null);
+});
