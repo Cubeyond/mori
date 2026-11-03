@@ -69,6 +69,8 @@ pub struct AlbumDeletion {
 /// Album metadata and a bounded page of videos filtered for the caller.
 #[derive(Serialize, ToSchema)]
 pub struct AlbumPage {
+    /// Exact number of members authorized for this caller and display-name filter.
+    pub total: i64,
     /// Album metadata visible to the caller.
     pub album: Album,
     /// Visibility-filtered page of video records.

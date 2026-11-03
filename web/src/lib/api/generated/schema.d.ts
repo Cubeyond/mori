@@ -513,6 +513,11 @@ export interface components {
             album: components["schemas"]["Album"];
             /** @description Whether another result page is available. */
             has_more: boolean;
+            /**
+             * Format: int64
+             * @description Exact number of members authorized for this caller and display-name filter.
+             */
+            total: number;
             /** @description Visibility-filtered page of video records. */
             videos: components["schemas"]["Video"][];
         };
@@ -887,6 +892,11 @@ export interface components {
         VideoPage: {
             /** @description Whether another result page is available. */
             has_more: boolean;
+            /**
+             * Format: int64
+             * @description Exact authorized result count after applying the display-name filter.
+             */
+            total: number;
             /** @description Visibility-filtered page of video records. */
             videos: components["schemas"]["Video"][];
         };
@@ -955,6 +965,8 @@ export interface operations {
                 offset?: number;
                 /** @description Optional page size clamped to the configured response budget. */
                 limit?: number;
+                /** @description Optional literal display-name search, limited to 200 characters. */
+                q?: string;
             };
             header?: never;
             path: {
@@ -1330,6 +1342,8 @@ export interface operations {
                 offset?: number;
                 /** @description Optional page size clamped to the configured response budget. */
                 limit?: number;
+                /** @description Optional literal display-name search, limited to 200 characters. */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -1569,6 +1583,8 @@ export interface operations {
                 offset?: number;
                 /** @description Optional page size clamped to the configured response budget. */
                 limit?: number;
+                /** @description Optional literal display-name search, limited to 200 characters. */
+                q?: string;
             };
             header?: never;
             path: {

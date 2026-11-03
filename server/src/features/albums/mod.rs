@@ -89,6 +89,7 @@ pub async fn detail(
     .ok_or_else(missing)?;
     let page = collection(&s, Collection::Album(&album.id), &page).await?;
     Ok(Json(AlbumPage {
+        total: page.total,
         album,
         videos: page.videos,
         has_more: page.has_more,
@@ -309,6 +310,7 @@ pub async fn public(
     };
     let page = collection(&s, scope, &page).await?;
     Ok(Json(AlbumPage {
+        total: page.total,
         album,
         videos: page.videos,
         has_more: page.has_more,

@@ -150,6 +150,8 @@ pub struct Accepted {
 /// Bounded video collection with continuation information.
 #[derive(Serialize, ToSchema)]
 pub struct VideoPage {
+    /// Exact authorized result count after applying the display-name filter.
+    pub total: i64,
     /// Visibility-filtered page of video records.
     pub videos: Vec<Video>,
     /// Whether another result page is available.

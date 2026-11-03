@@ -74,6 +74,12 @@ paths:
         schema:
           type: integer
           minimum: 0
+      - name: q
+        in: query
+        description: Optional literal display-name search, limited to 200 characters.
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: ''
@@ -433,6 +439,12 @@ paths:
         schema:
           type: integer
           minimum: 0
+      - name: q
+        in: query
+        description: Optional literal display-name search, limited to 200 characters.
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: ''
@@ -655,6 +667,12 @@ paths:
         schema:
           type: integer
           minimum: 0
+      - name: q
+        in: query
+        description: Optional literal display-name search, limited to 200 characters.
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: ''
@@ -799,6 +817,7 @@ components:
       type: object
       description: Album metadata and a bounded page of videos filtered for the caller.
       required:
+      - total
       - album
       - videos
       - has_more
@@ -809,6 +828,10 @@ components:
         has_more:
           type: boolean
           description: Whether another result page is available.
+        total:
+          type: integer
+          format: int64
+          description: Exact number of members authorized for this caller and display-name filter.
         videos:
           type: array
           items:
@@ -1466,12 +1489,17 @@ components:
       type: object
       description: Bounded video collection with continuation information.
       required:
+      - total
       - videos
       - has_more
       properties:
         has_more:
           type: boolean
           description: Whether another result page is available.
+        total:
+          type: integer
+          format: int64
+          description: Exact authorized result count after applying the display-name filter.
         videos:
           type: array
           items:

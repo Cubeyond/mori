@@ -16,6 +16,7 @@
   } from '#lib/api/client';
   import AccessGate from '#lib/components/AccessGate.svelte';
   import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
+  import CollectionToolbar from '#lib/components/library/CollectionToolbar.svelte';
   import MediaSelection from '#lib/components/library/MediaSelection.svelte';
   import AlbumEditor from '#lib/components/library/AlbumEditor.svelte';
   import MediaDialog from '#lib/components/library/MediaDialog.svelte';
@@ -29,6 +30,12 @@
   let album = $state<Album | null>(initial?.album ?? null),
     albums = $state<Album[]>(initialPage?.albums ?? []),
     videos = $state<Video[]>(initial?.videos ?? []);
+  /** Search and exact counts retain the album heading during requests. */
+  let query = $state(''),
+    total = $state(initial?.total ?? 0);
+  /** A replacement search aborts its predecessor without restarting the route. */
+  let searched = '',
+    request: AbortController | undefined;
   /** Use the seed only once; later route changes fetch their own current metadata. */
   let seeded = false;
   /** This album uses the shared batch selection surface. */
@@ -48,18 +55,28 @@
   /** Ignore responses from a previous album route. */
   let lifecycle: AbortController | undefined;
   /** Refresh the loaded metadata depth or append one bounded page. */
-  async function refresh(append = false): Promise<void> {
+  async function refresh(append = false, reset = false): Promise<void> {
     const id = page.params.id,
-      signal = lifecycle?.signal;
-    if (id === undefined || signal === undefined || signal.aborted || busy)
+      routeSignal = lifecycle?.signal;
+    if (
+      id === undefined ||
+      routeSignal === undefined ||
+      routeSignal.aborted ||
+      (busy && !reset)
+    )
       return;
+    request?.abort();
+    request = new AbortController();
+    const signal = AbortSignal.any([routeSignal, request.signal]);
+    const q = query.trim();
+    searched = q;
     /** Read abort state at each asynchronous boundary without retaining stale narrowing. */
     const active = () => !signal.aborted;
     busy = true;
     error = '';
     try {
       const rows: Video[] = [];
-      const target = append ? 30 : Math.max(30, videos.length);
+      const target = append || reset ? 30 : Math.max(30, videos.length);
       let offset = append ? videos.length : 0,
         hasMore = false;
       do {
@@ -67,13 +84,14 @@
           api.GET('/v1/admin/albums/{id}', {
             params: {
               path: { id },
-              query: { offset, limit: Math.min(60, target - rows.length) },
+              query: { offset, limit: Math.min(60, target - rows.length), q },
             },
             signal,
           }),
         );
         if (!active()) return;
         album = result.album;
+        total = result.total;
         rows.push(...result.videos);
         offset += result.videos.length;
         hasMore = result.has_more;
@@ -103,6 +121,9 @@
         seeded = true;
         return;
       }
+      query = '';
+      searched = '';
+      total = 0;
       selecting = false;
       videos = [];
       album = null;
@@ -113,6 +134,17 @@
     });
     return () => {
       controller.abort();
+      request?.abort();
+    };
+  });
+  $effect(() => {
+    const q = query.trim();
+    if (!loaded || !isAuthenticated || q === untrack(() => searched)) return;
+    const timer = setTimeout(() => {
+      void refresh(false, true);
+    }, 180);
+    return () => {
+      clearTimeout(timer);
     };
   });
   onMount(() => {
@@ -188,6 +220,7 @@
     </div>
     {#if error}<p class="error mb-4" role="alert">{error}</p>{/if}
     {#if notice}<p class="muted mb-4 text-sm" role="status">{notice}</p>{/if}
+    {#if album !== null}<CollectionToolbar bind:query count={total} />{/if}
     {#if videos.length > 0}<MediaSelection
         {videos}
         {albums}
@@ -196,7 +229,10 @@
         onmanage={(video: Video) => (editingVideo = video)}
       />{:else if busy && !loaded}<p class="empty-state muted" role="status">
         Loading album…
-      </p>{:else if album !== null}<div class="empty-state">
+      </p>{:else if query.trim()}<div class="empty-state">
+        <h2>No matching media</h2>
+        <p>Try another name.</p>
+      </div>{:else if album !== null}<div class="empty-state">
         <h2>This album is empty</h2>
         <p>Upload an image or video to get started.</p>
       </div>{/if}

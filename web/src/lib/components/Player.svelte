@@ -20,8 +20,14 @@
   let {
     video,
     onmanage,
-  }: { video: Video; onmanage?: ((video: Video) => void) | undefined } =
-    $props();
+    transform = '',
+    onfullscreen,
+  }: {
+    video: Video;
+    onmanage?: ((video: Video) => void) | undefined;
+    transform?: string;
+    onfullscreen?: (() => Promise<void>) | undefined;
+  } = $props();
   /** Bound native video element; sources are attached only after explicit playback intent. */
   let media: HTMLVideoElement;
   /** Player surface used for fullscreen and focus containment. */
@@ -76,6 +82,9 @@
     window.addEventListener('mori:play', coordinate);
     return () => {
       window.removeEventListener('mori:play', coordinate);
+      media.pause();
+      media.removeAttribute('src');
+      media.load();
     };
   });
   /** Pause this player when another video begins explicit playback. */
@@ -84,6 +93,10 @@
   }
   /** Request standards-based fullscreen with a native Safari fallback. */
   async function fullscreen() {
+    if (onfullscreen !== undefined) {
+      await onfullscreen();
+      return;
+    }
     try {
       const supported: Partial<Pick<HTMLDivElement, 'requestFullscreen'>> =
         frame;
@@ -135,6 +148,7 @@
 >
   <video
     bind:this={media}
+    style:transform
     src={activated ? video.media_url : undefined}
     poster={['ready', 'published', 'publishing', 'revoking'].includes(
       video.state,
@@ -189,7 +203,6 @@
         type="submit"
         class="icon-button"
         aria-label="Video options"
-        title="Share or edit video"
         disabled={!['ready', 'published', 'failed'].includes(video.state)}
         onclick={manage}><Ellipsis size={22} strokeWidth={1.5} /></Button
       >{/if}
@@ -283,7 +296,7 @@
   .player {
     position: relative;
     width: 100%;
-    overflow: hidden;
+    overflow: visible;
     background: linear-gradient(135deg, #242626, #151616);
     isolation: isolate;
     container-type: inline-size;

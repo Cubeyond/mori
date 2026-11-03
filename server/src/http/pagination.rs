@@ -11,6 +11,8 @@ pub struct Page {
     pub offset: Option<i64>,
     /// Optional page size clamped to the configured response budget.
     pub limit: Option<usize>,
+    /// Optional literal display-name search, limited to 200 characters.
+    pub q: Option<String>,
 }
 impl Page {
     /// Return a bounded effective page size.

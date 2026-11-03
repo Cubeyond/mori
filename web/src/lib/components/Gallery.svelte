@@ -23,6 +23,20 @@
   /** Measured content width and currently selected full-frame video. */
   let width = $state(0),
     selected = $state<MediaItem | null>(null);
+  /** Preview navigation follows the same filtered reading order as thumbnails. */
+  const playable = $derived(
+    videos.filter((item) =>
+      ['ready', 'published', 'publishing', 'revoking'].includes(item.state),
+    ),
+  );
+  const selectedIndex = $derived(
+    playable.findIndex((item) => item.id === selected?.id),
+  );
+  /** Boundaries remain explicit rather than looping unexpectedly to the beginning. */
+  function navigate(direction: number): void {
+    const next = playable[selectedIndex + direction];
+    if (next !== undefined) selected = next;
+  }
   /** Desktop uses the reference's four columns and consistent 14px gutters. */
   const layout = $derived(
     arrangeGallery(
@@ -74,6 +88,19 @@
 </div>
 {#if selected !== null}<MediaViewer
     video={selected}
+    position={playable.length > 1
+      ? String(selectedIndex + 1) + ' / ' + String(playable.length)
+      : ''}
+    onprevious={selectedIndex > 0
+      ? () => {
+          navigate(-1);
+        }
+      : undefined}
+    onnext={selectedIndex >= 0 && selectedIndex < playable.length - 1
+      ? () => {
+          navigate(1);
+        }
+      : undefined}
     onclose={() => (selected = null)}
   />{/if}
 

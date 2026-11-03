@@ -1,18 +1,17 @@
 <script lang="ts">
   import { pageTitle } from '#lib/features/page-title';
   import Button from '#lib/components/ui/button/button.svelte';
-  import Input from '#lib/components/ui/input/input.svelte';
+  import CollectionToolbar from './CollectionToolbar.svelte';
   import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
   /** Authenticated gallery orchestration; administration never enters its document flow. */
   import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import {
     X,
     ArrowUpRight,
     Plus,
-    Search,
     SquareDashedMousePointer,
   } from '@lucide/svelte';
   import {
@@ -28,19 +27,18 @@
   import { openUploader } from '#lib/features/upload';
   import MediaDialog from '#lib/components/library/MediaDialog.svelte';
 
-  /** Local text filter applies to the currently loaded page. */
+  /** Search applies to the entire authorized collection, not just loaded pages. */
   let query = $state('');
   /** Selection mode leaves individual playback and sharing intact when dismissed. */
   let selecting = $state(false);
   /** Metadata only; the gallery loads no video source before playback intent. */
   let videos = $state<MediaItem[]>([]),
     albums = $state<Album[]>([]);
-  /** Filter metadata without loading any video sources. */
-  const visible = $derived(
-    videos.filter((video) =>
-      video.name.toLowerCase().includes(query.trim().toLowerCase()),
-    ),
-  );
+  /** Exact server count after the current search filter. */
+  let total = $state(0);
+  /** The last issued query and cancellation token reject obsolete responses. */
+  let searched = '',
+    request: AbortController | undefined;
   /** Session discovery, pagination, and scoped floating feedback. */
   let loaded = $state(false),
     more = $state(false),
@@ -52,30 +50,41 @@
   let refreshing = false;
 
   /** Refresh the visible metadata window, retaining already loaded pagination depth. */
-  async function refresh(append = false): Promise<void> {
-    if (refreshing) return;
+  async function refresh(append = false, reset = false): Promise<void> {
+    if (refreshing && !reset) return;
+    request?.abort();
+    const controller = new AbortController(),
+      signal = controller.signal;
+    request = controller;
+    const q = query.trim();
+    searched = q;
     refreshing = true;
     try {
-      const target = append ? 30 : Math.max(30, videos.length);
+      const target = append || reset ? 30 : Math.max(30, videos.length);
       const rows: MediaItem[] = [];
       let offset = append ? videos.length : 0;
       let hasMore = false;
       do {
         const limit = Math.min(60, target - rows.length);
         const list = await apiData(
-          api.GET('/v1/admin/videos', { params: { query: { offset, limit } } }),
+          api.GET('/v1/admin/videos', {
+            params: { query: { offset, limit, q } },
+            signal,
+          }),
         );
+        if (signal.aborted) return;
+        total = list.total;
         rows.push(...list.videos);
         offset += list.videos.length;
         hasMore = list.has_more;
       } while (hasMore && rows.length < target);
       videos = append ? [...videos, ...rows] : rows;
       more = hasMore;
-      albums = await apiData(api.GET('/v1/admin/albums'));
+      albums = await apiData(api.GET('/v1/admin/albums', { signal }));
     } catch (failure) {
-      error = message(failure);
+      if (!signal.aborted) error = message(failure);
     } finally {
-      refreshing = false;
+      if (!signal.aborted) refreshing = false;
     }
   }
   /** Refresh mounted metadata after a background upload or album mutation. */
@@ -95,6 +104,17 @@
     notice = value;
   }
 
+  $effect(() => {
+    const q = query.trim();
+    if (!loaded || !$session.authenticated || q === untrack(() => searched))
+      return;
+    const timer = setTimeout(() => {
+      void refresh(false, true);
+    }, 180);
+    return () => {
+      clearTimeout(timer);
+    };
+  });
   $effect(() => {
     if (!notice) return;
     const timer = setTimeout(() => (notice = ''), 6000);
@@ -134,6 +154,7 @@
     }, 10000);
     return () => {
       lifecycle.abort();
+      request?.abort();
       clearInterval(timer);
       window.removeEventListener('mori:library-changed', syncLibrary);
     };
@@ -167,19 +188,11 @@
         >
       </div>{/if}
   </div>
-  {#if loaded && $session.authenticated && videos.length > 0}<div
-      class="collection-toolbar"
-    >
-      <label class="search-field"
-        ><Search size={17} /><span class="sr-only">Search gallery</span><Input
-          type="search"
-          placeholder="Search this page…"
-          bind:value={query}
-        /></label
-      ><span class="collection-count"
-        >{visible.length} {visible.length === 1 ? 'item' : 'items'}</span
-      >
-    </div>{/if}
+  {#if loaded && $session.authenticated}<CollectionToolbar
+      bind:query
+      count={total}
+      label="Search gallery"
+    />{/if}
   {#if !loaded}<p class="empty muted" role="status">Opening your library…</p>
   {:else if !$session.authenticated}<div class="empty">
       <h2>Your private library.</h2>
@@ -187,16 +200,13 @@
         >Log in to continue<ArrowUpRight size={17} /></Button
       >
     </div>
-  {:else if videos.length > 0}{#if visible.length > 0}<MediaSelection
-        videos={visible}
-        {albums}
-        bind:selecting
-        onmanage={edit}
-        oncomplete={refresh}
-      />{:else}<div class="empty-state">
-        <h2>No matching media</h2>
-        <p>Try another name or load more items.</p>
-      </div>{/if}
+  {:else if videos.length > 0}<MediaSelection
+      {videos}
+      {albums}
+      bind:selecting
+      onmanage={edit}
+      oncomplete={refresh}
+    />
     {#if more}<div class="more">
         <Button
           variant="ghost"
@@ -205,6 +215,10 @@
           onclick={() => refresh(true)}>Load more</Button
         >
       </div>{/if}
+  {:else if query.trim()}<div class="empty-state">
+      <h2>No matching media</h2>
+      <p>Try another name.</p>
+    </div>
   {:else}<div class="empty">
       <h2>Your library is empty.</h2>
       <p>Upload an image or video to get started. Albums are optional.</p>

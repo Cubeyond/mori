@@ -89,7 +89,6 @@
                     class="accent-swatch"
                     aria-label={'Accent ' + accent}
                     aria-pressed={$preferences.accent === accent}
-                    title={accent.charAt(0).toUpperCase() + accent.slice(1)}
                     style:--swatch={'var(--accent-' + accent + ')'}
                     style:--swatch-text={'var(--on-' + accent + ')'}
                     onclick={() => {

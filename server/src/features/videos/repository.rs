@@ -37,7 +37,46 @@ pub enum Collection<'a> {
 /// # Errors
 /// Returns database or pagination conversion errors.
 pub async fn collection(state: &AppState, scope: Collection<'_>, page: &Page) -> Result<VideoPage> {
+    let filter = page.q.as_deref().unwrap_or_default().trim();
+    if filter.chars().count() > 200 {
+        return Err(bad("Search must be at most 200 characters"));
+    }
+    let pattern = format!(
+        "%{}%",
+        filter
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_")
+    );
     let mut query = QueryBuilder::<Sqlite>::new("SELECT * FROM videos WHERE ");
+    constrain(&mut query, scope, &pattern);
+    let mut count = QueryBuilder::<Sqlite>::new("SELECT COUNT(*) FROM videos WHERE ");
+    constrain(&mut count, scope, &pattern);
+    let mut tx = state.db.begin().await?;
+    let total: i64 = count.build_query_scalar().fetch_one(&mut *tx).await?;
+    let limit =
+        i64::try_from(page.limit()).map_err(|_| bad("Page size exceeds the supported range"))?;
+    query
+        .push(" ORDER BY created_at DESC,id DESC LIMIT ")
+        .push_bind(limit + 1)
+        .push(" OFFSET ")
+        .push_bind(page.offset());
+    let mut rows: Vec<Video> = query.build_query_as().fetch_all(&mut *tx).await?;
+    tx.commit().await?;
+    let has_more = rows.len() > page.limit();
+    rows.truncate(page.limit());
+    Ok(VideoPage {
+        total,
+        videos: rows
+            .into_iter()
+            .map(|video| video.links(state, !matches!(scope, Collection::PublicAlbum(_))))
+            .collect(),
+        has_more,
+    })
+}
+
+/// Apply identical visibility and literal-name predicates to counts and result pages.
+fn constrain<'a>(query: &mut QueryBuilder<'a, Sqlite>, scope: Collection<'a>, pattern: &'a str) {
     match scope {
         Collection::Library => {
             query.push("state!='deleted' AND state NOT IN ('failed','uploading','verifying')");
@@ -53,21 +92,8 @@ pub async fn collection(state: &AppState, scope: Collection<'_>, page: &Page) ->
                 .push_bind(id);
         }
     }
-    let limit =
-        i64::try_from(page.limit()).map_err(|_| bad("Page size exceeds the supported range"))?;
     query
-        .push(" ORDER BY created_at DESC,id DESC LIMIT ")
-        .push_bind(limit + 1)
-        .push(" OFFSET ")
-        .push_bind(page.offset());
-    let mut rows: Vec<Video> = query.build_query_as().fetch_all(&state.db).await?;
-    let has_more = rows.len() > page.limit();
-    rows.truncate(page.limit());
-    Ok(VideoPage {
-        videos: rows
-            .into_iter()
-            .map(|video| video.links(state, !matches!(scope, Collection::PublicAlbum(_))))
-            .collect(),
-        has_more,
-    })
+        .push(" AND name LIKE ")
+        .push_bind(pattern)
+        .push(" ESCAPE '\\'");
 }

@@ -32,3 +32,6 @@ mod cancellation;
 
 /// Atomic selected-media membership and deletion.
 mod batch;
+
+/// Search pagination and count privacy.
+mod search;

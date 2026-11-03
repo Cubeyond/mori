@@ -52,6 +52,8 @@
   /** Original File objects remain intact while picker additions replace only the queue array. */
   let files = $state<File[]>([]),
     activeFiles = $state<File[]>([]);
+  /** A hidden picker avoids native filename tooltips over the visible drop button. */
+  let picker = $state<HTMLInputElement>();
   /** The first waiting original determines whether the draft can be submitted. */
   const file = $derived(files[0] ?? null);
   /** Album and visibility are fixed while a resumable or active transfer owns them. */
@@ -281,33 +283,42 @@
             void removeFile(selected);
           }}
         />{/if}
-      <label class="drop-zone" class:compact={files.length > 0} class:dragging>
-        <input
-          type="file"
-          multiple
-          accept={policy?.allowed_extensions
-            .map((extension) => '.' + extension)
-            .join(',') ?? 'image/*,video/*'}
-          aria-label="Media files"
-          disabled={policy === null || cancelling}
-          onchange={(event) => {
-            const selected = Array.from(event.currentTarget.files ?? []);
-            event.currentTarget.value = '';
-            selectFiles(selected);
-          }}
-          ondragover={(event) => {
-            event.preventDefault();
-            dragging = true;
-          }}
-          ondragleave={() => (dragging = false)}
-          ondrop={dropFiles}
-        />
+      <input
+        bind:this={picker}
+        hidden
+        type="file"
+        multiple
+        accept={policy?.allowed_extensions
+          .map((extension) => '.' + extension)
+          .join(',') ?? 'image/*,video/*'}
+        aria-label="Media files"
+        disabled={policy === null || cancelling}
+        onchange={(event) => {
+          const selected = Array.from(event.currentTarget.files ?? []);
+          event.currentTarget.value = '';
+          selectFiles(selected);
+        }}
+      />
+      <button
+        type="button"
+        class="drop-zone"
+        class:compact={files.length > 0}
+        class:dragging
+        disabled={policy === null || cancelling}
+        onclick={() => picker?.click()}
+        ondragover={(event) => {
+          event.preventDefault();
+          dragging = true;
+        }}
+        ondragleave={() => (dragging = false)}
+        ondrop={dropFiles}
+      >
         {#if files.length > 0}<Upload size={20} /><span
             >Drop more files here</span
           >
         {:else}<Images size={28} /><strong>Drop images or videos here</strong
           ><span>or click to choose files</span>{/if}
-      </label>
+      </button>
       <div class="options">
         <div class="field">
           <div class="album-label">
@@ -317,7 +328,6 @@
               type="button"
               class="album-action"
               aria-label="Manage albums"
-              title="Manage albums"
               onclick={onalbums}><FolderCog size={16} /></button
             >
           </div>
@@ -412,6 +422,7 @@
   .drop-zone {
     position: relative;
     min-height: 190px;
+    width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -431,21 +442,13 @@
   }
   .drop-zone:hover,
   .dragging,
-  .drop-zone:has(input:focus-visible) {
+  .drop-zone:focus-visible {
     border-color: var(--media-ring);
   }
 
-  .drop-zone input {
-    position: absolute;
-    inset: 0;
+  .drop-zone:focus:not(:focus-visible) {
     outline: none;
     box-shadow: none;
-    margin: 0;
-    padding: 0;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
   }
   .drop-zone strong {
     color: var(--foreground);

@@ -13,6 +13,7 @@
     type Video,
     type Album,
   } from '#lib/api/client';
+  import CollectionToolbar from '#lib/components/library/CollectionToolbar.svelte';
   import Gallery from '#lib/components/Gallery.svelte';
   /** Public collection data is visibility-filtered by Rust before the first render. */
   const initial = untrack(
@@ -29,21 +30,39 @@
   let more = $state(initial?.has_more ?? false),
     busy = $state(initial === null),
     failed = $state(false);
+  /** Search and counts are scoped by the same server authorization as media. */
+  let query = $state(''),
+    total = $state(initial?.total ?? 0);
+  let searched = '',
+    request: AbortController | undefined;
   /** Each route owns its request lifecycle, including subsequent pagination. */
   let controller: AbortController | undefined;
   /** Fetch public members while ignoring obsolete or aborted responses. */
-  async function load(slug: string, signal: AbortSignal): Promise<void> {
+  async function load(
+    slug: string,
+    routeSignal: AbortSignal,
+    append = false,
+  ): Promise<void> {
+    request?.abort();
+    request = new AbortController();
+    const signal = AbortSignal.any([routeSignal, request.signal]),
+      q = query.trim();
+    searched = q;
     busy = true;
     try {
       const data = await apiData(
         api.GET('/v1/albums/{slug}', {
-          params: { path: { slug }, query: { offset: videos.length } },
+          params: {
+            path: { slug },
+            query: { offset: append ? videos.length : 0, q },
+          },
           signal,
         }),
       );
       if (signal.aborted) return;
       album = data.album;
-      videos = [...videos, ...data.videos];
+      videos = append ? [...videos, ...data.videos] : data.videos;
+      total = data.total;
       more = data.has_more;
     } catch {
       if (!signal.aborted) {
@@ -58,7 +77,7 @@
   /** Continue only the active collection's bounded result set. */
   function next(): void {
     if (!busy && controller !== undefined)
-      void load(page.params.slug ?? '', controller.signal);
+      void load(page.params.slug ?? '', controller.signal, true);
   }
   $effect(() => {
     const slug = page.params.slug;
@@ -76,6 +95,9 @@
         seeded = true;
         return;
       }
+      query = '';
+      searched = '';
+      total = 0;
       videos = [];
       album = null;
       failed = false;
@@ -84,6 +106,18 @@
     });
     return () => {
       lifecycle.abort();
+      request?.abort();
+    };
+  });
+  $effect(() => {
+    const q = query.trim();
+    if (album === null || q === untrack(() => searched)) return;
+    const timer = setTimeout(() => {
+      if (controller !== undefined)
+        void load(page.params.slug ?? '', controller.signal);
+    }, 180);
+    return () => {
+      clearTimeout(timer);
     };
   });
 </script>
@@ -103,11 +137,16 @@
         <h1>{album.name}</h1>
       </div>
     </header>
+    <CollectionToolbar bind:query count={total} />
     {#if videos.length > 0}<Gallery {videos} />{:else if !busy}<div
         class="empty-state"
       >
-        <h2>No public media yet</h2>
-        <p>Shared images and videos will appear here.</p>
+        <h2>{query.trim() ? 'No matching media' : 'No media yet'}</h2>
+        <p>
+          {query.trim()
+            ? 'Try another name.'
+            : 'Shared images and videos will appear here.'}
+        </p>
       </div>{/if}
     {#if busy}<p class="muted py-6 text-center text-sm" role="status">
         Loading media…

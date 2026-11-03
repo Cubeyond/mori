@@ -122,7 +122,6 @@
           type="submit"
           class="icon-button"
           aria-label="Media options"
-          title="Share or edit"
           disabled={!['ready', 'published', 'failed'].includes(video.state)}
           onclick={() => {
             onmanage(video);
@@ -272,25 +271,8 @@
     color: #fff;
   }
 
-  /** Mori's photo controls use solid surfaces while the media itself stays unfiltered. */
-  :global([data-theme='mori']) .actions {
-    background: none;
-    gap: 4px;
-    padding: 6px;
-  }
-  :global([data-theme='mori']) .actions :global(.icon-button),
-  :global([data-theme='mori']) .play,
-  :global([data-theme='mori']) .details,
-  :global([data-theme='mori']) .selection-check {
-    background: var(--popover);
-    color: var(--foreground);
-  }
-  :global([data-theme='mori']) .details {
-    padding-top: 10px;
-  }
-  :global([data-theme='mori']) .selected .selection-check {
-    background: var(--primary);
-    color: var(--primary-foreground);
+  .actions :global(.icon-button:hover) {
+    background: transparent;
   }
 
   @media (hover: none) {

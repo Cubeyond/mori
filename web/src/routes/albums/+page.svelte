@@ -8,6 +8,7 @@
   import { resolve } from '$app/paths';
   import { Plus, Library } from '@lucide/svelte';
   import AccessGate from '#lib/components/AccessGate.svelte';
+  import CollectionToolbar from '#lib/components/library/CollectionToolbar.svelte';
   import AlbumCard from '#lib/components/library/AlbumCard.svelte';
   import AlbumEditor from '#lib/components/library/AlbumEditor.svelte';
   import {
@@ -24,6 +25,15 @@
   let albums = $state<AlbumSummary[]>(initial ?? []),
     loaded = $state(initial !== null),
     error = $state('');
+  /** Album metadata is fully loaded, so search includes every collection. */
+  let query = $state('');
+  const visible = $derived(
+    albums.filter((album) =>
+      (album.name + ' ' + album.description)
+        .toLocaleLowerCase()
+        .includes(query.trim().toLocaleLowerCase()),
+    ),
+  );
   /** Each editor instance owns one album draft or destructive confirmation. */
   let editor = $state<{ album: Album | null; removing: boolean } | null>(null);
   /** Fetch metadata only after the administrator session has been established. */
@@ -63,6 +73,12 @@
       >{/if}
   </div>
   <AccessGate>
+    {#if loaded}<CollectionToolbar
+        bind:query
+        count={visible.length}
+        noun="album"
+        label="Search albums"
+      />{/if}
     {#if error}<p class="error mb-4" role="alert">{error}</p>{/if}
     {#if !loaded}<p class="muted" role="status">Loading albums…</p>
     {:else if albums.length === 0}<div class="empty-state">
@@ -77,8 +93,12 @@
           >Create your first album</Button
         >
       </div>
+    {:else if visible.length === 0}<div class="empty-state">
+        <h2>No matching albums</h2>
+        <p>Try another name.</p>
+      </div>
     {:else}<div class="album-list">
-        {#each albums as album (album.id)}<AlbumCard
+        {#each visible as album (album.id)}<AlbumCard
             {album}
             onedit={(value: Album) =>
               (editor = { album: value, removing: false })}

@@ -28,7 +28,6 @@
     variant="ghost"
     size="icon"
     aria-label="Log out"
-    title="Log out"
     disabled={pending}
     onclick={logout}><LogOut size={18} /></Button
   >
@@ -36,8 +35,7 @@
     variant="ghost"
     size="icon"
     href={resolve('/login')}
-    aria-label="Log in"
-    title="Log in"><LogIn size={18} /></Button
+    aria-label="Log in"><LogIn size={18} /></Button
   >{/if}
 {#if error}<p
     class="error fixed right-5 bottom-5 z-50 max-w-sm rounded-md border border-border bg-popover p-3"
