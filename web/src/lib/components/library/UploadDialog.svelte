@@ -72,9 +72,12 @@
   /** Cancelling first settles all file workers before releasing their server reservations. */
   let running: Promise<void> | undefined;
   let cancelling = $state(false);
-  const hasQueue = $derived(
-    files.length > 0 || pending.length > 0 || unfinished.length > 0,
+  /** A started transfer may own a server reservation even if its initialization response was lost. */
+  const hasTransfer = $derived(
+    busy || phase !== '' || pending.length > 0 || unfinished.length > 0,
   );
+  /** Fresh local selections and server-backed work expose the appropriate clearing action. */
+  const hasQueue = $derived(files.length > 0 || hasTransfer);
   $effect(() => {
     if (!open && !busy && !cancelling && unfinished.length > 0)
       onstatus({ progress: 0, phase: 'Unfinished uploads', paused: true });
@@ -189,6 +192,7 @@
         },
         signal,
       );
+      phase = '';
       onclose();
       onnotice(
         completed === 1
@@ -225,7 +229,7 @@
   /** Cancel every queued original and persisted reservation, including server-only orphans. */
   async function cancelAll(): Promise<void> {
     if (cancelling) return;
-    if (!busy && pending.length === 0 && unfinished.length === 0) {
+    if (!hasTransfer) {
       files = [];
       error = '';
       onstatus(null);
@@ -272,7 +276,7 @@
               onclick={cancelAll}
               >{cancelling
                 ? 'Cancelling…'
-                : busy || pending.length > 0 || unfinished.length > 0
+                : hasTransfer
                   ? 'Cancel uploads'
                   : 'Clear selection'}</Button
             >
