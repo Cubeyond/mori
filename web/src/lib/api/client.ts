@@ -10,6 +10,8 @@ export type MediaItem = components['schemas']['Video'];
 export type Video = MediaItem;
 /** Typed Album contract derived from the generated API or local browser state. */
 export type Album = components['schemas']['Album'];
+/** Administrator listing includes at most three completed poster previews per album. */
+export type AlbumSummary = components['schemas']['AlbumSummary'];
 /** Non-secret runtime policy returned by the upload API. */
 export type UploadPolicy = components['schemas']['UploadPolicy'];
 /** Redacted administrator storage summary generated from Rust DTOs. */

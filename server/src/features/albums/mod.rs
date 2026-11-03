@@ -1,10 +1,16 @@
 //! Explicit album management and visibility-filtered album queries.
 
+/// Bounded administrator collection previews.
+mod catalog;
+/// Shared album metadata and mutation contracts.
+mod model;
+pub use model::*;
+
 use crate::{
     app::{AppState, now, random_id, valid_name},
     features::{
         auth,
-        videos::{Collection, Video, collection, deletion},
+        videos::{Collection, collection, deletion},
     },
     http::{
         error::{Result, bad, missing},
@@ -17,76 +23,6 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
-use utoipa::ToSchema;
-
-/// Explicitly created album with an editable URL slug and display label.
-#[derive(Serialize, FromRow, ToSchema)]
-pub struct Album {
-    /// Stable internal identifier for this record.
-    pub id: String,
-    /// Administrator-chosen album display label, independent of its slug.
-    pub name: String,
-    /// Unique editable album URL component.
-    pub slug: String,
-    /// Whether the album page can be visited anonymously, independent of member videos.
-    pub visibility: String,
-    /// Creation timestamp in Unix seconds.
-    pub created_at: i64,
-}
-/// Administrator-supplied album label and separately validated slug.
-#[derive(Deserialize, ToSchema)]
-pub struct CreateAlbum {
-    /// Administrator-chosen album display label, independent of its slug.
-    pub name: String,
-    /// Unique editable album URL component.
-    pub slug: String,
-    /// Album-page visibility; omitted values default to private.
-    #[serde(default = "private_visibility")]
-    pub visibility: String,
-}
-/// Editable album label, optional URL slug, and page visibility.
-#[derive(Deserialize, ToSchema)]
-pub struct EditAlbum {
-    /// Requested normalized URL slug; omission retains the current address.
-    pub slug: Option<String>,
-    /// Administrator-chosen album display label, independent of its slug.
-    pub name: String,
-    /// Requested album-page visibility; omission preserves its current value.
-    pub visibility: Option<String>,
-}
-/// Explicit destructive confirmation and optional deletion of contained media.
-#[derive(Deserialize, ToSchema)]
-#[serde(deny_unknown_fields)]
-pub struct DeleteAlbum {
-    /// Exact current album display name, required for both deletion modes.
-    pub confirmation: String,
-    /// Queue deletion of every member; false retains and detaches the videos.
-    #[serde(default)]
-    pub delete_media: bool,
-}
-/// Durable video deletions queued by an explicitly destructive album removal.
-#[derive(Serialize, ToSchema)]
-pub struct AlbumDeletion {
-    /// Job identifiers whose completion confirms source and public-copy removal.
-    pub job_ids: Vec<String>,
-}
-/// Album metadata and a bounded page of videos filtered for the caller.
-#[derive(Serialize, ToSchema)]
-pub struct AlbumPage {
-    /// Album metadata visible to the caller.
-    pub album: Album,
-    /// Visibility-filtered page of video records.
-    pub videos: Vec<Video>,
-    /// Whether another result page is available.
-    pub has_more: bool,
-}
-
-/// Default newly created collections to administrator-only album pages.
-fn private_visibility() -> String {
-    "private".into()
-}
 
 /// Normalize and validate a non-reserved album URL component.
 ///
@@ -119,18 +55,12 @@ pub fn normalize_slug(input: &str) -> Result<String> {
 #[utoipa::path(
     get,
     path = "/v1/admin/albums",
-    responses((status = 200, body = Vec<Album>)),
+    responses((status = 200, body = Vec<AlbumSummary>)),
     security(("session" = [])),
 )]
-pub async fn list(State(s): State<AppState>, h: HeaderMap) -> Result<Json<Vec<Album>>> {
+pub async fn list(State(s): State<AppState>, h: HeaderMap) -> Result<Json<Vec<AlbumSummary>>> {
     auth::require(&s, &h, false).await?;
-    let rows = sqlx::query_as(
-        r"SELECT id,name,slug,visibility,created_at FROM albums
-ORDER BY created_at DESC,id DESC",
-    )
-    .fetch_all(&s.db)
-    .await?;
-    Ok(Json(rows))
+    Ok(Json(catalog::summaries(&s).await?))
 }
 /// Return one administrator-visible collection, including private members and empty albums.
 ///
@@ -150,12 +80,13 @@ pub async fn detail(
     Query(page): Query<Page>,
 ) -> Result<Json<AlbumPage>> {
     auth::require(&s, &h, false).await?;
-    let album: Album =
-        sqlx::query_as("SELECT id,name,slug,visibility,created_at FROM albums WHERE id=?")
-            .bind(id)
-            .fetch_optional(&s.db)
-            .await?
-            .ok_or_else(missing)?;
+    let album: Album = sqlx::query_as(
+        "SELECT id,name,slug,visibility,description,created_at FROM albums WHERE id=?",
+    )
+    .bind(id)
+    .fetch_optional(&s.db)
+    .await?
+    .ok_or_else(missing)?;
     let page = collection(&s, Collection::Album(&album.id), &page).await?;
     Ok(Json(AlbumPage {
         album,
@@ -202,16 +133,20 @@ pub(crate) async fn insert(db: &mut sqlx::SqliteConnection, input: CreateAlbum) 
         name: input.name.trim().into(),
         slug: normalize_slug(&input.slug)?,
         visibility: input.visibility,
+        description: normalize_description(&input.description)?,
         created_at: now(),
     };
-    sqlx::query("INSERT INTO albums(id,name,slug,visibility,created_at) VALUES(?,?,?,?,?)")
-        .bind(&album.id)
-        .bind(&album.name)
-        .bind(&album.slug)
-        .bind(&album.visibility)
-        .bind(album.created_at)
-        .execute(db)
-        .await?;
+    sqlx::query(
+        "INSERT INTO albums(id,name,slug,visibility,description,created_at) VALUES(?,?,?,?,?,?)",
+    )
+    .bind(&album.id)
+    .bind(&album.name)
+    .bind(&album.slug)
+    .bind(&album.visibility)
+    .bind(&album.description)
+    .bind(album.created_at)
+    .execute(db)
+    .await?;
     Ok(album)
 }
 /// Update album label and page visibility without changing member-video access policies.
@@ -244,14 +179,19 @@ pub async fn edit(
         return Err(bad("Visibility must be public or private"));
     }
     let slug = input.slug.as_deref().map(normalize_slug).transpose()?;
+    let description = input
+        .description
+        .as_deref()
+        .map(normalize_description)
+        .transpose()?;
     let mut tx = s.db.begin_with("BEGIN IMMEDIATE").await?;
     let old: String = sqlx::query_scalar("SELECT slug FROM albums WHERE id=?")
         .bind(&id)
         .fetch_optional(&mut *tx)
         .await?
         .ok_or_else(missing)?;
-    sqlx::query("UPDATE albums SET name=?,slug=COALESCE(?,slug),visibility=COALESCE(?,visibility) WHERE id=?")
-        .bind(input.name.trim()).bind(&slug).bind(input.visibility).bind(&id)
+    sqlx::query("UPDATE albums SET name=?,slug=COALESCE(?,slug),visibility=COALESCE(?,visibility),description=COALESCE(?,description) WHERE id=?")
+        .bind(input.name.trim()).bind(&slug).bind(input.visibility).bind(description).bind(&id)
         .execute(&mut *tx).await?;
     if let Some(slug) = slug.filter(|slug| *slug != old) {
         sqlx::query("DELETE FROM media_aliases WHERE prefix=?")
@@ -355,7 +295,7 @@ pub async fn public(
 ) -> Result<Json<AlbumPage>> {
     let owner = auth::session(State(s.clone()), h).await?.0.authenticated;
     let album: Album = sqlx::query_as(
-        r"SELECT id,name,slug,visibility,created_at FROM albums WHERE slug=? AND (visibility='public' OR ?)",
+        r"SELECT id,name,slug,visibility,description,created_at FROM albums WHERE slug=? AND (visibility='public' OR ?)",
     )
     .bind(slug)
     .bind(owner)
@@ -373,4 +313,19 @@ pub async fn public(
         videos: page.videos,
         has_more: page.has_more,
     }))
+}
+
+/// Trim optional plain text while rejecting oversized descriptions and hidden control characters.
+fn normalize_description(input: &str) -> Result<String> {
+    let description = input.trim();
+    if description.chars().count() > 500
+        || description
+            .chars()
+            .any(|value| value.is_control() && !matches!(value, '\n' | '\t'))
+    {
+        return Err(bad(
+            "Description must be at most 500 characters of plain text",
+        ));
+    }
+    Ok(description.into())
 }

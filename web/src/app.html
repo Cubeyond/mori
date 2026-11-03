@@ -1,10 +1,5 @@
 <!doctype html>
-<html
-  lang="en"
-  class="dark style-nova"
-  data-theme="catppuccin-mocha"
-  data-accent="mauve"
->
+<html lang="en" class="dark style-nova" data-theme="mori" data-accent="green">
   <head>
     <meta charset="utf-8" />
     <title>Mori</title>
@@ -17,14 +12,35 @@
         const value = JSON.parse(
           localStorage.getItem('mori:preferences') || 'null',
         );
-        if (value && typeof value.theme === 'string') {
-          document.documentElement.dataset.theme =
-            value.theme === 'mori' ? 'catppuccin-mocha' : value.theme;
-          document.documentElement.dataset.accent =
-            typeof value.accent === 'string' ? value.accent : 'mauve';
+        if (value && typeof value === 'object') {
+          const themes = [
+            'mori',
+            'catppuccin-latte',
+            'catppuccin-frappe',
+            'catppuccin-macchiato',
+            'catppuccin-mocha',
+            'tokyonight',
+          ];
+          const accents = [
+            'blue',
+            'lavender',
+            'mauve',
+            'pink',
+            'peach',
+            'green',
+            'teal',
+            'red',
+          ];
+          const theme = themes.includes(value.theme) ? value.theme : 'mori';
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.dataset.accent = accents.includes(
+            value.accent,
+          )
+            ? value.accent
+            : 'green';
           document.documentElement.classList.toggle(
             'dark',
-            value.theme !== 'catppuccin-latte',
+            theme !== 'catppuccin-latte',
           );
         }
       } catch {

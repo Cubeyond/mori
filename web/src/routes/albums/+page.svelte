@@ -6,15 +6,22 @@
   import { takeInitialPage } from '#lib/api/bootstrap';
   import { onMount, untrack } from 'svelte';
   import { resolve } from '$app/paths';
-  import { Plus, Library, Pencil, Trash } from '@lucide/svelte';
+  import { Plus, Library } from '@lucide/svelte';
   import AccessGate from '#lib/components/AccessGate.svelte';
-  import CopyButton from '#lib/components/CopyButton.svelte';
+  import AlbumCard from '#lib/components/library/AlbumCard.svelte';
   import AlbumEditor from '#lib/components/library/AlbumEditor.svelte';
-  import { api, apiData, session, message, type Album } from '#lib/api/client';
+  import {
+    api,
+    apiData,
+    session,
+    message,
+    type Album,
+    type AlbumSummary,
+  } from '#lib/api/client';
   /** The document seed is consumed once; returning from another page fetches fresh data. */
   const initial = untrack(() => takeInitialPage('/albums')?.albums ?? null);
   /** Server-backed album list and safe feedback for loading or clipboard errors. */
-  let albums = $state<Album[]>(initial ?? []),
+  let albums = $state<AlbumSummary[]>(initial ?? []),
     loaded = $state(initial !== null),
     error = $state('');
   /** Each editor instance owns one album draft or destructive confirmation. */
@@ -61,9 +68,7 @@
     {:else if albums.length === 0}<div class="empty-state">
         <Library size={28} />
         <h2>No albums yet</h2>
-        <p>
-          Create a collection when you need one. Videos can stay outside albums.
-        </p>
+        <p>Create a collection for your images and videos.</p>
         <Button
           variant="outline"
           type="submit"
@@ -73,45 +78,13 @@
         >
       </div>
     {:else}<div class="album-list">
-        {#each albums as album (album.id)}<article class="album-row">
-            <div class="album-icon"><Library size={23} /></div>
-            <div class="album-metadata">
-              <a
-                class="album-name"
-                href={resolve('/albums/[id]', { id: album.id })}>{album.name}</a
-              ><span
-                class="album-visibility"
-                class:public={album.visibility === 'public'}
-                >{album.visibility === 'public' ? 'Public' : 'Private'}</span
-              ><span class="album-address"
-                >{window.location.origin}/{album.slug}</span
-              >
-            </div>
-            <div class="album-actions">
-              <CopyButton
-                label={'Copy album link ' + album.name}
-                value={new URL('/' + album.slug, window.location.origin).href}
-                icon="link"
-                disabled={album.visibility !== 'public'}
-              /><Button
-                variant="ghost"
-                size="icon"
-                type="submit"
-                class="icon-button"
-                aria-label={'Edit album ' + album.name}
-                onclick={() => (editor = { album, removing: false })}
-                ><Pencil size={16} /></Button
-              ><Button
-                variant="ghost"
-                size="icon"
-                type="submit"
-                class="icon-button"
-                aria-label={'Delete album ' + album.name}
-                onclick={() => (editor = { album, removing: true })}
-                ><Trash size={16} /></Button
-              >
-            </div>
-          </article>{/each}
+        {#each albums as album (album.id)}<AlbumCard
+            {album}
+            onedit={(value: Album) =>
+              (editor = { album: value, removing: false })}
+            ondelete={(value: Album) =>
+              (editor = { album: value, removing: true })}
+          />{/each}
       </div>{/if}
   </AccessGate>
 </main>
@@ -124,72 +97,8 @@
 
 <style>
   .album-list {
-    border-top: 1px solid var(--border);
-  }
-  .album-row {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 18px 4px;
-    border-bottom: 1px solid var(--border);
-  }
-  .album-icon {
-    width: 48px;
-    height: 48px;
     display: grid;
-    place-items: center;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--muted-foreground);
-    background: var(--soft-surface);
-    flex-shrink: 0;
-  }
-  .album-metadata {
-    flex: 1;
-    min-width: 0;
-  }
-  .album-name {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: fit-content;
-    max-width: 100%;
-    font-size: 16px;
-    font-weight: 550;
-    overflow-wrap: anywhere;
-  }
-  .album-visibility {
-    display: inline-block;
-    margin-top: 6px;
-    padding: 2px 7px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-size: 12px;
-    color: var(--muted-foreground);
-  }
-  .album-visibility.public {
-    color: var(--success);
-    border-color: color-mix(in srgb, var(--success) 20%, transparent);
-  }
-  .album-address {
-    display: block;
-    color: var(--muted-foreground);
-    font-size: 14px;
-    margin-top: 6px;
-    user-select: text;
-    overflow-wrap: anywhere;
-  }
-  .album-actions {
-    display: flex;
-    color: var(--muted-foreground);
-  }
-  @media (max-width: 480px) {
-    .album-row {
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .album-actions {
-      margin-left: auto;
-    }
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+    gap: 16px;
   }
 </style>

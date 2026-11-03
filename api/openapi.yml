@@ -19,7 +19,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Album'
+                  $ref: '#/components/schemas/AlbumSummary'
       security:
       - session: []
     post:
@@ -761,12 +761,17 @@ components:
       - name
       - slug
       - visibility
+      - description
       - created_at
       properties:
         created_at:
           type: integer
           format: int64
           description: Creation timestamp in Unix seconds.
+        description:
+          type: string
+          description: Optional administrator-written description; empty values render no placeholder.
+          maxLength: 500
         id:
           type: string
           description: Stable internal identifier for this record.
@@ -809,6 +814,38 @@ components:
           items:
             $ref: '#/components/schemas/Video'
           description: Visibility-filtered page of video records.
+    AlbumPreview:
+      type: object
+      description: Minimal completed cover; no filenames, object keys, or direct storage URLs are exposed.
+      required:
+      - id
+      - kind
+      - poster_url
+      properties:
+        id:
+          type: string
+          description: Stable identifier used to retain the same preview during metadata refreshes.
+        kind:
+          $ref: '#/components/schemas/MediaKind'
+          description: Media category determines whether the cover has a video indicator.
+        poster_url:
+          type: string
+          description: Same-origin authenticated JPEG endpoint, never a signed S3 address.
+    AlbumSummary:
+      allOf:
+      - $ref: '#/components/schemas/Album'
+        description: Ordinary album fields remain at the top level for existing clients.
+      - type: object
+        required:
+        - previews
+        properties:
+          previews:
+            type: array
+            items:
+              $ref: '#/components/schemas/AlbumPreview'
+            description: Up to three recent posters; originals and incomplete uploads are never returned.
+            maxItems: 3
+      description: Album metadata with a bounded, administrator-only set of completed media covers.
     BatchAction:
       oneOf:
       - type: object
@@ -918,6 +955,10 @@ components:
       - name
       - slug
       properties:
+        description:
+          type: string
+          description: Optional plain-text description, trimmed and limited to 500 characters.
+          maxLength: 500
         name:
           type: string
           description: Administrator-chosen album display label, independent of its slug.
@@ -987,6 +1028,12 @@ components:
       required:
       - name
       properties:
+        description:
+          type:
+          - string
+          - 'null'
+          description: Omission preserves the description; an empty string clears it.
+          maxLength: 500
         name:
           type: string
           description: Administrator-chosen album display label, independent of its slug.

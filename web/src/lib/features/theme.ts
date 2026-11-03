@@ -1,5 +1,6 @@
 /** Browser-local themes use upstream palette values through shared semantic CSS tokens. */
 export const themes = [
+  { id: 'mori', label: 'Mori', dark: true },
   { id: 'catppuccin-latte', label: 'Catppuccin Latte', dark: false },
   { id: 'catppuccin-frappe', label: 'Catppuccin Frappé', dark: true },
   { id: 'catppuccin-macchiato', label: 'Catppuccin Macchiato', dark: true },
@@ -10,9 +11,9 @@ export const themes = [
 /** Only catalog entries can be restored from untrusted browser persistence. */
 export type Theme = (typeof themes)[number]['id'];
 
-/** Fall back to Catppuccin Mocha for obsolete, missing, or corrupted stored choices. */
+/** Mori uses Everforest Dark Hard when a browser has no valid saved theme. */
 export function parseTheme(value: unknown): Theme {
-  return themes.find((theme) => theme.id === value)?.id ?? 'catppuccin-mocha';
+  return themes.find((theme) => theme.id === value)?.id ?? 'mori';
 }
 
 /** Apply the palette and native-control color scheme without changing wallpaper or media. */
@@ -39,7 +40,7 @@ export const accents = [
 ] as const;
 /** Validated local accent choice. */
 export type Accent = (typeof accents)[number];
-/** Older settings inherit the concept's quiet mauve accent. */
+/** New and incomplete preferences inherit Mori's leaf-green accent. */
 export function parseAccent(value: unknown): Accent {
-  return accents.find((accent) => accent === value) ?? 'mauve';
+  return accents.find((accent) => accent === value) ?? 'green';
 }

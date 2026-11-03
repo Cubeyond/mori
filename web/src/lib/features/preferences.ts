@@ -9,7 +9,7 @@ import {
 } from '#lib/features/theme';
 /** Explicitly supported local defaults without credentials or media metadata. */
 export interface Preferences {
-  /** Browser-local palette; existing installations retain the Mori appearance. */
+  /** Browser-local palette; saved explicit themes survive the default-theme upgrade. */
   theme: Theme;
   /** Accent colors apply to actions, selections, focus and progress. */
   accent: Accent;
@@ -28,8 +28,8 @@ export interface Preferences {
 export const DEFAULT_THUMBNAIL_OPACITY = 0.92;
 /** Safe defaults used when browser persistence is unavailable. */
 const defaults: Preferences = {
-  theme: 'catppuccin-mocha',
-  accent: 'mauve',
+  theme: 'mori',
+  accent: 'green',
   uploadVisibility: 'private',
   density: 'comfortable',
   backgroundOpacity: 0.1,

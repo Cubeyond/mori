@@ -2,11 +2,13 @@
   /** Shared album fields keep ordinary and batch creation aligned and consistently validated. */
   import Input from '#lib/components/ui/input/input.svelte';
   import NativeSelect from '#lib/components/ui/native-select/native-select.svelte';
+  import Textarea from '#lib/components/ui/textarea/textarea.svelte';
   /** Parent-owned values preserve drafts when switching between existing and new albums. */
   let {
     name = $bindable(''),
     slug = $bindable(''),
     visibility = $bindable('private'),
+    description = $bindable(''),
     prefix = 'album',
     disabled = false,
     suggestSlug = false,
@@ -14,6 +16,7 @@
     name?: string;
     slug?: string;
     visibility?: string;
+    description?: string;
     prefix?: string;
     disabled?: boolean;
     suggestSlug?: boolean;
@@ -47,6 +50,15 @@
       suggest(event.currentTarget.value);
     }}
     autocomplete="off"
+    {disabled}
+  /></label
+>
+<label class="field" for={prefix + '-description'}
+  >Description <span class="muted">(optional)</span><Textarea
+    id={prefix + '-description'}
+    maxlength={500}
+    rows={2}
+    bind:value={description}
     {disabled}
   /></label
 >

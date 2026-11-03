@@ -3,7 +3,7 @@
 use crate::{
     app::AppState,
     features::{
-        albums::{self, Album, AlbumPage},
+        albums::{self, AlbumPage, AlbumSummary},
         auth::{self, Session},
     },
     http::{
@@ -25,7 +25,7 @@ struct PageBootstrap {
     /// Validated session state and its existing CSRF value; never an authentication cookie.
     session: Session,
     /// Initial administrator album listing when requested by a collection route.
-    albums: Option<Vec<Album>>,
+    albums: Option<Vec<AlbumSummary>>,
     /// Initial authorized collection and its first bounded media page.
     album_page: Option<AlbumPage>,
 }

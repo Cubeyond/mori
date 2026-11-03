@@ -74,3 +74,29 @@
     min-height: 44px;
   }
 }
+
+/** The official Mori palette uses opaque upstream surfaces, including hover and form states. */
+:root[data-theme='mori'] {
+  .cn-input,
+  .cn-native-select,
+  .cn-textarea,
+  .cn-button-variant-outline {
+    background: var(--card);
+  }
+  .cn-button-variant-default:hover {
+    background: var(--primary);
+    filter: brightness(1.06);
+  }
+  .cn-button-variant-outline:hover,
+  .cn-button-variant-ghost:hover,
+  .cn-native-select:hover {
+    background: var(--hover-surface);
+  }
+  .cn-button-variant-destructive {
+    background: #493b40;
+    color: var(--foreground);
+  }
+  .cn-button-variant-destructive:hover {
+    background: #374145;
+  }
+}

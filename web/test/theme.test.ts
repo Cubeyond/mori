@@ -11,11 +11,11 @@ import {
 } from '../src/lib/features/theme.ts';
 import { parsePreferences } from '../src/lib/features/preferences.ts';
 
-void test('supported themes survive parsing and unknown values use Mocha', () => {
+void test('supported themes survive parsing and unknown values use Mori', () => {
   for (const theme of themes)
     assert.equal(parsePreferences({ theme: theme.id }).theme, theme.id);
   for (const value of [null, '', 'dark', {}, 1, '<script>'])
-    assert.equal(parseTheme(value), 'catppuccin-mocha');
+    assert.equal(parseTheme(value), 'mori');
 });
 
 void test('early theme restoration works without app hydration and tolerates blocked storage', () => {
@@ -25,10 +25,19 @@ void test('early theme restoration works without app hydration and tolerates blo
   );
   const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
   assert.ok(script !== undefined);
-  for (const theme of themes) {
+  const saved = [
+    ...themes.map((theme) => ({ theme: theme.id, accent: 'teal' })),
+    null,
+    {},
+    { theme: 'obsolete', accent: 'custom' },
+    { theme: 'mori' },
+    { theme: 'catppuccin-mocha', accent: 'mauve' },
+  ];
+  for (const value of saved) {
+    const expected = parsePreferences(value);
     let dark = true;
     const root = {
-      dataset: { theme: '', accent: '' },
+      dataset: { theme: 'mori', accent: 'green' },
       classList: {
         toggle: (_: string, value: boolean) => {
           dark = value;
@@ -37,13 +46,13 @@ void test('early theme restoration works without app hydration and tolerates blo
     };
     runInNewContext(script, {
       localStorage: {
-        getItem: () => JSON.stringify({ theme: theme.id, accent: 'teal' }),
+        getItem: () => JSON.stringify(value),
       },
       document: { documentElement: root },
     });
-    assert.equal(root.dataset.theme, theme.id);
-    assert.equal(root.dataset.accent, 'teal');
-    assert.equal(dark, theme.dark);
+    assert.equal(root.dataset.theme, expected.theme);
+    assert.equal(root.dataset.accent, expected.accent);
+    assert.equal(dark, expected.theme !== 'catppuccin-latte');
   }
   assert.doesNotThrow(() =>
     runInNewContext(script, {
@@ -56,8 +65,8 @@ void test('early theme restoration works without app hydration and tolerates blo
   );
 });
 
-void test('legacy Mori preferences migrate and accents remain independent of surface themes', () => {
-  assert.equal(parsePreferences({ theme: 'mori' }).theme, 'catppuccin-mocha');
+void test('Mori is restored and explicit existing palette and accent choices are retained', () => {
+  assert.equal(parsePreferences({ theme: 'mori' }).theme, 'mori');
   for (const accent of accents)
     for (const theme of themes) {
       const value = parsePreferences({ theme: theme.id, accent });
@@ -65,7 +74,7 @@ void test('legacy Mori preferences migrate and accents remain independent of sur
       assert.equal(value.theme, theme.id);
     }
   for (const invalid of [null, 'custom', {}, 17])
-    assert.equal(parseAccent(invalid), 'mauve');
+    assert.equal(parseAccent(invalid), 'green');
 });
 
 /** Relative sRGB luminance makes text contrast independent of a theme's hue. */

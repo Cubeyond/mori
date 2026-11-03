@@ -1,4 +1,55 @@
-/** Catppuccin: https://catppuccin.com/palette/ (MIT). Tokyo Night: folke/tokyonight.nvim (Apache-2.0). */
+/** Everforest: sainnhe/everforest (MIT). Catppuccin: catppuccin.com/palette (MIT). Tokyo Night: folke/tokyonight.nvim (Apache-2.0). */
+
+/** Mori retains Everforest Dark Hard's upstream slate surfaces, warm text and leaf-green accent. */
+:root[data-theme='mori'] {
+  --accent-blue: #7fbbb3;
+  --on-blue: #272e33;
+  --accent-lavender: #d699b6;
+  --on-lavender: #272e33;
+  --accent-mauve: #d699b6;
+  --on-mauve: #272e33;
+  --accent-pink: #d699b6;
+  --on-pink: #272e33;
+  --accent-peach: #e69875;
+  --on-peach: #272e33;
+  --accent-green: #a7c080;
+  --on-green: #272e33;
+  --accent-teal: #83c092;
+  --on-teal: #272e33;
+  --accent-red: #e67e80;
+  --on-red: #272e33;
+  --selected-blue: #384b55;
+  --selected-lavender: #463f48;
+  --selected-mauve: #463f48;
+  --selected-pink: #463f48;
+  --selected-peach: #45443c;
+  --selected-green: #3c4841;
+  --selected-teal: #3c4841;
+  --selected-red: #493b40;
+  --background: #272e33;
+  --foreground: #d3c6aa;
+  --card: #2e383c;
+  --popover: #2e383c;
+  --primary: #a7c080;
+  --primary-foreground: #272e33;
+  --secondary: #374145;
+  --muted: #374145;
+  --muted-foreground: #9da9a0;
+  --accent: #3c4841;
+  --destructive: #e67e80;
+  --border: #495156;
+  --input: #495156;
+  --ring: #a7c080;
+  --media-ring: #a7c080;
+  --success: #a7c080;
+  --warning: #dbbc7f;
+  --topbar-surface: #1e2326;
+  --navigation-surface: #272e33;
+  --wordmark: #d3c6aa;
+  --soft-surface: #2e383c;
+  --hover-surface: #374145;
+  --subtle-border: #374145;
+}
 
 :root[data-theme='catppuccin-latte'] {
   --accent-blue: #1e66f5;
@@ -202,7 +253,10 @@
   --primary-foreground: var(--on-blue);
   --ring: var(--accent-blue);
   --media-ring: var(--accent-blue);
-  --accent: color-mix(in srgb, var(--accent-blue) 15%, var(--background));
+  --accent: var(
+    --selected-blue,
+    color-mix(in srgb, var(--accent-blue) 15%, var(--background))
+  );
 }
 
 :root[data-accent='lavender'] {
@@ -210,7 +264,10 @@
   --primary-foreground: var(--on-lavender);
   --ring: var(--accent-lavender);
   --media-ring: var(--accent-lavender);
-  --accent: color-mix(in srgb, var(--accent-lavender) 15%, var(--background));
+  --accent: var(
+    --selected-lavender,
+    color-mix(in srgb, var(--accent-lavender) 15%, var(--background))
+  );
 }
 
 :root[data-accent='mauve'] {
@@ -218,7 +275,10 @@
   --primary-foreground: var(--on-mauve);
   --ring: var(--accent-mauve);
   --media-ring: var(--accent-mauve);
-  --accent: color-mix(in srgb, var(--accent-mauve) 15%, var(--background));
+  --accent: var(
+    --selected-mauve,
+    color-mix(in srgb, var(--accent-mauve) 15%, var(--background))
+  );
 }
 
 :root[data-accent='pink'] {
@@ -226,7 +286,10 @@
   --primary-foreground: var(--on-pink);
   --ring: var(--accent-pink);
   --media-ring: var(--accent-pink);
-  --accent: color-mix(in srgb, var(--accent-pink) 15%, var(--background));
+  --accent: var(
+    --selected-pink,
+    color-mix(in srgb, var(--accent-pink) 15%, var(--background))
+  );
 }
 
 :root[data-accent='peach'] {
@@ -234,7 +297,10 @@
   --primary-foreground: var(--on-peach);
   --ring: var(--accent-peach);
   --media-ring: var(--accent-peach);
-  --accent: color-mix(in srgb, var(--accent-peach) 15%, var(--background));
+  --accent: var(
+    --selected-peach,
+    color-mix(in srgb, var(--accent-peach) 15%, var(--background))
+  );
 }
 
 :root[data-accent='green'] {
@@ -242,7 +308,10 @@
   --primary-foreground: var(--on-green);
   --ring: var(--accent-green);
   --media-ring: var(--accent-green);
-  --accent: color-mix(in srgb, var(--accent-green) 15%, var(--background));
+  --accent: var(
+    --selected-green,
+    color-mix(in srgb, var(--accent-green) 15%, var(--background))
+  );
 }
 
 :root[data-accent='teal'] {
@@ -250,7 +319,10 @@
   --primary-foreground: var(--on-teal);
   --ring: var(--accent-teal);
   --media-ring: var(--accent-teal);
-  --accent: color-mix(in srgb, var(--accent-teal) 15%, var(--background));
+  --accent: var(
+    --selected-teal,
+    color-mix(in srgb, var(--accent-teal) 15%, var(--background))
+  );
 }
 
 :root[data-accent='red'] {
@@ -258,5 +330,8 @@
   --primary-foreground: var(--on-red);
   --ring: var(--accent-red);
   --media-ring: var(--accent-red);
-  --accent: color-mix(in srgb, var(--accent-red) 15%, var(--background));
+  --accent: var(
+    --selected-red,
+    color-mix(in srgb, var(--accent-red) 15%, var(--background))
+  );
 }

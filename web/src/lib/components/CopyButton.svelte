@@ -9,12 +9,14 @@
     label,
     icon = 'copy',
     disabled = false,
+    text,
     class: className = 'icon-button',
   }: {
     value: string;
     label: string;
     icon?: 'link' | 'code' | 'copy';
     disabled?: boolean;
+    text?: string;
     class?: string;
   } = $props();
   /** Success and failure remain local to this copy action. */
@@ -39,7 +41,7 @@
 
 <Button
   variant="ghost"
-  size="icon"
+  size={text === undefined ? 'icon' : 'default'}
   type="button"
   class={className}
   {disabled}
@@ -58,6 +60,7 @@
   {:else if icon === 'link'}<Link size={18} />{:else if icon === 'code'}<CodeXml
       size={18}
     />{:else}<Copy size={18} />{/if}
+  {#if text !== undefined}<span>{text}</span>{/if}
 </Button>
 <span class="sr-only" role="status"
   >{state === 'copied'

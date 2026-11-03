@@ -491,6 +491,8 @@ export interface components {
              * @description Creation timestamp in Unix seconds.
              */
             created_at: number;
+            /** @description Optional administrator-written description; empty values render no placeholder. */
+            description: string;
             /** @description Stable internal identifier for this record. */
             id: string;
             /** @description Administrator-chosen album display label, independent of its slug. */
@@ -513,6 +515,20 @@ export interface components {
             has_more: boolean;
             /** @description Visibility-filtered page of video records. */
             videos: components["schemas"]["Video"][];
+        };
+        /** @description Minimal completed cover; no filenames, object keys, or direct storage URLs are exposed. */
+        AlbumPreview: {
+            /** @description Stable identifier used to retain the same preview during metadata refreshes. */
+            id: string;
+            /** @description Media category determines whether the cover has a video indicator. */
+            kind: components["schemas"]["MediaKind"];
+            /** @description Same-origin authenticated JPEG endpoint, never a signed S3 address. */
+            poster_url: string;
+        };
+        /** @description Album metadata with a bounded, administrator-only set of completed media covers. */
+        AlbumSummary: components["schemas"]["Album"] & {
+            /** @description Up to three recent posters; originals and incomplete uploads are never returned. */
+            previews: components["schemas"]["AlbumPreview"][];
         };
         /** @description Existing or newly created album membership remains independent of media visibility. */
         BatchAction: {
@@ -558,6 +574,8 @@ export interface components {
         };
         /** @description Administrator-supplied album label and separately validated slug. */
         CreateAlbum: {
+            /** @description Optional plain-text description, trimmed and limited to 500 characters. */
+            description?: string;
             /** @description Administrator-chosen album display label, independent of its slug. */
             name: string;
             /** @description Unique editable album URL component. */
@@ -608,6 +626,8 @@ export interface components {
         DeliveryChange: "available" | "requires_revocation";
         /** @description Editable album label, optional URL slug, and page visibility. */
         EditAlbum: {
+            /** @description Omission preserves the description; an empty string clears it. */
+            description?: string | null;
             /** @description Administrator-chosen album display label, independent of its slug. */
             name: string;
             /** @description Requested normalized URL slug; omission retains the current address. */
@@ -893,7 +913,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Album"][];
+                    "application/json": components["schemas"]["AlbumSummary"][];
                 };
             };
         };

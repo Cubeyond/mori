@@ -51,26 +51,26 @@
   --font-serif: ui-sans-serif, system-ui, sans-serif;
 }
 :root {
-  --background: #1e1e2e;
-  --foreground: #cdd6f4;
-  --card: #181825;
-  --popover: #181825;
-  --primary: #cdd6f4;
-  --primary-foreground: #1e1e2e;
-  --secondary: #313244;
-  --muted: #313244;
-  --muted-foreground: #a6adc8;
-  --accent: #313244;
-  --destructive: #f38ba8;
-  --border: #313244;
-  --input: #45475a;
-  --ring: #b4befe;
-  --media-ring: #cba6f7;
-  --success: #a6e3a1;
-  --warning: #f9e2af;
-  --topbar-surface: #181825;
-  --navigation-surface: #1e1e2e;
-  --wordmark: #cdd6f4;
+  --background: #272e33;
+  --foreground: #d3c6aa;
+  --card: #2e383c;
+  --popover: #2e383c;
+  --primary: #a7c080;
+  --primary-foreground: #272e33;
+  --secondary: #374145;
+  --muted: #374145;
+  --muted-foreground: #9da9a0;
+  --accent: #3c4841;
+  --destructive: #e67e80;
+  --border: #495156;
+  --input: #495156;
+  --ring: #a7c080;
+  --media-ring: #a7c080;
+  --success: #a7c080;
+  --warning: #dbbc7f;
+  --topbar-surface: #1e2326;
+  --navigation-surface: #272e33;
+  --wordmark: #d3c6aa;
   --soft-surface: color-mix(in srgb, var(--foreground) 2%, transparent);
   --hover-surface: color-mix(in srgb, var(--foreground) 4%, transparent);
   --subtle-border: color-mix(in srgb, var(--foreground) 6%, transparent);
@@ -118,6 +118,7 @@ label {
   color: var(--foreground);
 }
 label > input,
+label > textarea,
 label > [data-slot='native-select-wrapper'] {
   margin-top: 0.375rem;
 }

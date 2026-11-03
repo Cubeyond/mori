@@ -105,6 +105,10 @@ async fn current_schema_is_repeatable_and_indexed() {
             "EXPLAIN QUERY PLAN SELECT * FROM videos WHERE album_id='album' AND visibility='public' AND state='published' ORDER BY created_at DESC,id DESC LIMIT 31",
             "videos_public_album_order",
         ),
+        (
+            "EXPLAIN QUERY PLAN SELECT id FROM videos WHERE album_id='album' AND poster!=0 AND state IN ('ready','published') ORDER BY created_at DESC,id DESC LIMIT 3",
+            "videos_album_previews",
+        ),
     ] {
         let plan: Vec<(i64, i64, i64, String)> =
             sqlx::query_as(query).fetch_all(&pool).await.unwrap();
@@ -119,6 +123,29 @@ async fn current_schema_is_repeatable_and_indexed() {
         .await
         .unwrap();
     assert_eq!(violations, Vec::<(String, i64, String, i64)>::new());
+}
+
+#[tokio::test]
+/// Adding optional descriptions keeps existing names, addresses and visibility unchanged.
+async fn album_description_upgrade_preserves_metadata() {
+    let (pool, _directory) = database_at(10).await;
+    sqlx::query("INSERT INTO albums(id,name,slug,visibility,created_at) VALUES('album','Nature','nature','public',1)")
+        .execute(&pool).await.unwrap();
+    sqlx::migrate!().run(&pool).await.unwrap();
+    let metadata: (String, String, String, String) =
+        sqlx::query_as("SELECT name,slug,visibility,description FROM albums WHERE id='album'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        metadata,
+        (
+            "Nature".into(),
+            "nature".into(),
+            "public".into(),
+            String::new()
+        )
+    );
 }
 
 #[test]

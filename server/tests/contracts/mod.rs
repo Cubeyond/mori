@@ -1,5 +1,7 @@
 //! Focused integration contracts share fixtures but never mutable test state.
 
+/// Bounded administrator covers and optional album descriptions.
+mod album_catalog;
 /// Albums behavior.
 mod albums;
 /// Auth behavior.

@@ -8,7 +8,7 @@ interface PageBootstrap {
   /** Authoritative cookie validation result without exposing the cookie itself. */
   session: components['schemas']['Session'];
   /** Initial administrator album choices, absent on public routes. */
-  albums: components['schemas']['Album'][] | null;
+  albums: components['schemas']['AlbumSummary'][] | null;
   /** Initial authorized album and its bounded first page. */
   album_page: components['schemas']['AlbumPage'] | null;
 }

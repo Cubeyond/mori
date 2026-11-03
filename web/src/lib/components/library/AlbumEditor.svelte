@@ -21,7 +21,8 @@
   /** Display name and address are independent editable fields. */
   let name = $state(untrack(() => album?.name ?? '')),
     slug = $state(untrack(() => album?.slug ?? '')),
-    visibility = $state(untrack(() => album?.visibility ?? 'private'));
+    visibility = $state(untrack(() => album?.visibility ?? 'private')),
+    description = $state(untrack(() => album?.description ?? ''));
   /** Retaining videos is the default; both removal modes require the current exact name. */
   let confirmation = $state(''),
     deletionMode = $state('keep');
@@ -41,7 +42,9 @@
     try {
       if (album === null) {
         await apiData(
-          api.POST('/v1/admin/albums', { body: { name, slug, visibility } }),
+          api.POST('/v1/admin/albums', {
+            body: { name, slug, visibility, description },
+          }),
         );
       } else if (removing) {
         await apiData(
@@ -54,7 +57,7 @@
         await apiData(
           api.PATCH('/v1/admin/albums/{id}', {
             params: { path: { id: album.id } },
-            body: { name, slug, visibility },
+            body: { name, slug, visibility, description },
           }),
         );
       }
@@ -123,6 +126,7 @@
         bind:name
         bind:slug
         bind:visibility
+        bind:description
         disabled={busy}
         suggestSlug={album === null}
       />

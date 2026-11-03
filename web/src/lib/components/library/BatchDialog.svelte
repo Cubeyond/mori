@@ -34,6 +34,7 @@
     name = $state(''),
     slug = $state(''),
     visibility = $state('private'),
+    description = $state(''),
     busy = $state(false),
     error = $state('');
   /** Natural labels remain correct for a single selected original. */
@@ -57,7 +58,10 @@
         mode === 'delete'
           ? { type: 'delete' }
           : creating
-            ? { type: 'create_album', album: { name, slug, visibility } }
+            ? {
+                type: 'create_album',
+                album: { name, slug, visibility, description },
+              }
             : { type: 'move', album_id: target };
       await apiData(
         api.POST('/v1/admin/videos/batch', {
@@ -100,6 +104,7 @@
         bind:name
         bind:slug
         bind:visibility
+        bind:description
         prefix="batch-album"
         suggestSlug
         disabled={busy}
