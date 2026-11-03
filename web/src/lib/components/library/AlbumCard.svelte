@@ -1,5 +1,5 @@
 <script lang="ts">
-  /** A quiet album spine and three cropped posters keep collection covers independent of aspect ratio. */
+  /** Fixed title and visibility rows frame an optional description beside up to three cropped posters. */
   import { resolve } from '$app/paths';
   import {
     Globe,
@@ -59,7 +59,18 @@
       <h2>{album.name}</h2>
       {#if album.description !== ''}<p>{album.description}</p>{/if}
     </div>
-    {#if album.previews.length > 0}<div class="preview-rail" aria-hidden="true">
+    <span class="visibility">
+      {#if album.visibility === 'public'}<Globe
+          size={18}
+          aria-hidden="true"
+        />{:else}<LockKeyhole size={18} aria-hidden="true" />{/if}
+      {album.visibility === 'public' ? 'Public' : 'Private'}
+    </span>
+    {#if album.previews.length > 0}<div
+        class="preview-rail"
+        class:full={album.previews.length === 3}
+        aria-hidden="true"
+      >
         {#each album.previews as preview (preview.id)}<div class="preview">
             <img
               src={preview.poster_url}
@@ -76,17 +87,6 @@
       </div>{/if}
   </a>
   <div class="actions" class:empty={album.previews.length === 0}>
-    <span
-      class="visibility"
-      role="img"
-      aria-label={album.visibility === 'public'
-        ? 'Public album'
-        : 'Private album'}
-      title={album.visibility === 'public' ? 'Public album' : 'Private album'}
-      >{#if album.visibility === 'public'}<Globe size={18} />{:else}<LockKeyhole
-          size={18}
-        />{/if}</span
-    >
     <Button
       id={triggerId}
       variant="ghost"
@@ -130,6 +130,9 @@
 
 <style>
   .album-card {
+    --preview-width: 174px;
+    --preview-gap: 20px;
+    --card-padding: 16px;
     position: relative;
     min-width: 0;
     border: 1px solid var(--border);
@@ -141,7 +144,7 @@
     position: absolute;
     inset-block: -1px;
     inset-inline-start: -1px;
-    width: 6px;
+    width: 3px;
     background: var(--primary);
     border-radius: 7px 0 0 7px;
     pointer-events: none;
@@ -152,20 +155,23 @@
   }
   .album-content {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 130px;
-    align-items: stretch;
-    gap: 22px;
-    min-height: 224px;
-    padding: 14px 14px 14px 28px;
+    grid-template-columns: minmax(0, 1fr) var(--preview-width);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title previews'
+      'description previews'
+      'visibility previews';
+    gap: 8px var(--preview-gap);
+    block-size: 226px;
+    padding: var(--card-padding) var(--card-padding) var(--card-padding) 28px;
     border-radius: inherit;
   }
   .album-content.empty {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'title' 'description' 'visibility';
   }
   .metadata {
-    align-self: center;
-    min-width: 0;
-    padding-block-start: 28px;
+    display: contents;
   }
   h2,
   p {
@@ -177,31 +183,44 @@
     overflow-wrap: anywhere;
   }
   h2 {
-    font-size: 25px;
-    line-height: 32px;
+    grid-area: title;
+    padding-inline-end: 44px;
+    font-size: 26px;
+    line-height: 34px;
     font-weight: 550;
     letter-spacing: -0.025em;
   }
   p {
-    margin-top: 10px;
+    grid-area: description;
+    align-self: start;
+    margin: 0;
     font-size: 17px;
-    line-height: 27px;
+    line-height: 26px;
     color: var(--muted-foreground);
     white-space: pre-line;
   }
   .preview-rail {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    grid-area: previews;
+    display: grid;
+    align-content: start;
+    grid-auto-rows: max-content;
     gap: 6px;
     padding-inline-start: 18px;
     border-inline-start: 1px solid var(--border);
   }
+  .preview-rail.full {
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    align-content: stretch;
+  }
   .preview {
     position: relative;
     aspect-ratio: 1.8;
+    min-height: 0;
     overflow: hidden;
     border-radius: 3px;
+  }
+  .full .preview {
+    aspect-ratio: auto;
   }
   .preview img {
     display: block;
@@ -219,21 +238,26 @@
   }
   .actions {
     position: absolute;
-    top: 12px;
-    right: 160px;
+    top: 14px;
+    right: calc(
+      var(--preview-width) + var(--preview-gap) + var(--card-padding)
+    );
     display: flex;
     align-items: center;
-    gap: 4px;
     color: var(--muted-foreground);
   }
   .actions.empty {
-    right: 12px;
+    right: var(--card-padding);
   }
   .visibility {
-    display: grid;
-    place-items: center;
-    width: 32px;
-    height: 36px;
+    grid-area: visibility;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 24px;
+    color: var(--muted-foreground);
+    font-size: 16px;
+    line-height: 24px;
   }
   .album-menu {
     position: fixed;
@@ -261,21 +285,29 @@
     color: var(--destructive);
   }
   @media (max-width: 480px) {
+    .album-card {
+      --preview-width: 104px;
+      --preview-gap: 12px;
+      --card-padding: 14px;
+    }
     .album-content {
-      grid-template-columns: minmax(0, 1fr) 100px;
-      gap: 14px;
-      min-height: 210px;
+      grid-template-areas:
+        'title title'
+        'description previews'
+        'visibility previews';
+      block-size: 212px;
       padding-inline-start: 22px;
     }
     .preview-rail {
       padding-inline-start: 12px;
     }
     .actions {
-      right: 122px;
+      top: 10px;
+      right: var(--card-padding);
     }
     h2 {
-      font-size: 22px;
-      line-height: 29px;
+      font-size: 23px;
+      line-height: 30px;
     }
     p {
       font-size: 16px;
