@@ -8,6 +8,11 @@
   import NativeSelect from '#lib/components/ui/native-select/native-select.svelte';
   import Modal from '../Modal.svelte';
   import UploadSelection from './UploadSelection.svelte';
+  import UploadResults from './UploadResults.svelte';
+  import {
+    summarizeUploads,
+    type UploadResult,
+  } from '#lib/features/upload-results';
   import { preferences } from '#lib/features/preferences';
   import type { Album, UploadPolicy, UnfinishedUpload } from '#lib/api/client';
   import { message } from '#lib/api/client';
@@ -73,6 +78,8 @@
   let controller: AbortController | undefined;
   /** Actual prepared sizes make savings visible without exposing encoder settings. */
   const optimizedSizes = new SvelteMap<File, number>();
+  /** Keep completed metadata until a new selection starts; never retain completed File blobs. */
+  let results = $state<UploadResult[]>([]);
   /** Cancelling first settles all file workers before releasing their server reservations. */
   let running: Promise<void> | undefined;
   let cancelling = $state(false);
@@ -82,6 +89,13 @@
   );
   /** Fresh local selections and server-backed work expose the appropriate clearing action. */
   const hasQueue = $derived(files.length > 0 || hasTransfer);
+  /** Only a fully settled queue replaces the picker with its retained completion view. */
+  const completedView = $derived(results.length > 0 && !hasQueue);
+  /** A viewed completion can be dismissed without leaving an unnecessary notification. */
+  function close(): void {
+    if (completedView) onstatus(null);
+    onclose();
+  }
   $effect(() => {
     if (!open && !busy && !cancelling && unfinished.length > 0)
       onstatus({ progress: 0, phase: 'Unfinished uploads', paused: true });
@@ -109,7 +123,12 @@
     error = '';
     try {
       if (policy === null) throw new Error('Upload settings are loading.');
-      files = appendUploadFiles(files, selected, policy);
+      const appended = appendUploadFiles(files, selected, policy);
+      if (completedView) {
+        results = [];
+        onstatus(null);
+      }
+      files = appended;
     } catch (failure) {
       error = message(failure);
     }
@@ -178,7 +197,7 @@
       onstatus({ progress, phase });
     }
     try {
-      const completed = await runUploadQueue(
+      await runUploadQueue(
         () => files,
         async (entry, transferSignal) => {
           activeFiles = [...activeFiles, entry];
@@ -201,6 +220,15 @@
               },
             );
             completedBytes += entry.size;
+            results = [
+              ...results,
+              {
+                id: crypto.randomUUID(),
+                name: entry.name,
+                originalBytes: entry.size,
+                uploadedBytes: optimizedSizes.get(entry) ?? entry.size,
+              },
+            ];
             optimizedSizes.delete(entry);
             pending = savedUploads();
             void oncomplete().catch((failure: unknown) => {
@@ -214,12 +242,6 @@
         signal,
       );
       phase = '';
-      onclose();
-      onnotice(
-        completed === 1
-          ? 'Media uploaded.'
-          : `${String(completed)} files uploaded.`,
-      );
       await oncomplete();
     } catch (failure) {
       pending = savedUploads();
@@ -232,12 +254,24 @@
     } finally {
       activeFiles = [];
       busy = false;
-      if (!isCancelling())
+      if (!isCancelling()) {
+        const summary = summarizeUploads(results);
         onstatus(
           pending.length === 0 && files.length === 0
-            ? null
+            ? results.length === 0
+              ? null
+              : {
+                  progress: 100,
+                  phase:
+                    String(summary.count) +
+                    (summary.count === 1
+                      ? ' file uploaded'
+                      : ' files uploaded'),
+                  completed: true,
+                }
             : { progress, phase: 'Continue uploads', paused: true },
         );
+      }
     }
   }
   /** The form awaits one owned batch so cancellation can wait for all worker cleanup. */
@@ -282,59 +316,78 @@
 
 <Modal
   {open}
-  title="Upload media"
-  {onclose}
+  title={completedView ? 'Upload complete' : 'Upload media'}
+  onclose={close}
   closeLabel="Close upload"
   maxWidth={600}
   hideScrollbar
 >
-  {#snippet footer()}{#if storageConfigured === true}
+  {#snippet footer()}{#if storageConfigured === true || completedView}
       <footer>
-        {#if hasQueue}<div class="secondary-actions">
-            <Button
+        {#if completedView}
+          {#if storageConfigured === true}<Button
               variant="ghost"
               type="button"
-              class="cancel-action"
-              disabled={cancelling}
-              onclick={cancelAll}
-              >{cancelling
-                ? 'Cancelling…'
-                : hasTransfer
-                  ? 'Cancel uploads'
-                  : 'Clear selection'}</Button
-            >
-            {#if busy}<Button variant="ghost" type="button" onclick={onclose}
-                >Hide</Button
-              >{/if}
-          </div>{/if}
-        {#if busy}<Button
-            variant="outline"
+              onclick={() => picker?.click()}>Upload more</Button
+            >{/if}
+          <Button
+            variant="default"
             type="button"
             class="upload-action"
-            disabled={cancelling}
-            onclick={() => controller?.abort()}
-            ><Pause size={16} />Pause uploads</Button
+            onclick={close}>Done</Button
           >
-        {:else}<Button
-            variant="default"
-            type="submit"
-            form="media-upload-form"
-            class="upload-action"
-            disabled={file === null || policy === null || cancelling}
-            ><ArrowUp size={17} />{pending.length > 0
-              ? 'Continue uploads'
-              : files.length > 0
-                ? 'Upload ' +
-                  String(files.length) +
-                  (files.length === 1 ? ' file' : ' files')
-                : 'Upload media'}</Button
-          >{/if}
+        {:else}
+          {#if hasQueue}<div class="secondary-actions">
+              <Button
+                variant="ghost"
+                type="button"
+                class="cancel-action"
+                disabled={cancelling}
+                onclick={cancelAll}
+                >{cancelling
+                  ? 'Cancelling…'
+                  : hasTransfer
+                    ? 'Cancel uploads'
+                    : 'Clear selection'}</Button
+              >
+              {#if busy}<Button variant="ghost" type="button" onclick={onclose}
+                  >Hide</Button
+                >{/if}
+            </div>{/if}
+          {#if busy}<Button
+              variant="outline"
+              type="button"
+              class="upload-action"
+              disabled={cancelling}
+              onclick={() => controller?.abort()}
+              ><Pause size={16} />Pause uploads</Button
+            >
+          {:else}<Button
+              variant="default"
+              type="submit"
+              form="media-upload-form"
+              class="upload-action"
+              disabled={file === null || policy === null || cancelling}
+              ><ArrowUp size={17} />{pending.length > 0
+                ? 'Continue uploads'
+                : files.length > 0
+                  ? 'Upload ' +
+                    String(files.length) +
+                    (files.length === 1 ? ' file' : ' files')
+                  : 'Upload media'}</Button
+            >{/if}
+        {/if}
       </footer>
     {/if}{/snippet}
-  {#if storageConfigured === null}<p class="storage-setup muted" role="status">
+  {#if storageConfigured === null && !completedView}<p
+      class="storage-setup muted"
+      role="status"
+    >
       Loading upload settings…
     </p>
-  {:else if !storageConfigured}<div class="storage-setup">
+  {:else if storageConfigured === false && !completedView}<div
+      class="storage-setup"
+    >
       <p>Connect Amazon S3 to start uploading.</p>
       <Button
         href={resolve('/settings/storage')}
@@ -342,119 +395,124 @@
         onclick={onclose}>Set up storage</Button
       >
     </div>
-  {:else}<form id="media-upload-form" onsubmit={submit}>
-      {#if (pending.length > 0 || unfinished.length > 0) && !busy}<div
-          class="resume"
-        >
-          <p>{file === null ? 'Unfinished uploads' : 'Uploads paused'}</p>
-          {#if file === null && pending.length > 0}<span
-              >Choose the original files to resume.</span
-            >{/if}
-        </div>{/if}
-      {#if files.length > 0 && policy !== null}<UploadSelection
-          {files}
-          {policy}
-          {activeFiles}
-          {optimizedSizes}
-          onremove={(selected: File) => {
-            void removeFile(selected);
-          }}
-        />{/if}
-      <input
-        bind:this={picker}
-        hidden
-        type="file"
-        multiple
-        accept={policy?.allowed_extensions
-          .map((extension) => '.' + extension)
-          .join(',') ?? 'image/*,video/*'}
-        aria-label="Media files"
-        disabled={policy === null || cancelling}
-        onchange={(event) => {
-          const selected = Array.from(event.currentTarget.files ?? []);
-          event.currentTarget.value = '';
-          selectFiles(selected);
-        }}
-      />
-      <button
-        type="button"
-        class="drop-zone"
-        class:compact={files.length > 0}
-        class:dragging
-        disabled={policy === null || cancelling}
-        onclick={() => picker?.click()}
-        ondragover={(event) => {
-          event.preventDefault();
-          dragging = true;
-        }}
-        ondragleave={(event) => {
-          if (
-            !(event.relatedTarget instanceof Node) ||
-            !event.currentTarget.contains(event.relatedTarget)
-          )
-            dragging = false;
-        }}
-        ondrop={dropFiles}
-      >
-        {#if files.length > 0}<Upload size={20} /><span
-            >Drop more files here</span
+  {:else}
+    <input
+      bind:this={picker}
+      hidden
+      type="file"
+      multiple
+      accept={policy?.allowed_extensions
+        .map((extension) => '.' + extension)
+        .join(',') ?? 'image/*,video/*'}
+      aria-label="Media files"
+      disabled={policy === null || cancelling || storageConfigured !== true}
+      onchange={(event) => {
+        const selected = Array.from(event.currentTarget.files ?? []);
+        event.currentTarget.value = '';
+        selectFiles(selected);
+      }}
+    />
+
+    {#if results.length > 0 && !busy}<UploadResults {results} />{/if}
+    {#if !completedView}<form id="media-upload-form" onsubmit={submit}>
+        {#if (pending.length > 0 || unfinished.length > 0) && !busy}<div
+            class="resume"
           >
-        {:else}<Images size={28} /><strong>Drop images or videos here</strong
-          ><span>or click to choose files</span>{/if}
-      </button>
-      <div class="options">
-        <div class="field">
-          <div class="album-label">
-            <label for="upload-album"
-              >Album <span class="optional">optional</span></label
-            ><button
-              type="button"
-              class="album-action"
-              aria-label="Manage albums"
-              onclick={onalbums}><FolderCog size={16} /></button
+            <p>{file === null ? 'Unfinished uploads' : 'Uploads paused'}</p>
+            {#if file === null && pending.length > 0}<span
+                >Choose the original files to resume.</span
+              >{/if}
+          </div>{/if}
+        {#if files.length > 0 && policy !== null}<UploadSelection
+            {files}
+            {policy}
+            {activeFiles}
+            {optimizedSizes}
+            onremove={(selected: File) => {
+              void removeFile(selected);
+            }}
+          />{/if}
+        <button
+          type="button"
+          class="drop-zone"
+          class:compact={files.length > 0}
+          class:dragging
+          disabled={policy === null || cancelling}
+          onclick={() => picker?.click()}
+          ondragover={(event) => {
+            event.preventDefault();
+            dragging = true;
+          }}
+          ondragleave={(event) => {
+            if (
+              !(event.relatedTarget instanceof Node) ||
+              !event.currentTarget.contains(event.relatedTarget)
+            )
+              dragging = false;
+          }}
+          ondrop={dropFiles}
+        >
+          {#if files.length > 0}<Upload size={20} /><span
+              >Drop more files here</span
+            >
+          {:else}<Images size={28} /><strong>Drop images or videos here</strong
+            ><span>or click to choose files</span>{/if}
+        </button>
+        <div class="options">
+          <div class="field">
+            <div class="album-label">
+              <label for="upload-album"
+                >Album <span class="optional">optional</span></label
+              ><button
+                type="button"
+                class="album-action"
+                aria-label="Manage albums"
+                onclick={onalbums}><FolderCog size={16} /></button
+              >
+            </div>
+            <NativeSelect
+              id="upload-album"
+              bind:value={albumId}
+              disabled={busy || cancelling || pending.length > 0}
+              ><option value="">No album</option
+              >{#each albums as album (album.id)}<option value={album.id}
+                  >{album.name}</option
+                >{/each}</NativeSelect
             >
           </div>
-          <NativeSelect
-            id="upload-album"
-            bind:value={albumId}
-            disabled={busy || cancelling || pending.length > 0}
-            ><option value="">No album</option
-            >{#each albums as album (album.id)}<option value={album.id}
-                >{album.name}</option
-              >{/each}</NativeSelect
-          >
-        </div>
-        <div class="field">
-          <div class="album-label">
-            <label for="upload-visibility">Visibility</label>
+          <div class="field">
+            <div class="album-label">
+              <label for="upload-visibility">Visibility</label>
+            </div>
+            <NativeSelect
+              id="upload-visibility"
+              bind:value={visibility}
+              disabled={busy || cancelling || pending.length > 0}
+              ><option value="private">Private</option><option value="public"
+                >Public</option
+              ></NativeSelect
+            >
           </div>
-          <NativeSelect
-            id="upload-visibility"
-            bind:value={visibility}
-            disabled={busy || cancelling || pending.length > 0}
-            ><option value="private">Private</option><option value="public"
-              >Public</option
-            ></NativeSelect
-          >
         </div>
-      </div>
-      <p class="limits">
-        {policy === null
-          ? 'Loading upload settings…'
-          : 'Images ' +
-            String(policy.max_image_upload_bytes / 1_048_576) +
-            ' MiB · Videos ' +
-            String(policy.max_upload_bytes / 1_000_000_000) +
-            ' GB'}
-      </p>
-      {#if error}<p class="error mb-4" role="alert">{error}</p>{/if}
-      {#if busy}<div class="transfer" role="status">
-          <div><span>{phase}</span><span>{progress}%</span></div>
-          <progress max="100" value={progress} aria-label="Upload progress"
-          ></progress>
-          <p>You can close this window while the upload continues.</p>
-        </div>{/if}
-    </form>{/if}
+        <p class="limits">
+          {policy === null
+            ? 'Loading upload settings…'
+            : 'Images ' +
+              String(policy.max_image_upload_bytes / 1_048_576) +
+              ' MiB · Videos ' +
+              String(policy.max_upload_bytes / 1_000_000_000) +
+              ' GB'}
+        </p>
+        {#if error}<p class="error mb-4" role="alert">{error}</p>{/if}
+        {#if busy}<div class="transfer" role="status">
+            <div><span>{phase}</span><span>{progress}%</span></div>
+            <progress max="100" value={progress} aria-label="Upload progress"
+            ></progress>
+            <p>You can close this window while the upload continues.</p>
+          </div>{/if}
+      </form>{/if}
+    {#if completedView && error}<p class="error" role="alert">{error}</p>{/if}
+  {/if}
 </Modal>
 
 <style>

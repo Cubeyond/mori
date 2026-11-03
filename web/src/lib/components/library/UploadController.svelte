@@ -2,7 +2,7 @@
   import Button from '#lib/components/ui/button/button.svelte';
   /** Persistent transfer owner lives above sidebar routes so navigation cannot interrupt uploads. */
   import { onMount } from 'svelte';
-  import { X, ArrowUpRight } from '@lucide/svelte';
+  import { X, ArrowUpRight, Check } from '@lucide/svelte';
   import {
     api,
     apiData,
@@ -114,10 +114,16 @@
   {#if transfer !== null && !open}<button
       class="transfer-pill"
       onclick={show}
-      aria-label="Open upload progress"
-      ><span class="dot"></span><span>{transfer.phase}</span><span
-        class="percentage">{transfer.progress}%</span
-      ><ArrowUpRight size={16} /></button
+      aria-label={transfer.completed === true
+        ? 'Open upload results'
+        : 'Open upload progress'}
+      >{#if transfer.completed === true}<Check size={17} />{:else}<span
+          class="dot"
+        ></span>{/if}<span>{transfer.phase}</span
+      >{#if transfer.completed !== true}<span class="percentage"
+          >{transfer.progress}%</span
+        >{/if}
+      <ArrowUpRight size={16} /></button
     >{/if}
   {#if notice}<div class="toast">
       <p role="status">{notice}</p>

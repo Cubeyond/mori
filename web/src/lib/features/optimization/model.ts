@@ -4,10 +4,23 @@ export type OptimizationMode = 'original' | 'balanced' | 'quality';
 export const optimizationModes: readonly {
   value: OptimizationMode;
   label: string;
+  description: string;
 }[] = [
-  { value: 'balanced', label: 'Balanced' },
-  { value: 'quality', label: 'Higher quality' },
-  { value: 'original', label: 'Keep originals' },
+  {
+    value: 'balanced',
+    label: 'Balanced',
+    description: 'Balance file size and visual quality.',
+  },
+  {
+    value: 'quality',
+    label: 'Higher quality',
+    description: 'Keep more detail, usually with larger files.',
+  },
+  {
+    value: 'original',
+    label: 'Keep originals',
+    description: 'Upload files unchanged.',
+  },
 ];
 /** Migrate existing preferences to the balanced automatic policy. */
 export function parseOptimizationMode(value: unknown): OptimizationMode {

@@ -157,7 +157,7 @@
           <h2 id="uploads-heading">Uploads</h2>
         </header>
         <div class="setting-row">
-          <div class="setting-content">
+          <div class="setting-content optimization-setting">
             <span id="preference-optimization-label" class="setting-label"
               >Upload optimization</span
             >
@@ -185,6 +185,11 @@
                 {notice}
               />
             </div>
+            <p class="optimization-hint">
+              {optimizationModes.find(
+                (mode) => mode.value === $preferences.uploadOptimization,
+              )?.description}
+            </p>
           </div>
         </div>
         <div class="setting-row">
@@ -237,6 +242,22 @@
   }
   .preference-control :global([data-slot='native-select-wrapper']) {
     min-width: 0;
+  }
+  .optimization-setting {
+    row-gap: 8px;
+  }
+  .optimization-hint {
+    grid-column: 2;
+    max-width: 240px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+  }
+  @media (max-width: 600px) {
+    .optimization-hint {
+      grid-column: 1;
+    }
   }
   .accent-options {
     display: flex;
