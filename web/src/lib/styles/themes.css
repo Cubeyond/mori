@@ -1,46 +1,46 @@
 /** Everforest: sainnhe/everforest (MIT). Catppuccin: catppuccin.com/palette (MIT). Tokyo Night: folke/tokyonight.nvim (Apache-2.0). */
 
-/** Mori uses a neutral black canvas, forest-green raised surfaces and warm neutral actions. */
+/** Approved Mori palette: near-black forest canvas, shared header/card tone and warm neutral text. */
 :root[data-theme='mori'] {
   --accent-blue: #7fbbb3;
-  --on-blue: #12211a;
+  --on-blue: #152119;
   --accent-lavender: #d699b6;
-  --on-lavender: #12211a;
+  --on-lavender: #152119;
   --accent-mauve: #d699b6;
-  --on-mauve: #12211a;
+  --on-mauve: #152119;
   --accent-pink: #d699b6;
-  --on-pink: #12211a;
+  --on-pink: #152119;
   --accent-peach: #e69875;
-  --on-peach: #12211a;
+  --on-peach: #152119;
   --accent-green: #a7c080;
-  --on-green: #12211a;
+  --on-green: #152119;
   --accent-teal: #83c092;
-  --on-teal: #12211a;
+  --on-teal: #152119;
   --accent-red: #e67e80;
-  --on-red: #12211a;
-  --background: #0e0e0e;
-  --foreground: #eae4d3;
-  --card: #1a2c23;
-  --popover: #1a2c23;
-  --primary: #e9e2ce;
-  --primary-foreground: #12211a;
-  --secondary: #24392e;
-  --muted: #24392e;
-  --muted-foreground: #a9b5a8;
-  --accent: #24392e;
+  --on-red: #152119;
+  --background: #0e1613;
+  --foreground: #ebe2d3;
+  --card: #192720;
+  --popover: #192720;
+  --primary: #e9e2d1;
+  --primary-foreground: #152119;
+  --secondary: #273b30;
+  --muted: #273b30;
+  --muted-foreground: #b6beb1;
+  --accent: #273b30;
   --destructive: #e67e80;
-  --border: #2c4336;
-  --input: #2c4336;
+  --border: #334339;
+  --input: #334339;
   --ring: #a7c080;
   --media-ring: #a7c080;
   --success: #a7c080;
   --warning: #dbbc7f;
-  --topbar-surface: #101010;
-  --navigation-surface: #0e0e0e;
-  --wordmark: #eae4d3;
-  --soft-surface: #1a2c23;
-  --hover-surface: #24392e;
-  --subtle-border: #24392e;
+  --topbar-surface: #192720;
+  --navigation-surface: #0e1613;
+  --wordmark: #ebe2d3;
+  --soft-surface: #192720;
+  --hover-surface: #273b30;
+  --subtle-border: #39493f;
 }
 
 :root[data-theme='catppuccin-latte'] {
