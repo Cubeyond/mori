@@ -1,6 +1,6 @@
 /** Everforest: sainnhe/everforest (MIT). Catppuccin: catppuccin.com/palette (MIT). Tokyo Night: folke/tokyonight.nvim (Apache-2.0). */
 
-/** Mori pairs forest-green surfaces with warm neutral actions; leaf colors remain small accents. */
+/** Mori uses a neutral black canvas, forest-green raised surfaces and warm neutral actions. */
 :root[data-theme='mori'] {
   --accent-blue: #7fbbb3;
   --on-blue: #12211a;
@@ -18,7 +18,7 @@
   --on-teal: #12211a;
   --accent-red: #e67e80;
   --on-red: #12211a;
-  --background: #12211a;
+  --background: #0e0e0e;
   --foreground: #eae4d3;
   --card: #1a2c23;
   --popover: #1a2c23;
@@ -35,8 +35,8 @@
   --media-ring: #a7c080;
   --success: #a7c080;
   --warning: #dbbc7f;
-  --topbar-surface: #0d1914;
-  --navigation-surface: #12211a;
+  --topbar-surface: #101010;
+  --navigation-surface: #0e0e0e;
   --wordmark: #eae4d3;
   --soft-surface: #1a2c23;
   --hover-surface: #24392e;

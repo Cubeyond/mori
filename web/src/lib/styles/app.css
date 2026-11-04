@@ -51,7 +51,7 @@
   --font-serif: ui-sans-serif, system-ui, sans-serif;
 }
 :root {
-  --background: #12211a;
+  --background: #0e0e0e;
   --foreground: #eae4d3;
   --card: #1a2c23;
   --popover: #1a2c23;
@@ -70,8 +70,8 @@
   --media-ring: #a7c080;
   --success: #a7c080;
   --warning: #dbbc7f;
-  --topbar-surface: #0d1914;
-  --navigation-surface: #12211a;
+  --topbar-surface: #101010;
+  --navigation-surface: #0e0e0e;
   --wordmark: #eae4d3;
   --soft-surface: var(--card);
   --hover-surface: var(--secondary);
