@@ -165,7 +165,8 @@ pub fn router(s: AppState) -> Router {
     .route("/videos", get(legacy_gallery))
     .route("/albums", get(index))
     .route("/albums/{id}", get(index))
-    .route("/settings", get(index))
+    .route("/settings", get(legacy_preferences))
+    .route("/settings/preferences", get(index))
     .route("/settings/storage", get(index))
     .route("/files/{filename}", get(videos::public_file))
     .route("/posters/{filename}", get(videos::public_preview))
@@ -206,6 +207,13 @@ async fn legacy_gallery(OriginalUri(uri): OriginalUri) -> Redirect {
         .query()
         .map_or_else(String::new, |query| format!("?{query}"));
     Redirect::permanent(&format!("/gallery{query}"))
+}
+/// Keep settings bookmarks working after Preferences receives its own canonical route.
+async fn legacy_preferences(OriginalUri(uri): OriginalUri) -> Redirect {
+    let query = uri
+        .query()
+        .map_or_else(String::new, |query| format!("?{query}"));
+    Redirect::permanent(&format!("/settings/preferences{query}"))
 }
 /// Serve a valid public album-shaped page without disclosing private collection data.
 async fn album_page(

@@ -37,8 +37,8 @@
   <nav aria-label="Settings">
     <p class="category">Settings</p>
     <a
-      href={resolve('/settings')}
-      aria-current={path === '/settings' ? 'page' : undefined}
+      href={resolve('/settings/preferences')}
+      aria-current={path === '/settings/preferences' ? 'page' : undefined}
       onclick={onfollow}
     >
       <Settings2 size={22} /><span>Preferences</span>

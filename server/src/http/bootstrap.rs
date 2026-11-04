@@ -117,7 +117,7 @@ fn page_title(path: &str, album: Option<&AlbumPage>) -> String {
         "/login" => Some("Login"),
         "/videos" | "/gallery" => Some("Gallery"),
         "/albums" => Some("Albums"),
-        "/settings" => Some("Preferences"),
+        "/settings/preferences" => Some("Preferences"),
         "/settings/storage" => Some("Storage"),
         _ => album.map(|page| page.album.name.as_str()),
     };

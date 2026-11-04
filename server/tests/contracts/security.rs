@@ -41,7 +41,8 @@ async fn origin_framing_and_missing_routes() {
         ("/login", "frame-ancestors 'none'"),
         ("/gallery", "frame-ancestors 'none'"),
         ("/albums", "frame-ancestors 'none'"),
-        ("/settings", "frame-ancestors 'none'"),
+        ("/settings/preferences", "frame-ancestors 'none'"),
+        ("/settings/storage", "frame-ancestors 'none'"),
     ] {
         let (status, headers, _) = call(&r, "GET", path, None, None, Value::Null).await;
         assert_eq!(status, StatusCode::OK);
@@ -58,9 +59,6 @@ async fn origin_framing_and_missing_routes() {
                 .contains("no-store")
         );
     }
-    let (status, headers, _) = call(&r, "GET", "/videos?upload=1", None, None, Value::Null).await;
-    assert_eq!(status, StatusCode::PERMANENT_REDIRECT);
-    assert_eq!(headers["location"], "/gallery?upload=1");
     let mut protected = s;
     protected.origin_secret = Some(Arc::new("very-long-test-origin-secret-value".into()));
     let protected = http::router(protected);
@@ -70,6 +68,26 @@ async fn origin_framing_and_missing_routes() {
             .0,
         StatusCode::FORBIDDEN
     );
+}
+
+#[tokio::test]
+/// Old page bookmarks retain their query strings through GET and HEAD redirects.
+async fn legacy_pages_redirect_to_canonical_destinations() {
+    let (_, router, _directory) = setup().await;
+    for method in ["GET", "HEAD"] {
+        for (path, destination) in [
+            ("/videos?upload=1", "/gallery?upload=1"),
+            ("/settings", "/settings/preferences"),
+            (
+                "/settings?appearance=theme",
+                "/settings/preferences?appearance=theme",
+            ),
+        ] {
+            let (status, headers, _) = call(&router, method, path, None, None, Value::Null).await;
+            assert_eq!(status, StatusCode::PERMANENT_REDIRECT);
+            assert_eq!(headers["location"], destination);
+        }
+    }
 }
 
 #[test]

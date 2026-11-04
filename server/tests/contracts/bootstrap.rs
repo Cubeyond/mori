@@ -8,6 +8,35 @@ use serde_json::Value;
 use tower::ServiceExt;
 
 #[tokio::test]
+/// Settings pages render their canonical tab titles before client hydration.
+async fn settings_pages_have_initial_titles() {
+    let (_, router, _directory) = setup().await;
+    for (path, title) in [
+        ("/settings/preferences", "Preferences"),
+        ("/settings/storage", "Storage"),
+    ] {
+        let response = router
+            .clone()
+            .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let html = String::from_utf8(
+            response
+                .into_body()
+                .collect()
+                .await
+                .unwrap()
+                .to_bytes()
+                .to_vec(),
+        )
+        .unwrap();
+        assert!(html.contains(&format!("<title>{title} – Mori</title>")));
+        assert!(html.contains(&format!("\"path\":\"{path}\"")));
+    }
+}
+
+#[tokio::test]
 /// The initial document contains authorized metadata synchronously without leaking it to visitors.
 async fn document_seed_privacy_contract() {
     let (state, router, _directory) = setup().await;
