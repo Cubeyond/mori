@@ -1,4 +1,4 @@
-/** Browser-local themes use upstream palette values through shared semantic CSS tokens. */
+/** Browser-local themes share semantic surfaces while retaining their own color palettes. */
 export const themes = [
   { id: 'mori', label: 'Mori', dark: true },
   { id: 'catppuccin-latte', label: 'Catppuccin Latte', dark: false },
@@ -11,7 +11,7 @@ export const themes = [
 /** Only catalog entries can be restored from untrusted browser persistence. */
 export type Theme = (typeof themes)[number]['id'];
 
-/** Mori uses Everforest Dark Hard when a browser has no valid saved theme. */
+/** New browsers use the official forest-green Mori palette. */
 export function parseTheme(value: unknown): Theme {
   return themes.find((theme) => theme.id === value)?.id ?? 'mori';
 }

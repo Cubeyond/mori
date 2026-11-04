@@ -86,7 +86,13 @@
   }
   a[aria-current='page'] {
     background: var(--accent);
-    color: var(--primary);
+    color: var(--foreground);
+  }
+  a[aria-current='page'] :global(svg) {
+    color: var(--selection);
+  }
+  :global([data-theme='catppuccin-latte']) a[aria-current='page'] :global(svg) {
+    color: var(--foreground);
   }
   .drawer nav {
     gap: 6px;

@@ -1,54 +1,46 @@
 /** Everforest: sainnhe/everforest (MIT). Catppuccin: catppuccin.com/palette (MIT). Tokyo Night: folke/tokyonight.nvim (Apache-2.0). */
 
-/** Mori retains Everforest Dark Hard's upstream slate surfaces, warm text and leaf-green accent. */
+/** Mori pairs forest-green surfaces with warm neutral actions; leaf colors remain small accents. */
 :root[data-theme='mori'] {
   --accent-blue: #7fbbb3;
-  --on-blue: #272e33;
+  --on-blue: #12211a;
   --accent-lavender: #d699b6;
-  --on-lavender: #272e33;
+  --on-lavender: #12211a;
   --accent-mauve: #d699b6;
-  --on-mauve: #272e33;
+  --on-mauve: #12211a;
   --accent-pink: #d699b6;
-  --on-pink: #272e33;
+  --on-pink: #12211a;
   --accent-peach: #e69875;
-  --on-peach: #272e33;
+  --on-peach: #12211a;
   --accent-green: #a7c080;
-  --on-green: #272e33;
+  --on-green: #12211a;
   --accent-teal: #83c092;
-  --on-teal: #272e33;
+  --on-teal: #12211a;
   --accent-red: #e67e80;
-  --on-red: #272e33;
-  --selected-blue: #384b55;
-  --selected-lavender: #463f48;
-  --selected-mauve: #463f48;
-  --selected-pink: #463f48;
-  --selected-peach: #45443c;
-  --selected-green: #3c4841;
-  --selected-teal: #3c4841;
-  --selected-red: #493b40;
-  --background: #272e33;
-  --foreground: #d3c6aa;
-  --card: #2e383c;
-  --popover: #2e383c;
-  --primary: #a7c080;
-  --primary-foreground: #272e33;
-  --secondary: #374145;
-  --muted: #374145;
-  --muted-foreground: #9da9a0;
-  --accent: #3c4841;
+  --on-red: #12211a;
+  --background: #12211a;
+  --foreground: #eae4d3;
+  --card: #1a2c23;
+  --popover: #1a2c23;
+  --primary: #e9e2ce;
+  --primary-foreground: #12211a;
+  --secondary: #24392e;
+  --muted: #24392e;
+  --muted-foreground: #a9b5a8;
+  --accent: #24392e;
   --destructive: #e67e80;
-  --border: #495156;
-  --input: #495156;
+  --border: #2c4336;
+  --input: #2c4336;
   --ring: #a7c080;
   --media-ring: #a7c080;
   --success: #a7c080;
   --warning: #dbbc7f;
-  --topbar-surface: #1e2326;
-  --navigation-surface: #272e33;
-  --wordmark: #d3c6aa;
-  --soft-surface: #2e383c;
-  --hover-surface: #374145;
-  --subtle-border: #374145;
+  --topbar-surface: #0d1914;
+  --navigation-surface: #12211a;
+  --wordmark: #eae4d3;
+  --soft-surface: #1a2c23;
+  --hover-surface: #24392e;
+  --subtle-border: #24392e;
 }
 
 :root[data-theme='catppuccin-latte'] {
@@ -74,10 +66,10 @@
   --popover: #e6e9ef;
   --primary: #4c4f69;
   --primary-foreground: #eff1f5;
-  --secondary: #ccd0da;
-  --muted: #ccd0da;
-  --muted-foreground: #6c6f85;
-  --accent: #ccd0da;
+  --secondary: #dce0e8;
+  --muted: #dce0e8;
+  --muted-foreground: #5c5f77;
+  --accent: #dce0e8;
   --destructive: #d20f39;
   --border: #ccd0da;
   --input: #bcc0cc;
@@ -116,7 +108,7 @@
   --primary-foreground: #303446;
   --secondary: #414559;
   --muted: #414559;
-  --muted-foreground: #a5adce;
+  --muted-foreground: #b5bfe2;
   --accent: #414559;
   --destructive: #e78284;
   --border: #414559;
@@ -248,90 +240,60 @@
   --wordmark: #c0caf5;
 }
 
+/** Accent choices never recolor surfaces, navigation fills or primary actions. */
+
 :root[data-accent='blue'] {
-  --primary: var(--accent-blue);
-  --primary-foreground: var(--on-blue);
+  --selection: var(--accent-blue);
+  --selection-foreground: var(--on-blue);
   --ring: var(--accent-blue);
   --media-ring: var(--accent-blue);
-  --accent: var(
-    --selected-blue,
-    color-mix(in srgb, var(--accent-blue) 15%, var(--background))
-  );
 }
 
 :root[data-accent='lavender'] {
-  --primary: var(--accent-lavender);
-  --primary-foreground: var(--on-lavender);
+  --selection: var(--accent-lavender);
+  --selection-foreground: var(--on-lavender);
   --ring: var(--accent-lavender);
   --media-ring: var(--accent-lavender);
-  --accent: var(
-    --selected-lavender,
-    color-mix(in srgb, var(--accent-lavender) 15%, var(--background))
-  );
 }
 
 :root[data-accent='mauve'] {
-  --primary: var(--accent-mauve);
-  --primary-foreground: var(--on-mauve);
+  --selection: var(--accent-mauve);
+  --selection-foreground: var(--on-mauve);
   --ring: var(--accent-mauve);
   --media-ring: var(--accent-mauve);
-  --accent: var(
-    --selected-mauve,
-    color-mix(in srgb, var(--accent-mauve) 15%, var(--background))
-  );
 }
 
 :root[data-accent='pink'] {
-  --primary: var(--accent-pink);
-  --primary-foreground: var(--on-pink);
+  --selection: var(--accent-pink);
+  --selection-foreground: var(--on-pink);
   --ring: var(--accent-pink);
   --media-ring: var(--accent-pink);
-  --accent: var(
-    --selected-pink,
-    color-mix(in srgb, var(--accent-pink) 15%, var(--background))
-  );
 }
 
 :root[data-accent='peach'] {
-  --primary: var(--accent-peach);
-  --primary-foreground: var(--on-peach);
+  --selection: var(--accent-peach);
+  --selection-foreground: var(--on-peach);
   --ring: var(--accent-peach);
   --media-ring: var(--accent-peach);
-  --accent: var(
-    --selected-peach,
-    color-mix(in srgb, var(--accent-peach) 15%, var(--background))
-  );
 }
 
 :root[data-accent='green'] {
-  --primary: var(--accent-green);
-  --primary-foreground: var(--on-green);
+  --selection: var(--accent-green);
+  --selection-foreground: var(--on-green);
   --ring: var(--accent-green);
   --media-ring: var(--accent-green);
-  --accent: var(
-    --selected-green,
-    color-mix(in srgb, var(--accent-green) 15%, var(--background))
-  );
 }
 
 :root[data-accent='teal'] {
-  --primary: var(--accent-teal);
-  --primary-foreground: var(--on-teal);
+  --selection: var(--accent-teal);
+  --selection-foreground: var(--on-teal);
   --ring: var(--accent-teal);
   --media-ring: var(--accent-teal);
-  --accent: var(
-    --selected-teal,
-    color-mix(in srgb, var(--accent-teal) 15%, var(--background))
-  );
 }
 
 :root[data-accent='red'] {
-  --primary: var(--accent-red);
-  --primary-foreground: var(--on-red);
+  --selection: var(--accent-red);
+  --selection-foreground: var(--on-red);
   --ring: var(--accent-red);
   --media-ring: var(--accent-red);
-  --accent: var(
-    --selected-red,
-    color-mix(in srgb, var(--accent-red) 15%, var(--background))
-  );
 }

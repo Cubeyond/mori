@@ -234,7 +234,7 @@
     ><input
       style:--progress={`${String(duration > 0 ? Math.min(100, Math.max(0, (time / duration) * 100)) : 0)}%`}
       aria-label="Seek video"
-      class="min-w-0 flex-1 accent-[#f0eee6]"
+      class="min-w-0 flex-1 accent-[#f5f5f5]"
       disabled={!activated}
       type="range"
       min="0"
@@ -297,7 +297,16 @@
     position: relative;
     width: 100%;
     overflow: visible;
-    background: linear-gradient(135deg, #242626, #151616);
+    /** Media and playback controls stay neutral under every surrounding theme. */
+    --foreground: #f5f5f5;
+    --muted-foreground: #bcbcbc;
+    --card: #1b1b1b;
+    --muted: #292929;
+    --hover-surface: #292929;
+    --border: #444;
+    --input: #444;
+    --ring: #dedede;
+    background: #0e0e0e;
     isolation: isolate;
     container-type: inline-size;
   }
@@ -306,7 +315,7 @@
     inset: 0;
     display: grid;
     place-items: center;
-    color: #aaa99f;
+    color: #bcbcbc;
     font-size: 14px;
   }
   .surface {
@@ -332,7 +341,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    color: #f4f1eb;
+    color: #f5f5f5;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.18s ease;
@@ -356,7 +365,7 @@
     height: 2px;
     background: linear-gradient(
       to right,
-      #f1eee7 var(--progress),
+      #f5f5f5 var(--progress),
       #ddd7 var(--progress)
     );
   }
@@ -366,7 +375,7 @@
     height: 8px;
     margin-top: -3px;
     border-radius: 50%;
-    background: #f1eee7;
+    background: #f5f5f5;
   }
   .bottom input[type='range']::-moz-range-track {
     height: 2px;
@@ -374,14 +383,14 @@
   }
   .bottom input[type='range']::-moz-range-progress {
     height: 2px;
-    background: #f1eee7;
+    background: #f5f5f5;
   }
   .bottom input[type='range']::-moz-range-thumb {
     width: 8px;
     height: 8px;
     border: 0;
     border-radius: 50%;
-    background: #f1eee7;
+    background: #f5f5f5;
   }
   .bottom {
     bottom: 0;
@@ -443,7 +452,7 @@
     align-items: center;
     justify-content: center;
     padding: 20px;
-    background: #101210df;
+    background: #0e0e0eef;
     font-size: 15px;
     text-align: center;
   }
@@ -454,7 +463,7 @@
     right: 12px;
     bottom: 65px;
     padding: 10px;
-    background: #20251ef0;
+    background: #1b1b1b;
     border: 1px solid #ffffff30;
     font-size: 13px;
   }

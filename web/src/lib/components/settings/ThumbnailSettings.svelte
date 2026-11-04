@@ -123,11 +123,11 @@
     background: var(--foreground);
   }
   input:checked + .track {
-    background: var(--primary);
+    background: var(--selection);
   }
   input:checked + .track::after {
     transform: translateX(18px);
-    background: var(--primary-foreground);
+    background: var(--selection-foreground);
   }
   input:focus-visible + .track {
     outline: 2px solid var(--ring);

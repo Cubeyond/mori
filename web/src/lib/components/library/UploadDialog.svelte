@@ -660,7 +660,7 @@
     display: block;
     width: 100%;
     height: 3px;
-    accent-color: var(--primary);
+    accent-color: var(--selection);
   }
   .transfer p {
     font-size: 12px;

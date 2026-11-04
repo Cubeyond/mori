@@ -209,7 +209,7 @@
           disabled={view.scale <= 1}
           onclick={() => {
             zoom?.change(1 / 1.5);
-          }}><Minus size={21} /></button
+          }}><Minus size={20} /></button
         >
         <button
           type="button"
@@ -228,7 +228,7 @@
           disabled={view.scale >= 8}
           onclick={() => {
             zoom?.change(1.5);
-          }}><Plus size={21} /></button
+          }}><Plus size={20} /></button
         >
       </div>
       <span class="position" aria-live="polite">{position}</span>
@@ -335,18 +335,18 @@
     max-height: none;
     border: 0;
     color: #f5f5f5;
-    background: #101113;
+    background: #0e0e0e;
     overflow: hidden;
   }
   dialog::backdrop {
-    background: #101113;
+    background: #0e0e0e;
   }
   .viewer {
     display: flex;
     flex-direction: column;
     width: 100%;
     height: 100%;
-    background: #101113;
+    background: #0e0e0e;
     color: #f5f5f5;
   }
   .viewer:focus {
@@ -382,7 +382,7 @@
       max(8px, env(safe-area-inset-right)) 6px
       max(8px, env(safe-area-inset-left));
     border-bottom: 1px solid #ffffff20;
-    background: #1b1d20;
+    background: #1b1b1b;
     z-index: 5;
     gap: 4px;
   }
@@ -416,7 +416,7 @@
   }
   button:focus-visible,
   a:focus-visible {
-    outline: 2px solid #c9d8ed;
+    outline: 2px solid #dedede;
     outline-offset: -3px;
   }
   button:disabled {
@@ -424,14 +424,16 @@
     cursor: default;
   }
   .fit-button {
-    width: 58px;
-    font-size: 13px;
+    width: 64px;
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
   }
   .position {
     margin-left: 16px;
-    color: #ced0d5;
-    font-size: 13px;
+    color: #cecece;
+    font-size: 14px;
     font-variant-numeric: tabular-nums;
   }
   .media-stage {
@@ -454,7 +456,7 @@
   .navigate {
     position: absolute;
     top: calc(50% - 22px);
-    background: #1b1d20;
+    background: #1b1b1b;
     box-shadow: 0 1px 8px #0004;
     z-index: 3;
   }
@@ -469,7 +471,7 @@
     inset: 0;
     display: grid;
     place-items: center;
-    color: #b8bbc2;
+    color: #bcbcbc;
     pointer-events: none;
   }
   .unavailable {
@@ -480,21 +482,21 @@
     justify-items: center;
     gap: 20px;
     padding: 60px;
-    background: #101113;
+    background: #0e0e0e;
     text-align: center;
   }
   .unavailable button {
     width: auto;
     gap: 8px;
     padding: 0 16px;
-    background: #292c31;
+    background: #292929;
   }
   .notice {
     position: absolute;
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: #1b1d20;
+    background: #1b1b1b;
     padding: 12px 18px;
     border-radius: 7px;
     z-index: 5;
@@ -511,7 +513,7 @@
       transform: translateX(-50%);
       margin: 0;
       z-index: 4;
-      background: #1b1d20;
+      background: #1b1b1b;
       padding: 4px 10px;
       border-radius: 7px;
       pointer-events: none;

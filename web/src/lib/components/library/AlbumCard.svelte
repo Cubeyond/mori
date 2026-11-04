@@ -139,19 +139,9 @@
     border-radius: 7px;
     background: var(--card);
   }
-  .album-card::before {
-    content: '';
-    position: absolute;
-    inset-block: -1px;
-    inset-inline-start: -1px;
-    width: 3px;
-    background: var(--primary);
-    border-radius: 7px 0 0 7px;
-    pointer-events: none;
-  }
   .album-card:has(.album-content:hover),
   .album-card:focus-within {
-    border-color: var(--primary);
+    border-color: var(--muted-foreground);
   }
   .album-content {
     display: grid;
@@ -163,7 +153,7 @@
       'visibility previews';
     gap: 8px var(--preview-gap);
     block-size: 226px;
-    padding: var(--card-padding) var(--card-padding) var(--card-padding) 28px;
+    padding: var(--card-padding) var(--card-padding) var(--card-padding) 24px;
     border-radius: inherit;
   }
   .album-content.empty {
@@ -296,7 +286,7 @@
         'description previews'
         'visibility previews';
       block-size: 212px;
-      padding-inline-start: 22px;
+      padding-inline-start: 20px;
     }
     .preview-rail {
       padding-inline-start: 12px;

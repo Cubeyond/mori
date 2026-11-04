@@ -68,7 +68,7 @@
   input[type='range'] {
     width: 100%;
     min-height: 44px;
-    accent-color: var(--primary);
+    accent-color: var(--selection);
     cursor: pointer;
   }
   output {

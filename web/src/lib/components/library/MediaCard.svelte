@@ -165,9 +165,9 @@
     pointer-events: none;
   }
   .selected .selection-check {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: var(--primary-foreground);
+    background: var(--selection);
+    border-color: var(--selection);
+    color: var(--selection-foreground);
   }
   .cover {
     display: block;

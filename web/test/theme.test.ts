@@ -87,31 +87,52 @@ function luminance(hex: string): number {
   return red * 0.2126 + green * 0.7152 + blue * 0.0722;
 }
 
-void test('every theme-native accent retains readable primary-button text', () => {
+void test('theme surfaces, primary actions and selected controls retain readable text', () => {
   const css = readFileSync(
     new URL('../src/lib/styles/themes.css', import.meta.url),
     'utf8',
   );
   let checked = 0;
-  for (const block of css.split('}')) {
+  for (const theme of themes) {
+    const block = css
+      .split(":root[data-theme='" + theme.id + "'] {")[1]
+      ?.split('}')[0];
+    assert.ok(block !== undefined);
     const colors = new Map(
-      [...block.matchAll(/--(accent-[\w-]+|on-[\w-]+): (#[\da-f]+);/g)].map(
-        (match) => [match[1], match[2]],
-      ),
+      [...block.matchAll(/--([\w-]+): (#[\da-f]+);/g)].map((match) => [
+        match[1],
+        match[2],
+      ]),
+    );
+    for (const background of ['background', 'card', 'popover', 'accent'])
+      for (const foreground of ['foreground', 'muted-foreground'])
+        assert.ok(
+          contrast(colors.get(background), colors.get(foreground)) >= 4.5,
+          theme.id + ' ' + foreground + ' on ' + background,
+        );
+    assert.ok(
+      contrast(colors.get('primary'), colors.get('primary-foreground')) >= 4.5,
+      theme.id + ' primary action',
     );
     for (const accent of accents) {
       const background = colors.get('accent-' + accent);
       if (background === undefined) continue;
       const foreground = colors.get('on-' + accent);
       assert.ok(foreground !== undefined);
-      const a = luminance(background),
-        b = luminance(foreground);
-      assert.ok(
-        (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) >= 4.5,
-        accent + ' contrast',
-      );
+      assert.ok(contrast(background, foreground) >= 4.5, accent + ' contrast');
       checked++;
     }
   }
   assert.equal(checked, themes.length * accents.length);
 });
+
+/** Missing palette tokens fail the same accessibility contract as unreadable text. */
+function contrast(
+  background: string | undefined,
+  foreground: string | undefined,
+): number {
+  assert.ok(background !== undefined && foreground !== undefined);
+  const a = luminance(background),
+    b = luminance(foreground);
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}

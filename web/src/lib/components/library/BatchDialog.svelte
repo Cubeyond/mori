@@ -232,13 +232,13 @@
   }
   .album-row input {
     margin: 0;
-    accent-color: var(--primary);
+    accent-color: var(--selection);
   }
   .album-row:hover {
     background: var(--hover-surface);
   }
   .chosen {
-    border-color: var(--primary);
+    border-color: var(--selection);
     background: var(--accent);
   }
   footer {
