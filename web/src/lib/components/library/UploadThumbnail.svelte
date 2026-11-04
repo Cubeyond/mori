@@ -18,6 +18,7 @@
     root,
     locked,
     active,
+    completed,
     onremove,
   }: {
     file: File;
@@ -26,6 +27,7 @@
     root: HTMLElement | undefined;
     locked: boolean;
     active: boolean;
+    completed: boolean;
     onremove: (file: File) => void;
   } = $props();
   /** One bounded JPEG replaces the full local source once the browser finishes decoding. */
@@ -92,7 +94,7 @@
     <button
       type="button"
       class="remove-file"
-      aria-label={'Remove ' + file.name}
+      aria-label={(completed ? 'Dismiss ' : 'Remove ') + file.name}
       disabled={locked}
       onclick={() => {
         onremove(file);
@@ -113,9 +115,11 @@
     <span class="metadata"
       >{formatBytes(preparedSize)} · {preparedSize < file.size
         ? String(Math.round((1 - preparedSize / file.size) * 100)) + '% smaller'
-        : kind === 'image'
-          ? 'Image'
-          : 'Video'}</span
+        : completed
+          ? 'Original'
+          : kind === 'image'
+            ? 'Image'
+            : 'Video'}</span
     >
   </div>
 </div>

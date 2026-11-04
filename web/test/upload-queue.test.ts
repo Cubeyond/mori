@@ -141,3 +141,53 @@ void test('a successful sibling is removed even when another transfer fails', as
     ['failure'],
   );
 });
+
+void test('retained thumbnails survive partial completion and retries claim only waiting originals', async () => {
+  const files = ['uploaded', 'retry'].map((name) => new File(['media'], name));
+  const completed = new Set<File>();
+  const firstDone = Promise.withResolvers<undefined>();
+  /** Retain original selection order independently from mutable transfer eligibility. */
+  const waiting = () => files.filter((file) => !completed.has(file));
+  /** Completion marks a thumbnail without removing it from the selected display list. */
+  const finish = (file: File): void => {
+    completed.add(file);
+    firstDone.resolve(undefined);
+  };
+  await assert.rejects(
+    runUploadQueue(
+      waiting,
+      async (file) => {
+        if (file.name === 'uploaded') return;
+        await firstDone.promise;
+        throw new Error('Disconnected');
+      },
+      new AbortController().signal,
+      finish,
+    ),
+    /Disconnected/,
+  );
+  assert.deepEqual(
+    files.map((file) => file.name),
+    ['uploaded', 'retry'],
+  );
+  assert.deepEqual(
+    waiting().map((file) => file.name),
+    ['retry'],
+  );
+  const retried: string[] = [];
+  assert.equal(
+    await runUploadQueue(
+      waiting,
+      (file) => {
+        retried.push(file.name);
+        return Promise.resolve();
+      },
+      new AbortController().signal,
+      finish,
+    ),
+    1,
+  );
+  assert.deepEqual(retried, ['retry']);
+  assert.deepEqual(waiting(), []);
+  assert.equal(files.length, 2);
+});

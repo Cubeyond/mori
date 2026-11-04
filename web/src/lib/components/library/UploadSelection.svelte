@@ -10,12 +10,14 @@
     policy,
     activeFiles,
     optimizedSizes,
+    completedFiles,
     onremove,
   }: {
     files: File[];
     policy: UploadPolicy;
     activeFiles: File[];
     optimizedSizes: ReadonlyMap<File, number>;
+    completedFiles: ReadonlySet<File>;
     onremove: (file: File) => void;
   } = $props();
   /** Each page owns two columns and at most two rows. */
@@ -42,7 +44,12 @@
   <div class="summary">
     <span>{files.length} {files.length === 1 ? 'file' : 'files'}</span><span
       class="total-size"
-      >{formatBytes(files.reduce((size, file) => size + file.size, 0))}</span
+      >{formatBytes(
+        files.reduce(
+          (size, file) => size + (optimizedSizes.get(file) ?? file.size),
+          0,
+        ),
+      )}</span
     >
   </div>
   {#if pages.length > 1}<nav aria-label="Selected file pages">
@@ -91,6 +98,7 @@
           root={viewport}
           locked={activeFiles.includes(file)}
           active={activeFiles.includes(file)}
+          completed={completedFiles.has(file)}
           {onremove}
         />{/each}
     </div>{/each}

@@ -29,8 +29,6 @@ export interface TransferStatus {
   phase: string;
   /** A resumable session remains available after an interruption. */
   paused?: boolean;
-  /** A background completion opens retained results rather than active transfer progress. */
-  completed?: boolean;
 }
 /** Hash a bounded local prefix to detect a mismatched resume file. */
 async function fingerprint(file: File) {

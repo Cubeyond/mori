@@ -1,8 +1,9 @@
-/** Bound simultaneous files while preserving live edits and settling every worker before returning. */
+/** Bound transfers; an optional completion callback can retain selected thumbnails outside the waiting queue. */
 export async function runUploadQueue(
   current: () => File[],
   transfer: (file: File, signal: AbortSignal) => Promise<void>,
   signal: AbortSignal,
+  complete?: (file: File) => void,
 ): Promise<number> {
   const stop = new AbortController();
   const batchSignal = AbortSignal.any([signal, stop.signal]);
@@ -17,9 +18,11 @@ export async function runUploadQueue(
         if (file === undefined) return;
         claimed.add(file);
         await transfer(file, batchSignal);
-        const files = current();
-        const index = files.indexOf(file);
-        if (index >= 0) files.splice(index, 1);
+        if (complete === undefined) {
+          const files = current();
+          const index = files.indexOf(file);
+          if (index >= 0) files.splice(index, 1);
+        } else complete(file);
         completed++;
       }
     } catch (failure) {
