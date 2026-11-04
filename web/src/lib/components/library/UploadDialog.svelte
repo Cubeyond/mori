@@ -88,8 +88,6 @@
   );
   /** Fresh local selections and server-backed work expose the appropriate clearing action. */
   const hasQueue = $derived(waitingFiles.length > 0 || hasTransfer);
-  /** Completion changes the footer action while preserving the existing upload form. */
-  const finished = $derived(files.length > 0 && !hasQueue);
   $effect(() => {
     if (!open && !busy && !cancelling && unfinished.length > 0)
       onstatus({ progress: 0, phase: 'Unfinished uploads', paused: true });
@@ -111,6 +109,14 @@
       onstatus({ progress: 0, phase: 'Resume upload', paused: true });
     return () => controller?.abort();
   });
+  /** Release the current selection after successful completion or explicit cancellation. */
+  function clearSelection(): void {
+    files = [];
+    optimizedSizes.clear();
+    completedFiles.clear();
+    progress = 0;
+    if (picker !== undefined) picker.value = '';
+  }
   /** Invalid additions preserve the existing selection instead of silently clearing it. */
   function selectFiles(selected: File[]): void {
     if (selected.length === 0 || cancelling || storageConfigured !== true)
@@ -230,7 +236,12 @@
         },
       );
       phase = '';
-      await oncomplete();
+      clearSelection();
+      onstatus(null);
+      onclose();
+      await oncomplete().catch((failure: unknown) => {
+        onnotice(message(failure));
+      });
     } catch (failure) {
       pending = savedUploads();
       error = isCancelling()
@@ -261,9 +272,7 @@
   async function cancelAll(): Promise<void> {
     if (cancelling) return;
     if (!hasTransfer) {
-      files = [];
-      optimizedSizes.clear();
-      completedFiles.clear();
+      clearSelection();
       error = '';
       onstatus(null);
       return;
@@ -274,11 +283,8 @@
     try {
       await running;
       await cancelUpload();
-      files = [];
-      optimizedSizes.clear();
-      completedFiles.clear();
+      clearSelection();
       pending = [];
-      progress = 0;
       phase = '';
       onstatus(null);
       await oncomplete();
@@ -300,71 +306,53 @@
   maxWidth={600}
   hideScrollbar
 >
-  {#snippet footer()}{#if storageConfigured === true || finished}
+  {#snippet footer()}{#if storageConfigured === true}
       <footer>
-        {#if finished}
-          <Button
-            variant="ghost"
-            type="button"
-            class="cancel-action"
-            onclick={cancelAll}>Clear selection</Button
-          >
-          <Button
-            variant="default"
+        {#if hasQueue}<div class="secondary-actions">
+            <Button
+              variant="ghost"
+              type="button"
+              class="cancel-action"
+              disabled={cancelling}
+              onclick={cancelAll}
+              >{cancelling
+                ? 'Cancelling…'
+                : hasTransfer
+                  ? 'Cancel uploads'
+                  : 'Clear selection'}</Button
+            >
+            {#if busy}<Button variant="ghost" type="button" onclick={onclose}
+                >Hide</Button
+              >{/if}
+          </div>{/if}
+        {#if busy}<Button
+            variant="outline"
             type="button"
             class="upload-action"
-            onclick={onclose}>Done</Button
+            disabled={cancelling}
+            onclick={() => controller?.abort()}
+            ><Pause size={16} />Pause uploads</Button
           >
-        {:else}
-          {#if hasQueue}<div class="secondary-actions">
-              <Button
-                variant="ghost"
-                type="button"
-                class="cancel-action"
-                disabled={cancelling}
-                onclick={cancelAll}
-                >{cancelling
-                  ? 'Cancelling…'
-                  : hasTransfer
-                    ? 'Cancel uploads'
-                    : 'Clear selection'}</Button
-              >
-              {#if busy}<Button variant="ghost" type="button" onclick={onclose}
-                  >Hide</Button
-                >{/if}
-            </div>{/if}
-          {#if busy}<Button
-              variant="outline"
-              type="button"
-              class="upload-action"
-              disabled={cancelling}
-              onclick={() => controller?.abort()}
-              ><Pause size={16} />Pause uploads</Button
-            >
-          {:else}<Button
-              variant="default"
-              type="submit"
-              form="media-upload-form"
-              class="upload-action"
-              disabled={file === null || policy === null || cancelling}
-              ><ArrowUp size={17} />{pending.length > 0
-                ? 'Continue uploads'
-                : waitingFiles.length > 0
-                  ? 'Upload ' +
-                    String(waitingFiles.length) +
-                    (waitingFiles.length === 1 ? ' file' : ' files')
-                  : 'Upload media'}</Button
-            >{/if}
-        {/if}
+        {:else}<Button
+            variant="default"
+            type="submit"
+            form="media-upload-form"
+            class="upload-action"
+            disabled={file === null || policy === null || cancelling}
+            ><ArrowUp size={17} />{pending.length > 0
+              ? 'Continue uploads'
+              : waitingFiles.length > 0
+                ? 'Upload ' +
+                  String(waitingFiles.length) +
+                  (waitingFiles.length === 1 ? ' file' : ' files')
+                : 'Upload media'}</Button
+          >{/if}
       </footer>
     {/if}{/snippet}
-  {#if storageConfigured === null && !finished}<p
-      class="storage-setup muted"
-      role="status"
-    >
+  {#if storageConfigured === null}<p class="storage-setup muted" role="status">
       Loading upload settings…
     </p>
-  {:else if storageConfigured === false && !finished}<div class="storage-setup">
+  {:else if !storageConfigured}<div class="storage-setup">
       <p>Connect Amazon S3 to start uploading.</p>
       <Button
         href={resolve('/settings/storage')}
@@ -382,7 +370,7 @@
         .map((extension) => '.' + extension)
         .join(',') ?? 'image/*,video/*'}
       aria-label="Media files"
-      disabled={policy === null || cancelling || storageConfigured !== true}
+      disabled={policy === null || cancelling}
       onchange={(event) => {
         const selected = Array.from(event.currentTarget.files ?? []);
         event.currentTarget.value = '';
@@ -414,7 +402,7 @@
         class="drop-zone"
         class:compact={files.length > 0}
         class:dragging
-        disabled={policy === null || cancelling || storageConfigured !== true}
+        disabled={policy === null || cancelling}
         onclick={() => picker?.click()}
         ondragover={(event) => {
           event.preventDefault();
