@@ -5,15 +5,11 @@ use crate::{
     app::{AppState, valid_token},
     features::{
         albums::{self, Album, CreateAlbum},
-        auth,
+        auth::Admin,
     },
     http::error::{Error, Result, bad, missing},
 };
-use axum::{
-    Json,
-    extract::State,
-    http::{HeaderMap, StatusCode},
-};
+use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use utoipa::ToSchema;
@@ -67,10 +63,9 @@ pub struct BatchResult {
     security(("session" = [])))]
 pub async fn apply(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Json(input): Json<BatchInput>,
 ) -> Result<(StatusCode, Json<BatchResult>)> {
-    auth::require(&s, &h, true).await?;
     if input.ids.is_empty()
         || input.ids.len() > 100
         || input.ids.iter().any(|id| !valid_token(id))

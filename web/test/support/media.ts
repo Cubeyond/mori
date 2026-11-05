@@ -1,7 +1,7 @@
 /** Shared complete metadata fixtures use the generated media contract. */
-import type { Video } from '../../src/lib/api/client';
+import type { MediaItem } from '../../src/lib/api/client';
 /** Complete metadata fixture preserves the generated contract in geometry tests. */
-export function videoFixture(index: number): Video {
+export function videoFixture(index: number): MediaItem {
   const id = String(index).padStart(32, '0');
   return {
     kind: 'video',

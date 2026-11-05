@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { arrangeGallery } from '../src/lib/features/gallery.ts';
-import type { Video } from '../src/lib/api/client';
+import type { MediaItem } from '../src/lib/api/client';
 import { videoFixture } from './support/media.ts';
 /** Allow floating point subpixels without accepting visible gutter drift. */
 function near(actual: number, expected: number): void {
@@ -66,7 +66,7 @@ void test('empty and unmeasured galleries reserve no phantom black panel', () =>
 });
 
 void test('images and videos share masonry order without changing their native metadata', () => {
-  const image: Video = {
+  const image: MediaItem = {
     ...videoFixture(2),
     kind: 'image',
     extension: 'jpg',

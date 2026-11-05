@@ -1,9 +1,12 @@
 //! Server-generated display hashes and controlled S3 multipart upload sessions.
 
+/// Original-level concurrency control shared with durable cancellation recovery.
+pub mod lifecycle;
+
 use crate::{
     app::{AppState, now, random_id},
     features::{
-        auth,
+        auth::Admin,
         videos::{self, Accepted, MediaKind},
     },
     http::error::{Error, Result, bad, missing},
@@ -13,7 +16,7 @@ use axum::{
     Json,
     body::Bytes,
     extract::{Path, State},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
 };
 use serde::{Deserialize, Serialize};
 
@@ -67,8 +70,7 @@ fn default_extension() -> String {
 /// # Errors
 /// Returns authentication or database errors.
 #[utoipa::path(get, path = "/v1/admin/upload-policy", responses((status = 200, body = UploadPolicy)), security(("session" = [])))]
-pub async fn policy(State(s): State<AppState>, h: HeaderMap) -> Result<Json<UploadPolicy>> {
-    auth::require(&s, &h, false).await?;
+pub async fn policy(State(s): State<AppState>, _admin: Admin) -> Result<Json<UploadPolicy>> {
     let mut allowed_extensions = s.config.video_extensions.clone();
     allowed_extensions.extend(s.config.image_extensions.iter().cloned());
     Ok(Json(UploadPolicy {
@@ -188,10 +190,9 @@ fn validate_input(s: &AppState, input: &CreateUpload) -> Result<MediaKind> {
 )]
 pub async fn create(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Json(input): Json<CreateUpload>,
 ) -> Result<(StatusCode, Json<Upload>)> {
-    auth::require(&s, &h, true).await?;
     let storage = s.storage.get()?;
     let kind = validate_input(&s, &input)?;
     let name = random_id();
@@ -291,11 +292,10 @@ created_at,extension,width,height,duration,media_prefix,source_key,poster_key,ki
 )]
 pub async fn part(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Path((id, part)): Path<(String, i32)>,
     Json(input): Json<PartInput>,
 ) -> Result<Json<PartUrl>> {
-    auth::require(&s, &h, true).await?;
     let r = record(&s, &id).await?;
     if input.checksum.len() != 44
         || !input
@@ -333,10 +333,11 @@ pub async fn part(
 )]
 pub async fn complete(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Path(id): Path<String>,
 ) -> Result<(StatusCode, Json<Accepted>)> {
-    auth::require(&s, &h, true).await?;
+    let r = record(&s, &id).await?;
+    let _transition = s.upload_lifecycle.lock(&r.video_id).await;
     let r = record(&s, &id).await?;
     if r.state == "complete" {
         return Ok((StatusCode::ACCEPTED, Json(Accepted { job_id: None })));
@@ -386,13 +387,11 @@ pub async fn complete(
 )]
 pub async fn poster(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Path(id): Path<String>,
     body: Bytes,
 ) -> Result<StatusCode> {
-    auth::require(&s, &h, true).await?;
-    // A cancellation must not delete a preview before an in-flight write recreates it.
-    let _operation = s.storage.operation().await;
+    let _transition = s.upload_lifecycle.lock(&id).await;
     let v = videos::get(&s, &id).await?;
     if v.state != "uploading" {
         return Err(Error(
@@ -403,11 +402,11 @@ pub async fn poster(
     if body.len() > 1_048_576 || body.len() < 4 || body[..3] != [255, 216, 255] {
         return Err(bad("A JPEG poster up to 1 MiB is required"));
     }
-    s.storage
-        .get()?
+    let storage = s.storage.get()?;
+    storage
         .s3
         .put_object()
-        .bucket(&s.storage.get()?.bucket)
+        .bucket(&storage.bucket)
         .key(v.private_poster())
         .content_type("image/jpeg")
         .body(aws_sdk_s3::primitives::ByteStream::from(body))
@@ -433,10 +432,9 @@ pub async fn poster(
 )]
 pub async fn status(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Path(id): Path<String>,
 ) -> Result<Json<Upload>> {
-    auth::require(&s, &h, false).await?;
     let r = record(&s, &id).await?;
     let v = videos::get(&s, &r.video_id).await?;
     if r.state != "uploading" || r.expires_at <= now() {

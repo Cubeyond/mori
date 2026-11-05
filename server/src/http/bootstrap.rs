@@ -48,7 +48,14 @@ pub(super) async fn document(state: &AppState, headers: &HeaderMap, path: &str) 
         .0;
     let admin_album = session.authenticated && (path == "/albums" || path.starts_with("/albums/"));
     let albums = if admin_album {
-        Some(albums::list(State(state.clone()), headers.clone()).await?.0)
+        Some(
+            albums::list(
+                State(state.clone()),
+                auth::Admin::read(state, headers).await?,
+            )
+            .await?
+            .0,
+        )
     } else {
         None
     };
@@ -58,7 +65,7 @@ pub(super) async fn document(state: &AppState, headers: &HeaderMap, path: &str) 
         Some(
             albums::detail(
                 State(state.clone()),
-                headers.clone(),
+                auth::Admin::read(state, headers).await?,
                 Path(id.into()),
                 Query(Page::default()),
             )

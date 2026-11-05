@@ -5,6 +5,10 @@ packages:
 minimumReleaseAgeExclude:
   - mediabunny@1.65.1
 
+# Replace vulnerable transitive glob matching without loosening typed linting.
+overrides:
+  minimatch@>=7.0.0 <11.0.1: ^11.0.1
+
 # Complete the generator dependency declarations so skipLibCheck can stay disabled.
 packageExtensions:
   '@redocly/openapi-core@1':
@@ -12,6 +16,13 @@ packageExtensions:
       'json-schema-to-ts': '^3.1.1'
       '@types/js-yaml': '^4.0.9'
 
-# TypeScript 6 includes these WebCodecs declarations; remove only conflicting legacy duplicates.
+# deepmerge has no fixed upstream release (2026-11-06). The exact version is patched below;
+# dependency-security.test.ts exercises both published builds and must pass in CI.
+audit:
+  ignore:
+    - GHSA-gcqx-w48m-w2h4
+
+# TypeScript 6 removes duplicate WebCodecs declarations; deepmerge defines own data properties.
 patchedDependencies:
   '@types/dom-webcodecs@0.1.13': patches/@types__dom-webcodecs@0.1.13.patch
+  deepmerge@4.3.1: patches/deepmerge@4.3.1.patch

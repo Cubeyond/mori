@@ -3,7 +3,7 @@
 use super::{MediaKind, Video, get};
 use crate::{
     app::AppState,
-    features::auth,
+    features::auth::Admin,
     http::error::{Error, Result, bad},
 };
 use axum::{
@@ -57,6 +57,7 @@ pub fn byte_range(value: &str, size: u64) -> Option<(u64, u64)> {
 )]
 pub async fn content(
     State(s): State<AppState>,
+    _admin: Admin,
     h: HeaderMap,
     method: Method,
     Path(id): Path<String>,
@@ -76,6 +77,7 @@ pub async fn content(
 )]
 pub async fn poster(
     State(s): State<AppState>,
+    _admin: Admin,
     h: HeaderMap,
     method: Method,
     Path(id): Path<String>,
@@ -113,7 +115,7 @@ async fn stream_permit(s: &AppState, poster: bool) -> Result<OwnedSemaphorePermi
     })
 }
 
-/// Authenticate each media request and retain the stream concurrency permit.
+/// Serve an authorized media request and retain the stream concurrency permit.
 ///
 /// # Errors
 /// Returns authentication, inaccessible-media, concurrency-limit, S3, or response-building errors.
@@ -124,7 +126,6 @@ async fn stream(
     id: String,
     poster: bool,
 ) -> Result<Response> {
-    auth::require(&s, &h, false).await?;
     let v = get(&s, &id).await?;
     if matches!(
         v.state.as_str(),
@@ -147,13 +148,12 @@ pub(super) async fn resource(
     v: &Video,
     poster: bool,
 ) -> Result<Response> {
+    let storage = s.storage.get()?;
     let key = v.content_key(poster);
-    let head = s
-        .storage
-        .get()?
+    let head = storage
         .s3
         .head_object()
-        .bucket(&s.storage.get()?.bucket)
+        .bucket(&storage.bucket)
         .key(&key)
         .send()
         .await
@@ -173,13 +173,7 @@ pub(super) async fn resource(
     } else {
         None
     };
-    let mut request = s
-        .storage
-        .get()?
-        .s3
-        .get_object()
-        .bucket(&s.storage.get()?.bucket)
-        .key(key);
+    let mut request = storage.s3.get_object().bucket(&storage.bucket).key(key);
     let length = match range {
         Some(Some((start, end))) => {
             builder = builder

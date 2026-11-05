@@ -2,14 +2,14 @@
 
 use super::record;
 use crate::{
-    app::{AppState, valid_token},
-    features::{auth, videos},
+    app::{AppState, now, valid_token},
+    features::{auth::Admin, videos},
     http::error::{Error, Result, bad},
 };
 use axum::{
     Json,
     extract::{Path, State},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -46,9 +46,8 @@ pub struct CancelUploads {
 #[utoipa::path(get, path = "/v1/admin/uploads", responses((status = 200, body = Vec<UnfinishedUpload>)), security(("session" = [])))]
 pub async fn unfinished(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
 ) -> Result<Json<Vec<UnfinishedUpload>>> {
-    auth::require(&s, &h, false).await?;
     Ok(Json(sqlx::query_as("SELECT u.id,u.video_id,v.album_id,v.name,v.size FROM uploads u JOIN videos v ON v.id=u.video_id WHERE u.state IN ('uploading','canceling') ORDER BY v.created_at,u.id LIMIT 100").fetch_all(&s.db).await?))
 }
 
@@ -59,16 +58,15 @@ pub async fn unfinished(
 #[utoipa::path(delete, path = "/v1/admin/uploads", request_body = CancelUploads, responses((status = 204, description = "Uploads cancelled")), security(("session" = [])))]
 pub async fn cancel_many(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Json(input): Json<CancelUploads>,
 ) -> Result<StatusCode> {
-    auth::require(&s, &h, true).await?;
     if input.ids.is_empty() || input.ids.len() > 100 || input.ids.iter().any(|id| !valid_token(id))
     {
         return Err(bad("Select between 1 and 100 upload reservations"));
     }
     for id in input.ids {
-        cancel_one(&s, &id).await?;
+        cancel_one(&s, &id, false).await?;
     }
     Ok(StatusCode::NO_CONTENT)
 }
@@ -80,19 +78,24 @@ pub async fn cancel_many(
 #[utoipa::path(delete, path = "/v1/admin/uploads/{id}", params(("id" = String, Path)), responses((status = 204, description = "Aborted")), security(("session" = [])))]
 pub async fn cancel(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Path(id): Path<String>,
 ) -> Result<StatusCode> {
-    auth::require(&s, &h, true).await?;
-    cancel_one(&s, &id).await?;
+    cancel_one(&s, &id, false).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
 /// Persist cancellation before S3 operations so the cleanup worker can retry after a process crash.
-async fn cancel_one(s: &AppState, id: &str) -> Result<()> {
-    // Serialize preview writes and storage rotation with cancellation's object cleanup.
-    let _operation = s.storage.operation().await;
+async fn cancel_one(s: &AppState, id: &str, expired_only: bool) -> Result<()> {
     let reservation = record(s, id).await?;
+    let _transition = s.upload_lifecycle.lock(&reservation.video_id).await;
+    let reservation = record(s, id).await?;
+    if expired_only
+        && !(reservation.state == "canceling"
+            || (reservation.state == "uploading" && reservation.expires_at <= now()))
+    {
+        return Ok(());
+    }
     if reservation.state == "canceled" {
         return Ok(());
     }
@@ -132,4 +135,12 @@ async fn cancel_one(s: &AppState, id: &str) -> Result<()> {
         .await?;
     tx.commit().await?;
     Ok(())
+}
+
+/// Recheck expiration under the lifecycle lock before retrying durable cancellation.
+///
+/// # Errors
+/// Returns database or object-storage errors; a later cleanup pass can safely retry.
+pub(crate) async fn cleanup(s: &AppState, id: &str) -> Result<()> {
+    cancel_one(s, id, true).await
 }

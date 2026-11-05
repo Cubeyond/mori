@@ -76,7 +76,7 @@ pub async fn collection(state: &AppState, scope: Collection<'_>, page: &Page) ->
 }
 
 /// Apply identical visibility and literal-name predicates to counts and result pages.
-fn constrain<'a>(query: &mut QueryBuilder<'a, Sqlite>, scope: Collection<'a>, pattern: &'a str) {
+fn constrain(query: &mut QueryBuilder<Sqlite>, scope: Collection<'_>, pattern: &str) {
     match scope {
         Collection::Library => {
             query.push("state!='deleted' AND state NOT IN ('failed','uploading','verifying')");

@@ -9,7 +9,7 @@ pub use model::*;
 use crate::{
     app::{AppState, now, random_id, valid_name},
     features::{
-        auth,
+        auth::{self, Admin},
         videos::{Collection, collection, deletion},
     },
     http::{
@@ -58,8 +58,7 @@ pub fn normalize_slug(input: &str) -> Result<String> {
     responses((status = 200, body = Vec<AlbumSummary>)),
     security(("session" = [])),
 )]
-pub async fn list(State(s): State<AppState>, h: HeaderMap) -> Result<Json<Vec<AlbumSummary>>> {
-    auth::require(&s, &h, false).await?;
+pub async fn list(State(s): State<AppState>, _admin: Admin) -> Result<Json<Vec<AlbumSummary>>> {
     Ok(Json(catalog::summaries(&s).await?))
 }
 /// Return one administrator-visible collection, including private members and empty albums.
@@ -75,11 +74,10 @@ pub async fn list(State(s): State<AppState>, h: HeaderMap) -> Result<Json<Vec<Al
 )]
 pub async fn detail(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Path(id): Path<String>,
     Query(page): Query<Page>,
 ) -> Result<Json<AlbumPage>> {
-    auth::require(&s, &h, false).await?;
     let album: Album = sqlx::query_as(
         "SELECT id,name,slug,visibility,description,created_at FROM albums WHERE id=?",
     )
@@ -108,10 +106,9 @@ pub async fn detail(
 )]
 pub async fn create(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Json(input): Json<CreateAlbum>,
 ) -> Result<(StatusCode, Json<Album>)> {
-    auth::require(&s, &h, true).await?;
     let mut tx = s.db.begin_with("BEGIN IMMEDIATE").await?;
     let album = insert(&mut tx, input).await?;
     tx.commit().await?;
@@ -164,11 +161,10 @@ pub(crate) async fn insert(db: &mut sqlx::SqliteConnection, input: CreateAlbum) 
 )]
 pub async fn edit(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Path(id): Path<String>,
     Json(input): Json<EditAlbum>,
 ) -> Result<StatusCode> {
-    auth::require(&s, &h, true).await?;
     if !valid_name(&input.name) {
         return Err(bad("Invalid name"));
     }
@@ -230,11 +226,10 @@ pub async fn edit(
 )]
 pub async fn delete(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Path(id): Path<String>,
     Json(input): Json<DeleteAlbum>,
 ) -> Result<Response> {
-    auth::require(&s, &h, true).await?;
     let mut tx = s.db.begin_with("BEGIN IMMEDIATE").await?;
     let (name, slug): (String, String) = sqlx::query_as("SELECT name,slug FROM albums WHERE id=?")
         .bind(&id)

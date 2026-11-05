@@ -19,7 +19,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,targe
 
 # Collect the native executable's runtime dependencies and HTTPS trust store.
 RUN set -eu; \
-    mkdir -p /runtime/data /runtime/tmp /runtime/etc/ssl/certs; \
+    mkdir -p /runtime/data /runtime/tmp /runtime/etc/ssl/certs /runtime/var/lib/dpkg; \
     LC_ALL=C ldd /usr/local/bin/mori > /tmp/mori-libraries; \
     if grep -q 'not found' /tmp/mori-libraries; then exit 1; fi; \
     awk '$2 == "=>" && $3 ~ /^\// { print $3 } $1 ~ /^\// { print $1 }' /tmp/mori-libraries > /tmp/mori-library-paths; \
@@ -28,6 +28,8 @@ RUN set -eu; \
         if [ -f "$library" ]; then cp --parents "$library" /runtime; fi; \
     done; \
     cp /etc/ssl/certs/ca-certificates.crt /runtime/etc/ssl/certs/; \
+    cp -L /etc/os-release /runtime/etc/os-release; \
+    dpkg-query --status libc6 libgcc-s1 ca-certificates > /runtime/var/lib/dpkg/status; \
     for package in libc6 libgcc-s1 ca-certificates; do \
         cp --parents "/usr/share/doc/$package/copyright" /runtime; \
     done; \

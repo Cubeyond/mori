@@ -6,21 +6,25 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.99.0
-        with: {components: 'rustfmt, clippy'}
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@ff7f6a3374ce205788da40198ec918bd5d67aea7 # 1.99.0
+        with: {toolchain: '1.99.0', components: 'rustfmt, clippy'}
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with: {workspaces: server}
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with: {version: '12.16.1'}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: {node-version: '24', cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml}
+      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2
+        with: {tool: 'cargo-audit@0.22.2'}
+      - run: cargo audit --file server/Cargo.lock --deny unsound
       - run: cargo fmt --manifest-path server/Cargo.toml --check
       - run: cargo clippy --manifest-path server/Cargo.toml --locked --all-targets -- -D warnings
       - run: RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path server/Cargo.toml --locked --no-deps --document-private-items
       - run: cargo test --manifest-path server/Cargo.toml --locked
       - run: cargo run --manifest-path server/Cargo.toml --locked -- openapi --output api/openapi.yml
       - run: pnpm --dir web install --frozen-lockfile
+      - run: pnpm --dir web audit
       - run: pnpm --dir web run generate:api
       - run: git diff --exit-code -- api/openapi.yml web/src/lib/api/generated/schema.d.ts
       - run: pnpm --dir web run check

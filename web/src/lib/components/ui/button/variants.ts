@@ -38,9 +38,9 @@ export const buttonVariants = tv({
 });
 
 /** Native attributes supported by this primitive. */
-export type ButtonVariant = VariantProps<typeof buttonVariants>['variant'];
+type ButtonVariant = VariantProps<typeof buttonVariants>['variant'];
 /** Native attributes supported by this primitive. */
-export type ButtonSize = VariantProps<typeof buttonVariants>['size'];
+type ButtonSize = VariantProps<typeof buttonVariants>['size'];
 
 /** Native attributes supported by this primitive. */
 export type ButtonProps = WithElementRef<HTMLButtonAttributes> &

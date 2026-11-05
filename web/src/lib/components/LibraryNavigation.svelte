@@ -19,9 +19,7 @@
     <p class="category">Library</p>
     <a
       href={resolve('/gallery')}
-      aria-current={['/gallery', '/videos', '/manage'].includes(path)
-        ? 'page'
-        : undefined}
+      aria-current={['/gallery', '/videos'].includes(path) ? 'page' : undefined}
       onclick={onfollow}
     >
       <Images size={22} /><span>Gallery</span>

@@ -17,7 +17,7 @@ mod delivery;
 pub mod preview;
 use crate::{
     app::{AppState, now, random_id, valid_name, valid_token},
-    features::auth,
+    features::auth::Admin,
     http::{
         error::{Error, Result, bad, missing},
         pagination::Page,
@@ -26,7 +26,7 @@ use crate::{
 use axum::{
     Json,
     extract::{Path, Query, State},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
 };
 pub use delivery::{public_file, public_preview, shared_resource};
 pub use format::{MediaKind, content_type};
@@ -86,10 +86,9 @@ pub async fn public(State(s): State<AppState>, Path(token): Path<String>) -> Res
 )]
 pub async fn list(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Query(page): Query<Page>,
 ) -> Result<Json<VideoPage>> {
-    auth::require(&s, &h, false).await?;
     Ok(Json(collection(&s, Collection::Library, &page).await?))
 }
 /// Apply metadata changes and atomically schedule visibility transitions.
@@ -109,11 +108,10 @@ pub async fn list(
 )]
 pub async fn edit(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Path(id): Path<String>,
     Json(input): Json<EditVideo>,
 ) -> Result<(StatusCode, Json<Accepted>)> {
-    auth::require(&s, &h, true).await?;
     if !valid_name(&input.name) || !matches!(input.visibility.as_str(), "public" | "private") {
         return Err(bad("Invalid name or visibility"));
     }
@@ -188,10 +186,9 @@ revision=revision+1, last_error=NULL WHERE id=? AND revision=? AND state=?",
 )]
 pub async fn delete(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Path(id): Path<String>,
 ) -> Result<(StatusCode, Json<Accepted>)> {
-    auth::require(&s, &h, true).await?;
     let mut tx = s.db.begin_with("BEGIN IMMEDIATE").await?;
     let job = deletion::enqueue(&mut tx, &id).await?;
     tx.commit().await?;

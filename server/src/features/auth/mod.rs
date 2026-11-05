@@ -3,6 +3,9 @@
 /// Environment-backed account provisioning.
 mod bootstrap;
 pub use bootstrap::configure;
+/// Early administrator authorization and request-scoped storage coordination.
+mod admin;
+pub use admin::{Admin, SameOrigin};
 
 use crate::{
     app::{AppState, now, random_id},
@@ -127,10 +130,9 @@ pub async fn require(s: &AppState, h: &HeaderMap, mutation: bool) -> Result<Stri
 )]
 pub async fn login(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _origin: SameOrigin,
     Json(input): Json<Login>,
 ) -> Result<(HeaderMap, Json<Session>)> {
-    check_origin(&s, &h)?;
     if input.password.len() > 1024 {
         return Err(bad("Password too long"));
     }

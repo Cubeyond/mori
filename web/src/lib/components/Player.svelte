@@ -12,7 +12,7 @@
     Ellipsis,
     Download,
   } from '@lucide/svelte';
-  import type { Video } from '#lib/api/client';
+  import type { MediaItem } from '#lib/api/client';
   import { buttonVariants } from '#lib/components/ui/button/variants';
   import { shareValue } from '#lib/features/sharing';
   import CopyButton from './CopyButton.svelte';
@@ -23,8 +23,8 @@
     transform = '',
     onfullscreen,
   }: {
-    video: Video;
-    onmanage?: ((video: Video) => void) | undefined;
+    video: MediaItem;
+    onmanage?: ((video: MediaItem) => void) | undefined;
     transform?: string;
     onfullscreen?: (() => Promise<void>) | undefined;
   } = $props();

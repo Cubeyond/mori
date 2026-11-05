@@ -3,10 +3,10 @@
   import Input from '#lib/components/ui/input/input.svelte';
   /** Readable sharing values remain usable even when clipboard access is unavailable. */
   import CopyButton from '../CopyButton.svelte';
-  import type { Video } from '#lib/api/client';
+  import type { MediaItem } from '#lib/api/client';
   import { shareValue, type ShareKind } from '#lib/features/sharing';
   /** Only fully published video metadata is provided by the parent. */
-  let { video }: { video: Video } = $props();
+  let { video }: { video: MediaItem } = $props();
   /** Sharing exposes a direct video resource and fullscreen-capable iframe markup. */
   const fields: { kind: ShareKind; label: string }[] = $derived([
     {

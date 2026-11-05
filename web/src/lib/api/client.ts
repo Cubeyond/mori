@@ -4,10 +4,8 @@ import type { components } from './generated/schema';
 import { bootstrap } from './bootstrap';
 import { createApi, apiData } from './transport';
 export { apiData } from './transport';
-/** Typed Video contract derived from the generated API or local browser state. */
+/** Typed media contract derived from the generated API or local browser state. */
 export type MediaItem = components['schemas']['Video'];
-/** Compatibility name used by the video-specific player and existing integrations. */
-export type Video = MediaItem;
 /** Typed Album contract derived from the generated API or local browser state. */
 export type Album = components['schemas']['Album'];
 /** Administrator listing includes at most three completed poster previews per album. */

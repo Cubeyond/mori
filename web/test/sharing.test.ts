@@ -2,10 +2,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { shareValue } from '../src/lib/features/sharing.ts';
-import type { Video } from '../src/lib/api/client';
+import type { MediaItem } from '../src/lib/api/client';
 
 /** Full DTO fixture keeps sharing tests aligned with the generated API schema. */
-const video: Video = {
+const video: MediaItem = {
   kind: 'video',
   id: 'a'.repeat(32),
   token: 'b'.repeat(32),
@@ -61,7 +61,7 @@ void test('edited display names cannot inject markup or iframe attributes', () =
 });
 
 void test('images offer their original address without video iframe markup', () => {
-  const image: Video = {
+  const image: MediaItem = {
     ...video,
     kind: 'image',
     extension: 'jpg',

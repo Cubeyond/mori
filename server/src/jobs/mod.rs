@@ -5,7 +5,7 @@ mod objects;
 
 use crate::{
     app::{AppState, now, random_id},
-    features::{uploads::PART_SIZE, videos},
+    features::{auth::Admin, uploads::PART_SIZE, videos},
     http::error::{Result, missing},
     infra::storage::Storage,
 };
@@ -13,7 +13,6 @@ use anyhow::Context;
 use axum::{
     Json,
     extract::{Path, State},
-    http::HeaderMap,
 };
 use serde::Serialize;
 use sqlx::FromRow;
@@ -58,10 +57,9 @@ pub struct Job {
 )]
 pub async fn status(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Path(id): Path<String>,
 ) -> Result<Json<Job>> {
-    crate::features::auth::require(&s, &h, false).await?;
     Ok(Json(
         sqlx::query_as("SELECT * FROM jobs WHERE id=?")
             .bind(id)
@@ -163,32 +161,12 @@ async fn step(s: &AppState, job: &Job) -> anyhow::Result<()> {
 /// Returns a database error while preserving the persisted operation state.
 async fn cleanup(s: &AppState) -> anyhow::Result<()> {
     let _operation = s.storage.operation().await;
-    let rows: Vec<(String, String, String)> = sqlx::query_as(
-        r"SELECT id, video_id, upload_id FROM uploads WHERE (expires_at<? AND
-state='uploading') OR state='canceling'",
-    )
-    .bind(now())
-    .fetch_all(&s.db)
-    .await?;
-    for (id, video, upload) in rows {
-        let v = videos::get(s, &video)
-            .await
-            .map_err(|_| anyhow::anyhow!("Upload video unavailable"))?;
-        if s.storage
-            .get()?
-            .abort(&v.private_source(), &upload)
-            .await
-            .is_ok()
-        {
-            sqlx::query("UPDATE uploads SET state='canceled' WHERE id=?")
-                .bind(id)
-                .execute(&s.db)
-                .await?;
-            sqlx::query("UPDATE videos SET state='failed' WHERE id=? AND state='uploading'")
-                .bind(video)
-                .execute(&s.db)
-                .await?;
-        }
+    let rows: Vec<(String,)> = sqlx::query_as(
+        "SELECT id FROM uploads WHERE (expires_at<=? AND state='uploading') OR state='canceling' LIMIT 16",
+    ).bind(now()).fetch_all(&s.db).await?;
+    for (id,) in rows {
+        // The shared cancellation path rechecks state after waiting for any poster write.
+        let _ = crate::features::uploads::cancellation::cleanup(s, &id).await;
     }
     let failed: Vec<videos::Video> =
         sqlx::query_as("SELECT * FROM videos WHERE state='failed' LIMIT 16")

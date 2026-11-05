@@ -8,6 +8,8 @@ mod albums;
 mod auth;
 /// Bootstrap behavior.
 mod bootstrap;
+/// Authentication and storage lifecycle concurrency contracts.
+mod concurrency;
 /// Delivery behavior.
 mod delivery;
 /// Shared image/video lifecycle and original-byte preservation.

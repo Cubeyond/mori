@@ -1,5 +1,5 @@
 /** Shared public URL and iframe formatting for gallery controls and the sharing panel. */
-import type { Video } from '#lib/api/client';
+import type { MediaItem } from '#lib/api/client';
 
 /** The only public sharing formats are a direct media resource and iframe markup. */
 export type ShareKind = 'media' | 'iframe';
@@ -11,7 +11,7 @@ function attribute(value: string): string {
     .replaceAll('<', '&lt;');
 }
 /** Share the stable original address; only videos provide fullscreen iframe markup. */
-export function shareValue(video: Video, kind: ShareKind): string {
+export function shareValue(video: MediaItem, kind: ShareKind): string {
   if (kind === 'media') return video.media_url;
   if (video.kind !== 'video')
     throw new Error('Images share their direct link.');

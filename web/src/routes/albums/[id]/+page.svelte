@@ -12,7 +12,7 @@
     session,
     message,
     type Album,
-    type Video,
+    type MediaItem,
   } from '#lib/api/client';
   import AccessGate from '#lib/components/AccessGate.svelte';
   import { CollectionSearch } from '#lib/features/collection-search';
@@ -39,7 +39,7 @@
   /** Active collection, member metadata, and album choices for video editing. */
   let album = $state<Album | null>(initial?.album ?? null),
     albums = $state<Album[]>(initialPage?.albums ?? []),
-    videos = $state<Video[]>(initial?.videos ?? []);
+    videos = $state<MediaItem[]>(initial?.videos ?? []);
   /** Search and exact counts retain the album heading during requests. */
   let query = $state(''),
     total = $state(initial?.total ?? 0);
@@ -59,7 +59,7 @@
     notice = $state('');
   /** At most one metadata editor is active. */
   let editingAlbum = $state(false),
-    editingVideo = $state<Video | null>(null);
+    editingVideo = $state<MediaItem | null>(null);
   /** Equivalent session responses must not restart the collection route lifecycle. */
   const isAuthenticated = $derived($session.authenticated);
   /** Ignore responses from a previous album route. */
@@ -250,7 +250,7 @@
         {albums}
         bind:selecting
         oncomplete={updated}
-        onmanage={(video: Video) => (editingVideo = video)}
+        onmanage={(video: MediaItem) => (editingVideo = video)}
       />{:else if busy && !loaded}<p class="empty-state muted" role="status">
         Loading album…
       </p>{:else if query.trim()}<div class="empty-state">
@@ -282,7 +282,7 @@
     onclose={() => (editingVideo = null)}
     oncomplete={updated}
     onnotice={(value: string) => (notice = value)}
-    onupdate={(video: Video) => (editingVideo = video)}
+    onupdate={(video: MediaItem) => (editingVideo = video)}
   />{/if}
 
 <style>

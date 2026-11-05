@@ -16,7 +16,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, Mutex},
 };
-use tokio::task::JoinHandle;
+use tokio::{sync::Notify, task::JoinHandle};
 
 /// Running loopback fixture whose listener is bound before its endpoint becomes visible.
 pub struct Fixture {
@@ -24,21 +24,59 @@ pub struct Fixture {
     pub endpoint: String,
     /// Server task cancelled when this fixture leaves scope.
     task: JoinHandle<()>,
+    /// Shared state permits deterministic ordering of otherwise concurrent requests.
+    store: Arc<Mutex<Store>>,
 }
 impl Fixture {
     /// Start independent protocol state without subprocesses or port-allocation races.
     pub async fn start() -> Self {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let endpoint = format!("http://{}", listener.local_addr().unwrap());
-        let router = Router::new()
-            .fallback(handle)
-            .with_state(Arc::new(Mutex::new(Store::default())));
+        let store = Arc::new(Mutex::new(Store::default()));
+        let router = Router::new().fallback(handle).with_state(store.clone());
         let task = tokio::spawn(async move {
             axum::serve(listener, router).await.unwrap();
         });
-        Self { endpoint, task }
+        Self {
+            endpoint,
+            task,
+            store,
+        }
     }
 }
+impl Fixture {
+    /// Pause one object PUT before it reaches the in-memory store.
+    pub fn pause_put(&self) -> PausedPut {
+        let pause = PausedPut {
+            entered: Arc::new(Notify::new()),
+            resume: Arc::new(Notify::new()),
+        };
+        self.store.lock().unwrap().pause = Some(pause.clone());
+        pause
+    }
+}
+
+/// One-shot protocol barrier for checking lifecycle races without network sleeps.
+#[derive(Clone)]
+pub struct PausedPut {
+    /// Signals the exact point before object creation.
+    entered: Arc<Notify>,
+    /// Releases the pending write.
+    resume: Arc<Notify>,
+}
+impl PausedPut {
+    /// Wait until the targeted request has reached the fixture.
+    pub async fn entered(&self) {
+        tokio::time::timeout(std::time::Duration::from_secs(3), self.entered.notified())
+            .await
+            .unwrap();
+    }
+    /// Let the object PUT finish.
+    pub fn release(&self) {
+        self.resume.notify_one();
+    }
+}
+
 impl Drop for Fixture {
     /// Release the listener and all fixture objects deterministically.
     fn drop(&mut self) {
@@ -49,6 +87,8 @@ impl Drop for Fixture {
 /// Fully isolated state for this fixture only.
 #[derive(Default)]
 struct Store {
+    /// Optional next-object-write barrier, removed before awaiting it.
+    pause: Option<PausedPut>,
     /// Stored source and published copies, indexed by request path.
     objects: HashMap<String, Object>,
     /// Active multipart sessions.
@@ -89,6 +129,20 @@ async fn handle(State(store): State<Arc<Mutex<Store>>>, request: Request) -> Res
     } else {
         bytes
     };
+    let pause = if parts.method == "PUT"
+        && parts
+            .uri
+            .query()
+            .is_none_or(|query| !query.contains("uploadId="))
+    {
+        store.lock().unwrap().pause.take()
+    } else {
+        None
+    };
+    if let Some(pause) = pause {
+        pause.entered.notify_one();
+        pause.resume.notified().await;
+    }
     let mut state = store.lock().unwrap();
     let path = parts.uri.path();
     let query: HashMap<String, String> =

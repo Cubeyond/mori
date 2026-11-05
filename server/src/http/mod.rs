@@ -1,5 +1,8 @@
 //! HTTP routing, generated OpenAPI, static pages, and response security policies.
 
+/// Incoming control bodies have a fixed read deadline and a separate byte limit.
+mod body;
+
 /// Fresh authorized UI initialization attached to uncached HTML documents.
 mod bootstrap;
 /// Sanitized API errors and JSON response mapping.
@@ -261,15 +264,23 @@ async fn security(State(s): State<AppState>, request: Request, next: Next) -> Re
         return StatusCode::FORBIDDEN.into_response();
     }
     let embed = media_path(request.uri().path());
-    let assets = request.uri().path().starts_with("/_app/immutable/")
-        || request.uri().path().starts_with("/fonts/");
-    let _storage_operation = if request.uri().path().starts_with("/v1/admin/")
-        && !request.uri().path().starts_with("/v1/admin/storage")
-    {
-        Some(s.storage.operation().await)
+    let _admission = if embed || request.uri().path().starts_with("/v1/") {
+        match s.request_slots.clone().try_acquire_owned() {
+            Ok(permit) => Some(permit),
+            Err(_) => {
+                return error::Error(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "Server busy; retry shortly",
+                )
+                .into_response();
+            }
+        }
     } else {
         None
     };
+    let assets = request.uri().path().starts_with("/_app/immutable/")
+        || request.uri().path().starts_with("/fonts/");
+    let request = request.map(|body| body::bounded(body, std::time::Duration::from_secs(30)));
     let mut response = next.run(request).await;
     let h = response.headers_mut();
     h.insert(

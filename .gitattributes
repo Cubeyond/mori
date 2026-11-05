@@ -1,8 +1,2 @@
-# Embedded SQL checksums must be identical on every developer platform.
-* text=auto eol=lf
-*.mp4 binary
-*.webm binary
-*.woff2 binary
-*.ttf binary
-# Unified diffs intentionally use a space for empty context lines.
-web/patches/*.patch whitespace=-blank-at-eol
+# Unified patch context preserves upstream indentation, including a space before tabs.
+web/patches/*.patch -whitespace

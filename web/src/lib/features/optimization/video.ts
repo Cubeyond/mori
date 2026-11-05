@@ -20,7 +20,7 @@ async function rest(milliseconds: number): Promise<void> {
   });
 }
 /** Only known eight-bit SDR profiles are transformed; uncertain high-fidelity formats stay original. */
-export function standardVideoProfile(codec: string | null): boolean {
+function standardVideoProfile(codec: string | null): boolean {
   return (
     codec !== null &&
     (/^avc[13]\.(42|4d|58|64)/iu.test(codec) ||

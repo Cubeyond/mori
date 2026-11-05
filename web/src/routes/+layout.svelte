@@ -23,7 +23,7 @@
   /** Only authenticated dashboard routes display the administration sidebar. */
   const dashboard = $derived(
     $session.authenticated &&
-      (['/gallery', '/videos', '/manage', '/albums', '/settings'].includes(
+      (['/gallery', '/videos', '/albums', '/settings'].includes(
         page.url.pathname,
       ) ||
         page.url.pathname.startsWith('/albums/') ||

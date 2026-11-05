@@ -1,8 +1,8 @@
 /** Equal-width thumbnail masonry with stable row-major reading and focus order. */
-import type { Video } from '#lib/api/client';
+import type { MediaItem } from '#lib/api/client';
 /** Cropped thumbnail geometry; original video dimensions are never modified. */
-export interface VideoPlacement {
-  video: Video;
+interface MediaPlacement {
+  video: MediaItem;
   x: number;
   y: number;
   width: number;
@@ -11,7 +11,7 @@ export interface VideoPlacement {
 }
 /** Reserved dimensions prevent poster loading from shifting surrounding content. */
 export interface GalleryLayout {
-  items: VideoPlacement[];
+  items: MediaPlacement[];
   height: number;
   columns: number;
 }
@@ -32,12 +32,12 @@ const covers = [
 ];
 /** Distribute records across equal columns while keeping metadata and DOM order intact. */
 export function arrangeGallery(
-  videos: Video[],
+  videos: MediaItem[],
   width: number,
   compact = false,
   spacing = 14,
 ): GalleryLayout {
-  const items: VideoPlacement[] = [];
+  const items: MediaPlacement[] = [];
   if (!Number.isFinite(width) || width <= 0 || videos.length === 0)
     return { items, height: 0, columns: 0 };
   const gap = Number.isFinite(spacing)

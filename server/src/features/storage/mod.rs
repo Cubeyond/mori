@@ -7,15 +7,11 @@ use errors::connection_error;
 
 use crate::{
     app::AppState,
-    features::auth,
+    features::auth::Admin,
     http::error::{Error, Result, bad},
     infra::{storage::Storage, storage_settings::config::StorageSettings},
 };
-use axum::{
-    Json,
-    extract::State,
-    http::{HeaderMap, StatusCode},
-};
+use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -169,8 +165,7 @@ async fn candidate(s: &AppState, input: StorageInput) -> Result<StorageSettings>
 /// # Errors
 /// Returns authentication or metadata errors.
 #[utoipa::path(get,path="/v1/admin/storage",responses((status=200,body=StorageInfo)),security(("session"=[])))]
-pub async fn get(State(s): State<AppState>, h: HeaderMap) -> Result<Json<StorageInfo>> {
-    auth::require(&s, &h, false).await?;
+pub async fn get(State(s): State<AppState>, _admin: Admin) -> Result<Json<StorageInfo>> {
     Ok(Json(info(&s).await?))
 }
 /// Verify and persist settings before atomically activating the new client.
@@ -180,10 +175,9 @@ pub async fn get(State(s): State<AppState>, h: HeaderMap) -> Result<Json<Storage
 #[utoipa::path(put,path="/v1/admin/storage",request_body=StorageInput,responses((status=200,body=StorageInfo),(status=409,description="Existing media locks the storage location")),security(("session"=[])))]
 pub async fn save(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Json(input): Json<StorageInput>,
 ) -> Result<Json<StorageInfo>> {
-    auth::require(&s, &h, true).await?;
     let _change = s.storage.exclusive().await;
     let settings = candidate(&s, input).await?;
     let current = info(&s).await?;
@@ -219,10 +213,9 @@ pub async fn save(
 #[utoipa::path(post,path="/v1/admin/storage/test",request_body=StorageInput,responses((status=200,body=ConnectionCheck)),security(("session"=[])))]
 pub async fn test(
     State(s): State<AppState>,
-    h: HeaderMap,
+    _admin: Admin,
     Json(input): Json<StorageInput>,
 ) -> Result<Json<ConnectionCheck>> {
-    auth::require(&s, &h, true).await?;
     let settings = candidate(&s, input).await?;
     Storage::new(&settings, &s.config)?
         .probe()

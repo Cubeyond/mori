@@ -10,7 +10,7 @@
     api,
     apiData,
     session,
-    type Video,
+    type MediaItem,
     type Album,
   } from '#lib/api/client';
   import { CollectionSearch } from '#lib/features/collection-search';
@@ -35,7 +35,7 @@
   /** Re-entering a collection later must use a fresh request. */
   let seeded = false;
   /** Publicly readable metadata only, cleared on route changes or failed access checks. */
-  let videos = $state<Video[]>(initial?.videos ?? []),
+  let videos = $state<MediaItem[]>(initial?.videos ?? []),
     album = $state<Album | null>(initial?.album ?? null);
   /** Pagination and request state never expose a private album's identity. */
   let more = $state(initial?.has_more ?? false),

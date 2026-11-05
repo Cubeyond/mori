@@ -33,11 +33,15 @@ pub struct Media {
     /// Worker whose restart can be tested independently of object storage.
     worker: JoinHandle<()>,
     /// Protocol state never shared between tests.
-    _fixture: Fixture,
+    fixture: Fixture,
     /// Metadata and vault key removed after the test.
     _directory: tempfile::TempDir,
 }
 impl Media {
+    /// Suspend the next object write to exercise concurrent upload transitions.
+    pub fn pause_put(&self) -> super::s3::PausedPut {
+        self.fixture.pause_put()
+    }
     /// Configure either S3-only or optional CDN delivery using local SDK endpoints.
     pub async fn new(cdn: bool) -> Self {
         let (mut state, _, directory) = setup().await;
@@ -63,7 +67,7 @@ impl Media {
             cookie,
             csrf,
             worker,
-            _fixture: fixture,
+            fixture,
             _directory: directory,
         }
     }

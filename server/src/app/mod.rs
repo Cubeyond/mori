@@ -161,6 +161,10 @@ impl Config {
 /// Cloneable handles to validated resources and concurrency budgets.
 #[derive(Clone)]
 pub struct AppState {
+    /// Bound control handlers and S3 metadata requests independently of response streams.
+    pub request_slots: Arc<Semaphore>,
+    /// Serialize transitions only when they concern the same in-progress original.
+    pub upload_lifecycle: crate::features::uploads::lifecycle::Lifecycle,
     /// Bounded pool of SQLite metadata connections.
     pub db: SqlitePool,
     /// Configured AWS storage and distribution adapter.
@@ -211,6 +215,8 @@ impl AppState {
             .await?;
         let storage = StorageManager::load(&db, &config).await?;
         Ok(Self {
+            request_slots: Arc::new(Semaphore::new(16)),
+            upload_lifecycle: crate::features::uploads::lifecycle::Lifecycle::default(),
             script_csp,
             db,
             storage,
