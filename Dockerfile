@@ -18,6 +18,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,targe
     cargo build --manifest-path server/Cargo.toml --release --locked -j 2 && cp server/target/release/mori /usr/local/bin/mori
 
 # Collect the native executable's runtime dependencies and HTTPS trust store.
+RUN apt-get update && apt-get install -y --no-install-recommends --only-upgrade \
+    libc6 libgcc-s1 ca-certificates && rm -rf /var/lib/apt/lists/*
+
 RUN set -eu; \
     mkdir -p /runtime/data /runtime/tmp /runtime/etc/ssl/certs /runtime/var/lib/dpkg; \
     LC_ALL=C ldd /usr/local/bin/mori > /tmp/mori-libraries; \
@@ -29,6 +32,7 @@ RUN set -eu; \
     done; \
     cp /etc/ssl/certs/ca-certificates.crt /runtime/etc/ssl/certs/; \
     cp -L /etc/os-release /runtime/etc/os-release; \
+    cp /etc/debian_version /runtime/etc/debian_version; \
     dpkg-query --status libc6 libgcc-s1 ca-certificates > /runtime/var/lib/dpkg/status; \
     for package in libc6 libgcc-s1 ca-certificates; do \
         cp --parents "/usr/share/doc/$package/copyright" /runtime; \
