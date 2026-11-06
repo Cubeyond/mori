@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Existing membership, atomic creation-and-move, and permanent deletion share one compact sheet. */
   import { Plus, Folder, Search, ArrowLeft } from '@lucide/svelte';

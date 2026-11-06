@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Fixed title and visibility rows frame an optional description beside up to three cropped posters. */
   import { resolve } from '$app/paths';

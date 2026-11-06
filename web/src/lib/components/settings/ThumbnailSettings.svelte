@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Browser-local thumbnail translucency is independent of wallpaper opacity and original viewing. */
   import { onDestroy } from 'svelte';

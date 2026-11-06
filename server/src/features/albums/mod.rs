@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Explicit album management and visibility-filtered album queries.
 
 /// Bounded administrator collection previews.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Persistent encrypted storage settings and atomic runtime client replacement.
 
 /// Internal secret configuration and target validation.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Browser-local background rendering retains at most one bounded derivative and object URL. */
 import { writable, get } from 'svelte/store';
 import { backgroundStorage } from './background-storage';

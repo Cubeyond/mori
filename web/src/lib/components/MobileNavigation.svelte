@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Full-page mobile navigation keeps the destination list clear and the underlying collection stable. */
   import { onMount } from 'svelte';

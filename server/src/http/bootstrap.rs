@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Request-scoped initial UI data prevents anonymous shells and placeholder-title flashes.
 
 use crate::{

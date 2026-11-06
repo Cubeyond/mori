@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Album cover summaries and optional descriptions preserve privacy and bounded responses.
 
 use crate::support::{Client, lifecycle_collection, setup};

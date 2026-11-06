@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Browser-scoped presentation and upload defaults; access control remains server-enforced. */
 import {
   parseOptimizationMode,

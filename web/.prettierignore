@@ -3,3 +3,6 @@ node_modules
 build
 pnpm-lock.yaml
 src/lib/api/generated
+static/LICENSE.txt
+static/NOTICE.txt
+static/THIRD-PARTY-NOTICES.json

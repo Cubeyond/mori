@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Lightbox geometry keeps sources intact and protects focal points across gestures. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,0 +1,32 @@
+Mori
+Copyright (c) 2026 Cubeyond
+
+Except for separately identified third-party material, Mori's project-authored
+source code, build scripts, and documentation are licensed under the Elastic
+License 2.0 (SPDX identifier: Elastic-2.0). The complete, unmodified license is
+provided in LICENSE.
+
+The licensor is Cubeyond. In particular, the license's hosted/managed-service
+limitation is not limited to paid services. The license does not require every
+modification to be published and is not an AGPL license.
+
+Users' uploaded media, private configuration, credentials, and other instance
+data are not licensed by this notice.
+
+Third-party code and assets retain their original licenses. These include the
+shadcn-svelte primitives and styles, fonts, theme palettes, dependency patches,
+and dependencies. Their copyright and permission notices must be preserved.
+Mori's license does not add restrictions to those independently licensed works.
+
+The source distribution records Rust dependency notices under licenses/.
+The web build generates THIRD-PARTY-NOTICES.json from its installed production
+dependency graph, including Mediabunny's MPL-2.0 license and source reference.
+Font, theme, and UI notices are preserved in web/static/ and
+web/src/lib/components/ui/LICENSE.md.
+
+Container distributions include these notices under /usr/share/licenses/mori/.
+Debian runtime library notices remain under /usr/share/doc/ and
+/usr/share/common-licenses/. Exact installed versions are recorded in
+/var/lib/dpkg/status; Debian source packages are available through
+the exact-version links in /usr/share/licenses/mori/system-sources.txt,
+https://snapshot.debian.org/ and https://sources.debian.org/.

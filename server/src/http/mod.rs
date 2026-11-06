@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! HTTP routing, generated OpenAPI, static pages, and response security policies.
 
 /// Incoming control bodies have a fixed read deadline and a separate byte limit.
@@ -59,6 +62,9 @@ fn api() -> OpenApiRouter<AppState> {
 pub fn openapi() -> utoipa::openapi::OpenApi {
     let (_, mut spec) = api().split_for_parts();
     spec.info = utoipa::openapi::Info::new("Mori API", env!("CARGO_PKG_VERSION"));
+    let mut license = utoipa::openapi::License::new("Elastic License 2.0");
+    license.identifier = Some(env!("CARGO_PKG_LICENSE").into());
+    spec.info.license = Some(license);
     spec.info.description = Some(
         concat!(
             "Images and videos share the historical /videos endpoints; kind identifies the media category. ",
@@ -150,40 +156,50 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
 pub fn router(s: AppState) -> Router {
     let (api, _) = api().split_for_parts();
     let assets = format!("{}/_app", s.config.web_dir);
-    api.route(
-        "/v1/openapi.yml",
-        get(|| async {
-            (
-                [(header::CONTENT_TYPE, "application/yaml")],
-                openapi()
-                    .to_yaml()
-                    .unwrap_or_else(|_| String::from("error: specification serialization failed")),
-            )
-        }),
-    )
-    .route("/health", get(|| async { StatusCode::NO_CONTENT }))
-    .route("/", get(index))
-    .route("/login", get(index))
-    .route("/gallery", get(index))
-    .route("/videos", get(legacy_gallery))
-    .route("/albums", get(index))
-    .route("/albums/{id}", get(index))
-    .route("/settings", get(legacy_preferences))
-    .route("/settings/preferences", get(index))
-    .route("/settings/storage", get(index))
-    .route("/files/{filename}", get(videos::public_file))
-    .route("/posters/{filename}", get(videos::public_preview))
-    .route("/{prefix}/{filename}", get(videos::shared_resource))
-    .route("/{slug}", get(album_page))
-    .nest_service("/_app", ServeDir::new(assets))
-    .nest_service(
-        "/fonts",
-        ServeDir::new(format!("{}/fonts", s.config.web_dir)),
-    )
-    .route_service(
-        "/favicon.svg",
-        tower_http::services::ServeFile::new(format!("{}/favicon.svg", s.config.web_dir)),
-    )
+    let router = api
+        .route(
+            "/v1/openapi.yml",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "application/yaml")],
+                    openapi().to_yaml().unwrap_or_else(|_| {
+                        String::from("error: specification serialization failed")
+                    }),
+                )
+            }),
+        )
+        .route("/health", get(|| async { StatusCode::NO_CONTENT }))
+        .route("/", get(index))
+        .route("/login", get(index))
+        .route("/gallery", get(index))
+        .route("/videos", get(legacy_gallery))
+        .route("/albums", get(index))
+        .route("/albums/{id}", get(index))
+        .route("/settings", get(legacy_preferences))
+        .route("/settings/preferences", get(index))
+        .route("/settings/storage", get(index))
+        .route("/files/{filename}", get(videos::public_file))
+        .route("/posters/{filename}", get(videos::public_preview))
+        .route("/{prefix}/{filename}", get(videos::shared_resource))
+        .route("/{slug}", get(album_page))
+        .nest_service("/_app", ServeDir::new(assets))
+        .nest_service(
+            "/fonts",
+            ServeDir::new(format!("{}/fonts", s.config.web_dir)),
+        );
+    [
+        "favicon.svg",
+        "LICENSE.txt",
+        "NOTICE.txt",
+        "THIRD-PARTY-NOTICES.json",
+    ]
+    .into_iter()
+    .fold(router, |router, file| {
+        router.route_service(
+            &format!("/{file}"),
+            tower_http::services::ServeFile::new(format!("{}/{file}", s.config.web_dir)),
+        )
+    })
     .fallback(|| async { error::missing() })
     .layer(axum::extract::DefaultBodyLimit::max(1_048_576))
     .layer(middleware::from_fn_with_state(s.clone(), security))

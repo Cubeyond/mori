@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Public sharing contracts protect link semantics and embeddable HTML attributes. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Theme upgrades validate browser data and restore the color scheme before first paint. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

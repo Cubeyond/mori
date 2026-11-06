@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Multipart integrity, private preview, and durable optional CDN contracts.
 use crate::support::{Client, call, login, media::Media, setup, wait_job};
 use axum::http::StatusCode;

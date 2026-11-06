@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Exercise S3-only delivery without permitting a CloudFront network dependency.
 
 use crate::support::{Client, call, login, media::Media, s3_fixture, setup, wait_job};

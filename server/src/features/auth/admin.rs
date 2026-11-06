@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Authenticate administrator requests before parsing bodies or acquiring storage gates.
 
 use super::{check_origin, require};

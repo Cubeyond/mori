@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Shared collection search keeps labels, counts, and keyboard behavior consistent. */
   import { Search } from '@lucide/svelte';

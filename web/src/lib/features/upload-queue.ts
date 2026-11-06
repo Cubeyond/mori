@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Bound transfers; an optional completion callback can retain selected thumbnails outside the waiting queue. */
 export async function runUploadQueue(
   current: () => File[],

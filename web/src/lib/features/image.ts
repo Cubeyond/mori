@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** A decoded local image owns its URL until the caller releases the bitmap. */
 export interface LocalImage {
   /** Browser decoding keeps unsupported formats out of canvas processing. */

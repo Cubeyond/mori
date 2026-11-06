@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Cancellation remains recoverable without browser persistence and releases album reservations.
 use crate::support::media::Media;
 use axum::http::StatusCode;

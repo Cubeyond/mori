@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Equal-width thumbnail masonry with stable row-major reading and focus order. */
 import type { MediaItem } from '#lib/api/client';
 /** Cropped thumbnail geometry; original video dimensions are never modified. */

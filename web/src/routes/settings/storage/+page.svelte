@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   import { pageTitle } from '#lib/features/page-title';
   /** Administrator-only S3 setup keeps write-only credentials out of browser persistence. */

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** OpenAPI transport owns HTTP policy; callers inherit paths, payloads, and response types. */
 import createClient, { type Client } from 'openapi-fetch';
 import type { paths } from './generated/schema';

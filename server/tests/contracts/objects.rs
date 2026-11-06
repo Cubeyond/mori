@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Object lifecycle contracts preserve bytes across retries and historical layout upgrades.
 
 use crate::support::{media::Media, wait_job};

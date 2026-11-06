@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Browser metadata is independent of optional, bounded cover generation. */
 import { prepareImagePreview } from '#lib/features/image-preview';
 /** Shared image/video dimensions; unknown values never prevent preserving an original. */

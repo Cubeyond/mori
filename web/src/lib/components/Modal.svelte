@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   import Button from '#lib/components/ui/button/button.svelte';
   /** Shared native dialog with focus restoration and a non-shifting backdrop. */

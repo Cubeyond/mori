@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Pointer gestures transform pixels while keeping playback and viewer controls fixed. */
   import { onMount, type Snippet } from 'svelte';

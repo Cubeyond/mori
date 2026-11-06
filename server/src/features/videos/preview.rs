@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Shared bounded streaming keeps original URLs stable for public and private media.
 
 use super::{MediaKind, Video, get};

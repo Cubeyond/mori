@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Concurrent queue invariants cover live edits, resource bounds, cancellation and partial success. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

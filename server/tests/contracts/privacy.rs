@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Independent access-control, collection-membership, and session contracts.
 
 use crate::support::{Client, call, lifecycle_collection, setup};

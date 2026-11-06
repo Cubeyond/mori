@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Shared upload fixture drives HTTP and AWS SDK interfaces with isolated durable storage.
 
 use super::{Client, Fixture, Reply, login, setup, storage_settings, wait_job};

@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   import { pageTitle } from '#lib/features/page-title';
   /** The welcome page offers real entry points without exposing public library metadata. */

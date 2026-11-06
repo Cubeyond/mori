@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Video metadata, stable sharing links, and persisted visibility transitions.
 
 /// Bounded atomic media membership changes and durable grouped deletion.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Shared OpenAPI representations for raw HTTP bodies rather than JSON values.
 
 /// A raw binary body, represented as a browser Blob in generated contracts.

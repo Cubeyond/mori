@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   import Textarea from '#lib/components/ui/textarea/textarea.svelte';
   import Input from '#lib/components/ui/input/input.svelte';

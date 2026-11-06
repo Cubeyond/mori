@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Verify the build tool's patched merge dependency preserves safe object prototypes. */
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';

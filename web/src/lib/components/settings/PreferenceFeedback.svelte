@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Reusable per-control acknowledgement keeps settings feedback quiet and consistently aligned. */
   import { Check, CircleAlert } from '@lucide/svelte';

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Direct S3 transfer with byte progress and immediate cancellation; no application proxy. */
 export function putUploadPart(
   url: string,

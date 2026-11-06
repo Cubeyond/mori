@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Existing preferences survive appearance upgrades; corrupted opacity never breaks rendering. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

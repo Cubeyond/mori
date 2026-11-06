@@ -4,6 +4,9 @@ server/target
 web/node_modules
 web/.svelte-kit
 web/build
+web/static/LICENSE.txt
+web/static/NOTICE.txt
+web/static/THIRD-PARTY-NOTICES.json
 .env
 secrets
 data

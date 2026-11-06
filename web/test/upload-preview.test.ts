@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Metadata readiness never waits for cover encoding or unsupported-codec timeout. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Shared, reference-counted scroll lock for native top-layer dialogs. */
 
 /** Number of mounted open dialogs, including a brief handover between editors. */

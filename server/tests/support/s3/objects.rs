@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Immutable object storage and bounded byte ranges for protocol acceptance tests.
 
 use super::{

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Common isolated application, authenticated HTTP client, and durable-job fixtures.
 
 /// Complete multipart, publication, and private-preview arrangements.

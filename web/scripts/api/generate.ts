@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Generate browser contracts from Rust OpenAPI, including actual binary body types. */
 import { writeFile } from 'node:fs/promises';
 import openapiTS, { astToString } from 'openapi-typescript';

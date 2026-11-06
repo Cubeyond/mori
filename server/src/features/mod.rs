@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Business features for identity, albums, uploads, and video access.
 
 /// Explicit albums with stable slugs and filtered public pages.

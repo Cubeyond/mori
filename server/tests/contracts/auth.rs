@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Auth HTTP contracts with isolated state.
 
 use crate::support::{call, login, setup};

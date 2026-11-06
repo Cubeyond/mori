@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! S3 multipart operations, publication copies, and optional CloudFront clients.
 
 /// Verified, restart-safe object relocation within the configured bucket.

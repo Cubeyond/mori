@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** A disposable dedicated worker has no network credentials and processes only one local file. */
 import { optimizeImage } from './image';
 import { copyDirectory, copyName } from './storage';

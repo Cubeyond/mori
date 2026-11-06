@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Redacted connection-test feedback derived only from SDK error categories and S3 codes.
 
 use crate::http::error::Error;

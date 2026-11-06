@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Mori application modules for authenticated video management and S3 delivery.
 
 /// Validated configuration and shared resource budgets.

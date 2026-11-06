@@ -2,6 +2,9 @@ openapi: 3.1.0
 info:
   title: Mori API
   description: Images and videos share the historical /videos endpoints; kind identifies the media category. Administrative requests require a session cookie. Mutations require the exact MORI_PUBLIC_URL Origin and X-CSRF-Token from the session response. HTTPS uses __Host-mori; localhost development uses mori_dev. Private and missing public targets both return 404. Visibility changes and deletion return asynchronous job IDs; private completion waits for public-object deletion and, when configured, confirmed CloudFront revocation.
+  license:
+    name: Elastic License 2.0
+    identifier: Elastic-2.0
   version: 0.1.0
 paths:
   /v1/admin/albums:

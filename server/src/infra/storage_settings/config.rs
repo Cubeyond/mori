@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Validated storage identity and write-only credentials persisted inside the encrypted vault.
 
 use anyhow::{Result, ensure};

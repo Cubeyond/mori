@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Image metadata and thumbnails share the multipart uploader without transforming originals. */
 import {
   loadLocalImage,

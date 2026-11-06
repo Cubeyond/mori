@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Limit concurrent local media decoders even when many thumbnail components become visible. */
 interface WaitingPreview {
   /** Aborted queued work is removed before it can create a decoder. */

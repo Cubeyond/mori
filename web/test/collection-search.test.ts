@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Real cache boundaries preserve complete-collection semantics without typing-time requests. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

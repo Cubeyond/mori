@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Shared text wordmark keeps header and mobile navigation sizing and alignment consistent. */
   import { resolve } from '$app/paths';

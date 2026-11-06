@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Minimal checksum-aware multipart fixture using the same SDK surface as production.
 
 use super::{Bytes, HeaderMap, Object, Response, StatusCode, Store, Upload, header, xml};

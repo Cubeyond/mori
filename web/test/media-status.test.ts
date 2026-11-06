@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Operational deletion state must not masquerade as an administrator's privacy choice. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

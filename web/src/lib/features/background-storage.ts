@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Keep optional background bytes in this origin's browser storage, never in S3 or localStorage. */
 export async function backgroundStorage(
   value?: Blob | null,

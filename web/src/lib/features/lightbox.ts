@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Bounded lightbox geometry, independent of DOM events and media decoding. */
 export interface Size {
   /** Measured CSS width. */

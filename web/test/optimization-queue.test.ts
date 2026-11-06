@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Local encoding is independently bounded, cancellable, and optional on every upload path. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

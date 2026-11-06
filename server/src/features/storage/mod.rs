@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Single-administrator storage setup, connection checks, and encrypted credential updates.
 
 /// Safe, operation-specific setup failures without credential-bearing SDK diagnostics.

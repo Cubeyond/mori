@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Shared album fields keep ordinary and batch creation aligned and consistently validated. */
   import Input from '#lib/components/ui/input/input.svelte';

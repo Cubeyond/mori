@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Preserve bookmarks while Preferences receives its own canonical settings path. */
 import { redirect } from '@sveltejs/kit';
 import { resolve } from '$app/paths';

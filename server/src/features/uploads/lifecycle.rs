@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Per-original transitions serialize late poster writes with completion and cancellation.
 
 use std::{

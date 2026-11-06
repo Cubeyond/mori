@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Transport tests drive actual progress, failure, and cancellation callbacks without networking. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

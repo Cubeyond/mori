@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Canonical album editor and name-confirmed deletion with an explicit media option. */
   import Input from '#lib/components/ui/input/input.svelte';

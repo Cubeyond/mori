@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Request-scoped metadata avoids rendering a false anonymous shell during page startup. */
 import type { components } from './generated/schema';
 

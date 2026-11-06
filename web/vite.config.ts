@@ -5,6 +5,14 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 export default defineConfig({
+  build: {
+    rolldownOptions: {
+      output: {
+        banner:
+          '/*! Mori distribution. Copyright (c) 2026 Cubeyond. Mori-authored code: Elastic-2.0; see /LICENSE.txt and /NOTICE.txt. Third-party terms: /THIRD-PARTY-NOTICES.json. */',
+      },
+    },
+  },
   plugins: [
     tailwindcss(),
     sveltekit({

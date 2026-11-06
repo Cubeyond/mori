@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Server-generated display hashes and controlled S3 multipart upload sessions.
 
 /// Original-level concurrency control shared with durable cancellation recovery.

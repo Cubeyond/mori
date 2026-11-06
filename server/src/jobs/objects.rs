@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Preserve one active object pair while upgrading legacy paths and changing visibility.
 
 use super::Job;

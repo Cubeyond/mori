@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** The desktop sidebar and full-page mobile navigation share destinations and active-route semantics. */
   import { resolve } from '$app/paths';

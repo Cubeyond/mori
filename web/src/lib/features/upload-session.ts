@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Bounded local resume metadata; multipart state is always reloaded from the server. */
 import {
   parsePreparedCopy,

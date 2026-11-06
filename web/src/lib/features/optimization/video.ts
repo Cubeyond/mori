@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Native WebCodecs conversion streams finalized MP4 output to OPFS with bounded execution. */
 import {
   Input,

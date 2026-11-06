@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Mixed media shares one upload, authorization, publication, and deletion lifecycle.
 
 use crate::support::{Client, media::Media, wait_job};

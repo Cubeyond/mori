@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Shared native alpha slider keeps background and thumbnail controls aligned and accessible. */
   import { Check, RotateCcw } from '@lucide/svelte';

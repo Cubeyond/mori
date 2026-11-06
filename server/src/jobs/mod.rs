@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Durable publication, verified revocation, retries, and orphan cleanup.
 
 /// Object migration and verified relocation remain independent of job scheduling.

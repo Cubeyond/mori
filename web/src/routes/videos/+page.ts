@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Preserve bookmarks while Gallery becomes the canonical mixed-media destination. */
 import { redirect } from '@sveltejs/kit';
 import { resolve } from '$app/paths';

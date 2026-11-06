@@ -1,6 +1,7 @@
 {
   "name": "mori-web",
   "version": "0.1.0",
+  "license": "Elastic-2.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.16.1",
@@ -9,7 +10,8 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
+    "build": "pnpm run licenses && vite build",
+    "licenses": "node --experimental-strip-types scripts/legal/generate.ts",
     "preview": "vite preview --host 127.0.0.1",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "format": "prettier --write .",

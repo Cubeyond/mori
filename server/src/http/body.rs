@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Bound control-body lifetime without interrupting durable storage mutations or media streams.
 
 use axum::body::Body;

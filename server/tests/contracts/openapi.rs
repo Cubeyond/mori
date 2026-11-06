@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Openapi HTTP contracts with isolated state.
 
 use mori::http;
@@ -13,7 +16,7 @@ fn generated_contract_has_unique_operation_ids() {
     let spec = serde_json::to_value(http::openapi()).unwrap();
     assert_eq!(spec["info"]["title"], "Mori API");
     assert!(spec["info"]["contact"].is_null());
-    assert!(spec["info"]["license"].is_null());
+    assert_eq!(spec["info"]["license"]["identifier"], "Elastic-2.0");
     assert!(
         spec["components"]["schemas"]["Video"]["properties"]
             .get("embed_url")

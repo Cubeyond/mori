@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Album metadata, mutations, and bounded collection-preview contracts.
 
 use crate::features::videos::{MediaKind, Video};

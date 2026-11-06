@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Typed frontend module for browser-side Mori behavior. */
 import { writable, get } from 'svelte/store';
 import type { components } from './generated/schema';

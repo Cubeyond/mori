@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Albums HTTP contracts with isolated state.
 
 use crate::support::{call, lifecycle_collection, login, setup};

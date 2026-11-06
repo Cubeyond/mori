@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Bootstrap HTTP contracts with isolated state.
 
 use crate::support::{lifecycle_collection, login, setup};

@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Cubeyond
+     SPDX-License-Identifier: Elastic-2.0 -->
+
 <script lang="ts">
   /** Four-item scroll pages preserve a compact upload sheet without displaying a scrollbar. */
   import { ChevronUp, ChevronDown } from '@lucide/svelte';

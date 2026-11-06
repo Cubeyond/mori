@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Command-line bootstrap, contract export, and HTTP server lifecycle.
 
 use clap::{Parser, Subcommand};

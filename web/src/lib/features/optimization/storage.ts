@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /// <reference lib="dom.asynciterable" />
 /** Exact prepared bytes live in origin-private disk storage, never whole-video RAM buffers. */
 import type { PreparedCopy } from '#lib/features/optimization/model';

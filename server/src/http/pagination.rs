@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Bounded shared pagination parameters for collection endpoints.
 
 use serde::Deserialize;

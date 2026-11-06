@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Per-test S3 and CloudFront protocol fixture; never a storage provider or IAM emulator.
 
 /// Checksummed multipart lifecycle responses.

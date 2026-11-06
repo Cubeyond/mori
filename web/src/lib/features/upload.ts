@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Typed frontend module for browser-side Mori behavior. */
 import { api, apiData } from '#lib/api/client';
 import { discardPrepared, type OptimizationBatch } from './optimization/client';

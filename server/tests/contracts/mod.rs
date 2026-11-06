@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 //! Focused integration contracts share fixtures but never mutable test state.
 
 /// Bounded administrator covers and optional album descriptions.
@@ -37,3 +40,6 @@ mod batch;
 
 /// Search pagination and count privacy.
 mod search;
+
+/// Anonymous access to the terms accompanying the browser distribution.
+mod licensing;

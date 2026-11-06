@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Shared complete metadata fixtures use the generated media contract. */
 import type { MediaItem } from '../../src/lib/api/client';
 /** Complete metadata fixture preserves the generated contract in geometry tests. */

@@ -3,6 +3,9 @@
 /web/node_modules/
 /web/.svelte-kit/
 /web/build/
+/web/static/LICENSE.txt
+/web/static/NOTICE.txt
+/web/static/THIRD-PARTY-NOTICES.json
 /web/test-results/
 /web/playwright-report/
 .env

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Cubeyond
+// SPDX-License-Identifier: Elastic-2.0
+
 /** Browser-local themes share semantic surfaces while retaining their own color palettes. */
 export const themes = [
   { id: 'mori', label: 'Mori', dark: true },
