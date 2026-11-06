@@ -1,65 +1,52 @@
 # Mori
 
-**A rich media library. A surprisingly small stack.**
+**Your media, beautifully organized. Surprisingly light on memory.**
 
-Mori is a lightweight, self-hosted home for images and videos. A Rust backend, a static SvelteKit interface, SQLite metadata, and your own Amazon S3 bucket—all behind one container.
+Mori gives your images and videos a home of their own. Browse your collection, organize it into albums, and share exactly what you choose—all through a clean, personal gallery.
 
-[Live site](https://media.laplacian.net) · [Container image](https://github.com/orgs/Cubeyond/packages/container/package/mori) · [AGPL-3.0-or-later](LICENSE)
+[Live site](https://media.laplacian.net) · [Get started](#deploy) · [License](LICENSE)
 
-![Mori Gallery: images and videos together in a compact masonry layout](assets/screenshots/gallery.jpg)
+![Mori Gallery with a custom background and a flowing image and video layout](assets/screenshots/gallery.jpg)
 
-## Made for your media
+## Features
 
-- **Images and videos, together.** A compact, responsive masonry gallery with search, quiet hover controls, and full-size previews that preserve the original aspect ratio.
-- **Share on your own domain.** Copy a direct media link or a video's iframe code. Album members use `/<album-slug>/<random-name>.<ext>`; standalone media uses `/file/<random-name>.<ext>`.
-- **Public when you choose.** Albums and individual media have independent public/private settings. Visitors see shared content; the homepage never lists your library.
-- **A real upload queue.** Thumbnail previews, add/remove files before uploading, concurrent multipart uploads, pause, resume, and cancel. Media parts travel directly from your browser to S3.
-- **Less busywork.** Select multiple items to move into an album, remove from an album, delete, or create an album and move them together.
-- **Your own atmosphere.** The forest-green Mori theme, Catppuccin and Tokyo Night, accent colors, and browser-local background preferences.
+- **One gallery for everything.** Keep images and videos together, search your collection, and browse comfortably on a desktop or phone.
+- **Share in seconds.** Copy a link to an image, video, or album. Want a video on another website? Its ready-to-copy embed code is a click away.
+- **Privacy you control.** Keep media and albums private, or make them available to anyone with the link. Your homepage never exposes your collection.
+- **Uploads at your pace.** Preview your selection, add or remove files, upload several at once, and pause, resume, or cancel along the way.
+- **Less organizing, more enjoying.** Select several files to move them between albums, remove them from an album, or delete them together.
+- **Smaller uploads, your choice.** Choose Balanced, Higher quality, or Keep originals. Supported files can be optimized before uploading; when that would not help, Mori keeps the original.
+- **A look that feels yours.** Choose Mori, Catppuccin, or Tokyo Night colors, add your own background, and adjust how much it shows through the gallery.
+- **A small appetite for memory.** Our live library of 16 media files used about **7 MB of server memory while idle** and **28 MB while browsing and opening images** in a short check on November 6, 2026. Usage varies with activity.
 
-Upload optimization runs in your browser, with **Balanced**, **Higher quality**, and **Keep originals** presets. Supported conversions aim to reduce size; unsupported or unhelpful conversions keep the original. The server does not transcode videos.
+## Make it yours
+
+Pick a background you love, tune its opacity, and give your thumbnails a little transparency. Appearance settings stay in your browser.
+
+![Mori appearance preferences with a custom background and adjustable gallery transparency](assets/screenshots/preferences.jpg)
 
 ## Take a closer look
 
-The lightbox supports wheel zoom, dragging, keyboard navigation, fullscreen, and downloads. Its neutral background keeps the focus on the image.
+Open an image to zoom, drag, and explore. Move through your collection with the keyboard, go fullscreen, or download a file to keep.
 
-![Mori lightbox with fit, zoom, navigation, download, and fullscreen controls](assets/screenshots/lightbox.jpg)
+![Mori full-size media preview with zoom, download, and fullscreen controls](assets/screenshots/lightbox.jpg)
 
 <details>
-<summary>Same library, smaller screen</summary>
+<summary>On your phone</summary>
 
 <p align="center">
-  <img src="assets/screenshots/gallery-mobile.jpg" width="360" alt="Mori Gallery on a phone, with a compact header and two-column masonry layout">
+  <img src="assets/screenshots/gallery-mobile.jpg" width="360" alt="Mori Gallery on a phone with a custom background">
 </p>
 
 </details>
 
-These are screenshots of the administrator view on [media.laplacian.net](https://media.laplacian.net), not mockups. The media shown is user-supplied; underlying artwork retains its creators' rights.
-
-## Small by design
-
-| Component                             | Role                                                             |
-| ------------------------------------- | ---------------------------------------------------------------- |
-| Rust + Axum                           | API, authorization, media streaming, and durable background jobs |
-| SvelteKit + TypeScript + Tailwind CSS | Static frontend; no Node.js server in production                 |
-| SQLite                                | Metadata, sessions, and job state in one persistent volume       |
-| Amazon S3                             | Media originals and previews; no local-media storage adapter     |
-
-The default Compose configuration gives Mori a **256 MiB memory budget** and runs it as a non-root user with a read-only filesystem. Thumbnail generation and upload optimization happen in the browser.
-
-Mori currently has one administrator. Browser preview and playback depend on the file format and codec; other allowed formats remain downloadable. Without CloudFront, Mori streams downloads from S3, so media delivery uses your server's bandwidth. CloudFront is optional.
-
-The HTTP API lives under `/v1/*`; its generated contract is available at `/v1/openapi.yml` and in [api/openapi.yml](api/openapi.yml).
-
 ## License
 
-Mori is licensed under [AGPL-3.0-or-later](LICENSE). Commercial use is allowed; modified versions offered over a network must provide corresponding source as required by the license. Each official image's **Source** link points to its exact public Git commit. Modified distributions can set `MORI_SOURCE_URL` to their corresponding source.
-
-Third-party code and assets retain their own licenses; see [NOTICE](NOTICE) and [dependency notices](licenses/README.md).
+Mori is open source under [AGPL-3.0-or-later](LICENSE). See [NOTICE](NOTICE) for licensing details and third-party notices.
 
 ## Deploy
 
-You need Docker with Compose, a **Linux x86-64** host, and a private Amazon S3 bucket. Production also needs an HTTPS reverse proxy. The public GHCR image requires no registry login, source checkout, or compilation on your server.
+Run Mori on your own Linux server with Docker Compose. You will need a private Amazon S3 bucket for your media and an HTTPS domain. Published images currently support 64-bit Intel/AMD servers. There is no need to download the source code or build the app yourself.
 
 ### 1. Get the configuration
 
@@ -104,11 +91,11 @@ For Caddy running in another container, attach that container to Mori's Docker n
 ### 3. Connect Amazon S3
 
 1. Create a private, general-purpose S3 bucket with **Block Public Access** enabled.
-2. Give a dedicated IAM identity access to Mori's objects using the [example policy](examples/s3/iam-policy.json). Replace `YOUR_BUCKET_NAME` with the complete bucket name, including any AWS account/region suffix. This example assumes S3-managed encryption; customer-managed KMS keys need additional KMS permissions.
+2. Create a dedicated AWS access key with the [example access policy](examples/s3/iam-policy.json). Replace `YOUR_BUCKET_NAME` with your complete bucket name.
 3. Apply the [upload CORS example](examples/s3/cors.json), replacing `https://media.example.com` with your exact `MORI_PUBLIC_URL` origin. See [AWS's CORS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ManageCorsUsing.html).
 4. Log in to Mori and open **Settings → Storage**. Enter the bucket name, region, Access key ID, and Secret access key. Leave Session token empty for ordinary IAM user keys, and leave Distribution ID empty when not using CloudFront. Test the connection, then save.
 
-S3 credentials are stored encrypted in the persistent volume, rather than in Compose. AWS storage, request, and transfer charges are separate from hosting Mori. An [incomplete multipart upload lifecycle rule](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html) can clean up abandoned parts.
+Mori saves your S3 connection securely in its data volume. Your server and Amazon S3 usage are billed by their providers. CloudFront is optional. For AWS cleanup and encryption options, see the [S3 setup notes](examples/s3/README.md).
 
 ### Updates and backups
 
@@ -118,6 +105,6 @@ Pull and run the newest published image:
 docker compose up -d --pull always
 ```
 
-For a fixed version, set `MORI_IMAGE=ghcr.io/cubeyond/mori:sha-<full-commit-sha>` in `.env`. Keep the named `metadata` volume when updating, and back up both the volume and your S3 objects. The volume contains SQLite metadata and `storage.key`; both are needed to restore the saved S3 configuration.
+Keep the `metadata` data volume when updating. Back up both this volume and your S3 bucket: Mori needs its saved library information and encryption key to restore your connection.
 
-Optional environment settings in [.env.example](.env.example) include separate video and image upload limits. Defaults are **1 GB per video** and **100 MiB per image**. Allowed extensions can be configured through `MORI_VIDEO_EXTENSIONS` and `MORI_IMAGE_EXTENSIONS`.
+The default upload limits are **1 GB per video** and **100 MiB per image**. You can change them in your `.env` file. Mori currently supports a single administrator; images and videos are stored in Amazon S3.
