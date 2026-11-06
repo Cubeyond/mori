@@ -15,8 +15,8 @@ if not, see https://www.gnu.org/licenses/.
 The SPDX identifier is AGPL-3.0-or-later. The license permits commercial use,
 including paid hosting, subject to its terms. It does not impose a fee ban.
 
-The Source link in the interface and GET /v1/source offer the corresponding
-source. Official container images point to their exact public Git commit;
+GET /v1/source offers the corresponding source. Official container images
+point to their exact public Git commit;
 the reference is also stored in /usr/share/licenses/mori/SOURCE. Operators of
 modified versions must provide their complete corresponding source and set
 MORI_SOURCE_URL to its publicly accessible location. Do not publish instance
