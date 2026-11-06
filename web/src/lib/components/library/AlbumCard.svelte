@@ -1,5 +1,5 @@
 <!-- SPDX-FileCopyrightText: 2026 Cubeyond
-     SPDX-License-Identifier: Elastic-2.0 -->
+     SPDX-License-Identifier: AGPL-3.0-or-later -->
 
 <script lang="ts">
   /** Fixed title and visibility rows frame an optional description beside up to three cropped posters. */

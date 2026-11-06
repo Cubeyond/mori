@@ -52,10 +52,14 @@ RUN set -eu; \
     chmod 700 /runtime/data; \
     chown 10001:10001 /runtime/data
 
+# Attach a version-specific source offer without invalidating the compilation layer.
+ARG MORI_SOURCE_URL=https://github.com/Cubeyond/mori
+RUN printf '%s\n' "$MORI_SOURCE_URL" > /runtime/usr/share/licenses/mori/SOURCE
+
 # Ship only the executable, its shared libraries, certificates, and static UI.
 FROM scratch
 LABEL org.opencontainers.image.title="Mori" \
-    org.opencontainers.image.licenses="Elastic-2.0" \
+    org.opencontainers.image.licenses="AGPL-3.0-or-later" \
     org.opencontainers.image.source="https://github.com/Cubeyond/mori"
 COPY --from=server /runtime/ /
 COPY --from=server /usr/local/bin/mori /usr/local/bin/mori

@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Full-collection search and counts must obey the same privacy scope as result pages.
 use crate::support::{Client, lifecycle_collection, setup};

@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** Local selection validation is separate from transfer state and never changes original bytes. */
 import type { UploadPolicy } from '#lib/api/client';

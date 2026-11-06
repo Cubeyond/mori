@@ -1,5 +1,5 @@
 <!-- SPDX-FileCopyrightText: 2026 Cubeyond
-     SPDX-License-Identifier: Elastic-2.0 -->
+     SPDX-License-Identifier: AGPL-3.0-or-later -->
 
 <script lang="ts">
   /** Existing membership, atomic creation-and-move, and permanent deletion share one compact sheet. */

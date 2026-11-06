@@ -1,5 +1,5 @@
 <!-- SPDX-FileCopyrightText: 2026 Cubeyond
-     SPDX-License-Identifier: Elastic-2.0 -->
+     SPDX-License-Identifier: AGPL-3.0-or-later -->
 
 <script lang="ts">
   import Button from '#lib/components/ui/button/button.svelte';
@@ -8,7 +8,7 @@
   import { onMount, type Snippet } from 'svelte';
   import { page } from '$app/state';
   import { afterNavigate } from '$app/navigation';
-  import { Menu } from '@lucide/svelte';
+  import { CodeXml, Menu } from '@lucide/svelte';
   import Wordmark from '#lib/components/Wordmark.svelte';
   import LibraryNavigation from '#lib/components/LibraryNavigation.svelte';
   import MobileNavigation from '#lib/components/MobileNavigation.svelte';
@@ -68,6 +68,15 @@
         <span class="header-wordmark"><Wordmark /></span>
       </div>
       <nav aria-label="Account navigation">
+        <Button
+          variant="ghost"
+          size="sm"
+          href="/v1/source"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Source code for this version"
+          ><CodeXml size={18} /><span>Source</span></Button
+        >
         <div class="account-slot">
           {#if sessionReady}<AuthControl />{/if}
         </div>
@@ -127,6 +136,11 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
+  }
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
   .workspace {
     max-width: 1400px;

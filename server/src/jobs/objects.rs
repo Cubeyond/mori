@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Preserve one active object pair while upgrading legacy paths and changing visibility.
 

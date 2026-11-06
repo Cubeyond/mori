@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Minimal checksum-aware multipart fixture using the same SDK surface as production.
 

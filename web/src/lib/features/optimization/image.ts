@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** Conservative image inspection avoids flattening animation or altering unverified color formats. */
 import type { OptimizationMode } from './model';

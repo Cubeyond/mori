@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Common isolated application, authenticated HTTP client, and durable-job fixtures.
 
@@ -100,6 +100,7 @@ pub async fn setup() -> (AppState, Router, tempfile::TempDir) {
         listen: "127.0.0.1:0".into(),
         database_url: format!("sqlite://{}", directory.path().join("mori.db").display()),
         public_url: "http://localhost:3000".into(),
+        source_url: Some("https://example.com/mori/tree/test-revision".into()),
         s3_endpoint: Some("http://127.0.0.1:9".into()),
         cloudfront_endpoint: None,
         web_dir: directory.path().display().to_string(),

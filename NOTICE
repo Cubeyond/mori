@@ -1,14 +1,30 @@
 Mori
-Copyright (c) 2026 Cubeyond
+Copyright (C) 2026 Cubeyond
 
-Except for separately identified third-party material, Mori's project-authored
-source code, build scripts, and documentation are licensed under the Elastic
-License 2.0 (SPDX identifier: Elastic-2.0). The complete, unmodified license is
-provided in LICENSE.
+Except for separately identified third-party material, Mori is free software:
+you can redistribute it and/or modify it under the terms of the GNU Affero
+General Public License as published by the Free Software Foundation, either
+version 3 of the License, or (at your option) any later version.
 
-The licensor is Cubeyond. In particular, the license's hosted/managed-service
-limitation is not limited to paid services. The license does not require every
-modification to be published and is not an AGPL license.
+Mori is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+more details. You should have received a copy of the license in LICENSE;
+if not, see https://www.gnu.org/licenses/.
+
+The SPDX identifier is AGPL-3.0-or-later. The license permits commercial use,
+including paid hosting, subject to its terms. It does not impose a fee ban.
+
+The Source link in the interface and GET /v1/source offer the corresponding
+source. Official container images point to their exact public Git commit;
+the reference is also stored in /usr/share/licenses/mori/SOURCE. Operators of
+modified versions must provide their complete corresponding source and set
+MORI_SOURCE_URL to its publicly accessible location. Do not publish instance
+secrets or uploaded media as part of that source offer.
+
+Historical commit 9caa69fb3f24b2d98cedb193cdfd556e3b0353c4 was published under
+Elastic License 2.0. This change does not revoke rights already granted for
+that historical version. Current modifications use AGPL-3.0-or-later.
 
 Users' uploaded media, private configuration, credentials, and other instance
 data are not licensed by this notice.

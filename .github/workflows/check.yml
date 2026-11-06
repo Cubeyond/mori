@@ -80,7 +80,7 @@ jobs:
             type=sha,format=long
             type=sha
           labels: |
-            org.opencontainers.image.licenses=Elastic-2.0
+            org.opencontainers.image.licenses=AGPL-3.0-or-later
       - name: Build and publish
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         if: steps.current.outputs.publish == 'true'
@@ -90,6 +90,7 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64
+          build-args: MORI_SOURCE_URL=https://github.com/${{ github.repository }}/tree/${{ github.sha }}
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha,scope=mori-amd64

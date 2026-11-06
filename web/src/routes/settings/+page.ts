@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** Preserve bookmarks while Preferences receives its own canonical settings path. */
 import { redirect } from '@sveltejs/kit';

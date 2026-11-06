@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** Metadata readiness never waits for cover encoding or unsupported-codec timeout. */
 import { test } from 'node:test';

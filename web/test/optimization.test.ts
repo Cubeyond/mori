@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** Preparation must never guess fidelity, persist unsafe paths, or accept pointless conversions. */
 import { test } from 'node:test';

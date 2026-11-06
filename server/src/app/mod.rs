@@ -1,7 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Validated runtime configuration, shared resources, and secure identifiers.
+
+/// Resolve and validate the corresponding-source offer once during startup.
+mod source;
 
 use crate::infra::{db, storage_settings::StorageManager};
 use anyhow::{Context, bail};
@@ -31,6 +34,9 @@ pub struct Config {
     /// Canonical browser origin used for CSRF checks and sharing URLs.
     #[arg(long, env = "MORI_PUBLIC_URL", default_value = "http://localhost:3000")]
     pub public_url: String,
+    /// Public corresponding-source location for an operator-modified distribution.
+    #[arg(long, env = "MORI_SOURCE_URL")]
+    pub source_url: Option<String>,
     /// Optional S3 endpoint override for isolated protocol tests.
     #[arg(long, env = "MORI_S3_ENDPOINT")]
     pub s3_endpoint: Option<String>,
@@ -184,6 +190,8 @@ pub struct AppState {
     pub origin_secret: Option<Arc<String>>,
     /// Hashes authorizing only the trusted frontend bootstrap scripts.
     pub script_csp: Arc<String>,
+    /// Public corresponding source for this running version, never instance data.
+    pub source_url: Arc<String>,
     /// Bounded login-failure count and earliest permitted retry timestamp.
     pub login_backoff: Arc<tokio::sync::Mutex<(u32, i64)>>,
     /// Wake the single storage worker when an HTTP mutation schedules new work.
@@ -198,6 +206,7 @@ impl AppState {
     /// errors.
     pub async fn new(mut config: Config) -> anyhow::Result<Self> {
         config.validate()?;
+        let source_url = Arc::new(source::load(config.source_url.as_deref()).await?);
         let origin_secret = if let Some(path) = &config.origin_secret_file {
             let value = tokio::fs::read_to_string(path)
                 .await
@@ -221,6 +230,7 @@ impl AppState {
             request_slots: Arc::new(Semaphore::new(16)),
             upload_lifecycle: crate::features::uploads::lifecycle::Lifecycle::default(),
             script_csp,
+            source_url,
             db,
             storage,
             config: Arc::new(config),

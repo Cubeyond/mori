@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 /// <reference lib="dom.asynciterable" />
 /** Exact prepared bytes live in origin-private disk storage, never whole-video RAM buffers. */

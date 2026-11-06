@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** Bound transfers; an optional completion callback can retain selected thumbnails outside the waiting queue. */
 export async function runUploadQueue(

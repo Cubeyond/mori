@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! HTTP routing, generated OpenAPI, static pages, and response security policies.
 
@@ -33,6 +33,7 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 /// Register HTTP handlers and their generated API descriptions together.
 fn api() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
+        .routes(routes!(source))
         .routes(routes!(auth::login))
         .routes(routes!(auth::session))
         .routes(routes!(auth::logout))
@@ -58,11 +59,21 @@ fn api() -> OpenApiRouter<AppState> {
         .routes(routes!(uploads::cancellation::cancel, uploads::status))
         .routes(routes!(jobs::status))
 }
+/// Offer the corresponding source without requiring an administrator account.
+#[utoipa::path(get, path = "/v1/source", responses(
+    (status = 307, description = "Corresponding source for this running version", headers(
+        ("Location" = String, description = "Public source repository or archive")
+    ))
+))]
+async fn source(State(state): State<AppState>) -> Redirect {
+    Redirect::temporary(&state.source_url)
+}
 /// Generate a deterministic contract with globally unique operation identifiers.
 pub fn openapi() -> utoipa::openapi::OpenApi {
     let (_, mut spec) = api().split_for_parts();
     spec.info = utoipa::openapi::Info::new("Mori API", env!("CARGO_PKG_VERSION"));
-    let mut license = utoipa::openapi::License::new("Elastic License 2.0");
+    let mut license =
+        utoipa::openapi::License::new("GNU Affero General Public License v3.0 or later");
     license.identifier = Some(env!("CARGO_PKG_LICENSE").into());
     spec.info.license = Some(license);
     spec.info.description = Some(
@@ -304,6 +315,12 @@ async fn security(State(s): State<AppState>, request: Request, next: Next) -> Re
         HeaderValue::from_static("nosniff"),
     );
     h.insert("referrer-policy", HeaderValue::from_static("no-referrer"));
+    h.insert(
+        header::LINK,
+        HeaderValue::from_static(
+            "</LICENSE.txt>; rel=\"license\", </v1/source>; rel=\"describedby\"",
+        ),
+    );
     h.insert(
         "permissions-policy",
         HeaderValue::from_static(if embed {

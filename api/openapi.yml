@@ -3,8 +3,8 @@ info:
   title: Mori API
   description: Images and videos share the historical /videos endpoints; kind identifies the media category. Administrative requests require a session cookie. Mutations require the exact MORI_PUBLIC_URL Origin and X-CSRF-Token from the session response. HTTPS uses __Host-mori; localhost development uses mori_dev. Private and missing public targets both return 404. Visibility changes and deletion return asynchronous job IDs; private completion waits for public-object deletion and, when configured, confirmed CloudFront revocation.
   license:
-    name: Elastic License 2.0
-    identifier: Elastic-2.0
+    name: GNU Affero General Public License v3.0 or later
+    identifier: AGPL-3.0-or-later
   version: 0.1.0
 paths:
   /v1/admin/albums:
@@ -739,6 +739,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
+  /v1/source:
+    get:
+      summary: Offer the corresponding source without requiring an administrator account.
+      operationId: get_v1_source
+      responses:
+        '307':
+          description: Corresponding source for this running version
+          headers:
+            Location:
+              schema:
+                type: string
+              description: Public source repository or archive
   /v1/videos/{token}:
     get:
       summary: Return only published public content, hiding private and missing targets alike.

@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Cubeyond
-// SPDX-License-Identifier: Elastic-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** Shared public URL and iframe formatting for gallery controls and the sharing panel. */
 import type { MediaItem } from '#lib/api/client';

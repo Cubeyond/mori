@@ -1,6 +1,6 @@
 # Dependency notices
 
-Mori's own code is licensed under Elastic-2.0. These files preserve third-party rights; they do not relicense upstream code under Mori's terms.
+Mori's own code is licensed under AGPL-3.0-or-later. These files preserve third-party rights; they do not relicense upstream code under Mori's terms.
 
 `cargo.json` records 296 package records selected by cargo-bundle-licenses 5.0.0. It is generated license data, not hand-authored application code. The catalog can include conditional-platform and build dependencies. `cargo.sha256` binds this reviewed catalog to the exact Cargo.lock so dependency changes cannot silently ship stale notices. The container carries a compressed copy without changing its contents.
 

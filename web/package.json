@@ -1,7 +1,7 @@
 {
   "name": "mori-web",
   "version": "0.1.0",
-  "license": "Elastic-2.0",
+  "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.16.1",

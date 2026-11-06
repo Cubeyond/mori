@@ -19,6 +19,7 @@ services:
       MORI_MAX_IMAGE_UPLOAD_BYTES:
       MORI_VIDEO_EXTENSIONS:
       MORI_IMAGE_EXTENSIONS:
+      MORI_SOURCE_URL:
     volumes: [metadata:/data]
     tmpfs: ["/tmp:size=8m,noexec,nosuid"]
     logging:
