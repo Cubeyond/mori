@@ -1,4 +1,7 @@
 .git
+assets/screenshots
+examples
+README.md
 target
 server/target
 web/node_modules
