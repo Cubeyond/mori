@@ -2,7 +2,7 @@
 
 Mori's own code is licensed under AGPL-3.0-or-later. These files preserve third-party rights; they do not relicense upstream code under Mori's terms.
 
-`cargo.json` records 296 package records selected by cargo-bundle-licenses 5.0.0. It is generated license data, not hand-authored application code. The catalog can include conditional-platform and build dependencies. `cargo.sha256` binds this reviewed catalog to the exact Cargo.lock so dependency changes cannot silently ship stale notices. The container carries a compressed copy without changing its contents.
+`cargo.json` records 300 package records selected by cargo-bundle-licenses 5.0.0. It is generated license data, not hand-authored application code. The catalog can include conditional-platform and build dependencies. `cargo.sha256` binds this reviewed catalog to the exact Cargo.lock so dependency changes cannot silently ship stale notices. The container carries a compressed copy without changing its contents.
 
 To review a Cargo dependency update, regenerate from the server directory with:
 
@@ -14,11 +14,15 @@ cargo bundle-licenses --format json --output ../licenses/cargo-next.json --previ
 
 Review all new or missing texts before replacing cargo.json and refreshing cargo.sha256. The generator is an aid; its confidence warnings and NOT FOUND markers are not legal verification. The current catalog's eight missing texts were reviewed: base64-simd/vsimd use the exact upstream monorepo MIT text; valuable uses its exact upstream MIT text; crc-catalog uses the files in its published LICENSES directory; r-efi explicitly offers MIT as an alternative, selected here with its exact upstream source reference and standard MIT permission text because its published package omits separate root license files.
 
+The catalog records the Apache-2.0 option offered by `objc2-core-foundation` and `objc2-system-configuration` at their published source revision. The license text comes from the Apache Software Foundation.
+
 Reviewed upstream sources:
 
 - https://github.com/Nugine/simd/blob/d74c030d9dc4f3cae02146d1f497ff62726ef09a/LICENSE
 - https://github.com/tokio-rs/valuable/blob/9efc29b6e58cef28f6566a47aa7e142a55fead77/LICENSE
 - https://github.com/r-efi/r-efi/tree/7e1b0322d31d625f81a5656096330934f9cd835d
+- https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md
+- https://www.apache.org/licenses/LICENSE-2.0.txt
 
 The web build generates its notices from `pnpm licenses list --prod --json`, preserving complete published LICENSE/COPYING/NOTICE files. Exact-version omissions for is-reference and locate-character are recorded in web/scripts/legal/overrides.json, with the upstream MIT declarations and standard permission text. Missing notices fail the build. Only package names, versions, upstream attribution and terms are distributed; local install paths are removed.
 
