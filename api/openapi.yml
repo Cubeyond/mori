@@ -156,6 +156,130 @@ paths:
       - csrf: []
         origin: []
         session: []
+  /v1/admin/icloud:
+    get:
+      summary: |-
+        Read connection, schedule, selected albums and last-run feedback.
+        # Errors
+        Returns administrator authentication or database failures.
+      operationId: get_v1_admin_icloud
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStatus'
+      security:
+      - session: []
+  /v1/admin/icloud/albums:
+    get:
+      summary: |-
+        Read the currently connected iCloud account's album paths.
+        # Errors
+        Returns administrator, connection, or provider failures.
+      operationId: get_v1_admin_icloud_albums
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SourceAlbum'
+      security:
+      - session: []
+    put:
+      summary: |-
+        Validate and atomically replace album mappings. An initial import is queued on change.
+        # Errors
+        Returns invalid input, administrator, connection, or database failures.
+      operationId: put_v1_admin_icloud_albums
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlbumSelection'
+        required: true
+      responses:
+        '204':
+          description: Mappings saved
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/icloud/connect:
+    post:
+      summary: |-
+        Bind an Apple account through a short-lived interactive challenge.
+        # Errors
+        Returns administrator, validation, provider, encryption or database failures.
+      operationId: post_v1_admin_icloud_connect
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectInput'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectResult'
+      security:
+      - csrf: []
+        origin: []
+        session: []
+    delete:
+      summary: |-
+        Forget the saved session and stop pending jobs without deleting gallery items.
+        # Errors
+        Returns administrator, worker availability or database failures.
+      operationId: delete_v1_admin_icloud_connect
+      responses:
+        '204':
+          description: Disconnected
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/icloud/schedule:
+    put:
+      summary: |-
+        Save an opt-in schedule and an optional optimization override.
+        # Errors
+        Returns administrator, connection, scheduling or database failures.
+      operationId: put_v1_admin_icloud_schedule
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleInput'
+        required: true
+      responses:
+        '204':
+          description: Schedule saved
+      security:
+      - csrf: []
+        origin: []
+        session: []
+  /v1/admin/icloud/sync:
+    post:
+      summary: |-
+        Queue a manual run without creating overlapping requests for the same account.
+        # Errors
+        Returns administrator, connection, storage or database failures.
+      operationId: post_v1_admin_icloud_sync
+      responses:
+        '202':
+          description: Sync queued
+      security:
+      - csrf: []
+        origin: []
+        session: []
   /v1/admin/jobs/{id}:
     get:
       summary: Return authenticated progress for a durable upload or background job.
@@ -259,6 +383,41 @@ paths:
                 $ref: '#/components/schemas/UploadPolicy'
       security:
       - session: []
+  /v1/admin/upload-preference:
+    get:
+      summary: |-
+        Read the account's cross-device upload preset.
+        # Errors
+        Returns administrator or database failures.
+      operationId: get_v1_admin_upload_preference
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadPreference'
+      security:
+      - session: []
+    put:
+      summary: |-
+        Change the account's preset for new manual uploads and inherited syncs.
+        # Errors
+        Returns administrator authentication or database failures.
+      operationId: put_v1_admin_upload_preference
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreferenceInput'
+        required: true
+      responses:
+        '204':
+          description: Preference saved
+      security:
+      - csrf: []
+        origin: []
+        session: []
   /v1/admin/uploads:
     get:
       summary: Discover reservations independently of optional local resume fingerprints.
@@ -869,6 +1028,32 @@ components:
         poster_url:
           type: string
           description: Same-origin authenticated JPEG endpoint, never a signed S3 address.
+    AlbumRule:
+      type: object
+      description: One source album assigned to an existing Mori album.
+      required:
+      - source
+      - album_id
+      properties:
+        album_id:
+          type: string
+          description: Existing Mori album identifier.
+        source:
+          type: string
+          description: Complete path returned by iCloud discovery.
+      additionalProperties: false
+    AlbumSelection:
+      type: object
+      description: Replace the selected albums in one transaction.
+      required:
+      - albums
+      properties:
+        albums:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlbumRule'
+          description: Selected sources and their existing destinations.
+      additionalProperties: false
     AlbumSummary:
       allOf:
       - $ref: '#/components/schemas/Album'
@@ -973,6 +1158,115 @@ components:
             type: string
           description: Exact multipart reservations explicitly cancelled by the administrator.
       additionalProperties: false
+    ChallengeKind:
+      type: string
+      description: Verification states displayed by Mori.
+      enum:
+      - code
+      - phone
+      - sms
+    ConnectInput:
+      oneOf:
+      - type: object
+        description: Use an Apple account password once to start verification.
+        required:
+        - account
+        - password
+        - upload_optimization
+        - action
+        properties:
+          account:
+            type: string
+            description: Apple account email.
+          action:
+            type: string
+            enum:
+            - start
+          password:
+            type: string
+            description: Apple account password, held only during verification.
+          upload_optimization:
+            $ref: '#/components/schemas/Optimization'
+            description: Existing browser upload preference to migrate on first use.
+      - type: object
+        description: Answer with a verification code or request SMS.
+        required:
+        - challenge
+        - answer
+        - action
+        properties:
+          action:
+            type: string
+            enum:
+            - answer
+          answer:
+            type: string
+            description: Code, SMS request, or trusted phone choice.
+          challenge:
+            type: string
+            description: Opaque challenge identifier.
+      - type: object
+        description: Discard a pending challenge.
+        required:
+        - challenge
+        - action
+        properties:
+          action:
+            type: string
+            enum:
+            - cancel
+          challenge:
+            type: string
+            description: Opaque challenge identifier.
+      description: Start an Apple login or answer the current verification challenge.
+    ConnectResult:
+      oneOf:
+      - type: object
+        description: A second step is required.
+        required:
+        - id
+        - kind
+        - phones
+        - retry
+        - state
+        properties:
+          id:
+            type: string
+            description: Opaque challenge identifier.
+          kind:
+            $ref: '#/components/schemas/ChallengeKind'
+            description: Verification step to render.
+          phones:
+            type: array
+            items:
+              $ref: '#/components/schemas/PhoneChoice'
+            description: Masked choices for the phone selection step.
+          retry:
+            type: boolean
+            description: Whether the provider rejected the preceding answer.
+          state:
+            type: string
+            enum:
+            - challenge
+      - type: object
+        description: A session is available to discover albums.
+        required:
+        - state
+        properties:
+          state:
+            type: string
+            enum:
+            - connected
+      - type: object
+        description: The pending request was canceled.
+        required:
+        - state
+        properties:
+          state:
+            type: string
+            enum:
+            - canceled
+      description: Public authentication response, with private session material stripped.
     ConnectionCheck:
       type: object
       description: Successful S3 write/read/delete probe, independent of `CloudFront` setup.
@@ -1103,6 +1397,14 @@ components:
         visibility:
           type: string
           description: Requested public or private access policy.
+    Frequency:
+      type: string
+      description: Supported automatic synchronization intervals.
+      enum:
+      - hourly
+      - six_hours
+      - daily
+      - weekly
     Job:
       type: object
       description: Persisted storage operation with revision guards, retry state, and CDN progress.
@@ -1174,6 +1476,13 @@ components:
       enum:
       - image
       - video
+    Optimization:
+      type: string
+      description: Shared upload optimization preset.
+      enum:
+      - original
+      - balanced
+      - quality
     PartInput:
       type: object
       description: Checksum required to authorize a single multipart part.
@@ -1192,6 +1501,62 @@ components:
         url:
           type: string
           description: Short-lived presigned URL scoped to one upload part.
+    PhoneChoice:
+      type: object
+      description: One trusted phone option, identified by the worker's opaque value.
+      required:
+      - value
+      - label
+      properties:
+        label:
+          type: string
+          description: Masked trusted phone description.
+        value:
+          type: string
+          description: Opaque provider choice.
+    PreferenceInput:
+      type: object
+      description: Update the default for subsequent manual uploads and inherited imports.
+      required:
+      - optimization
+      properties:
+        optimization:
+          $ref: '#/components/schemas/Optimization'
+          description: The new default preset.
+      additionalProperties: false
+    ScheduleInput:
+      type: object
+      description: Schedule and the optional per-integration optimization override.
+      required:
+      - automatic
+      - frequency
+      - local_time
+      - timezone
+      - optimization
+      properties:
+        automatic:
+          type: boolean
+          description: Start background jobs at the specified frequency.
+        frequency:
+          $ref: '#/components/schemas/Frequency'
+          description: How often to check selected albums.
+        local_time:
+          type: string
+          description: Local calendar time in 24-hour HH:MM format.
+        optimization:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/Optimization'
+            description: Null inherits the account's upload preference.
+        timezone:
+          type: string
+          description: IANA time zone for calendar scheduling.
+        weekday:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/Weekday'
+            description: Day of the week, required for a weekly rule.
+      additionalProperties: false
     Session:
       type: object
       description: Session discovery response, including CSRF only for authenticated callers.
@@ -1207,6 +1572,19 @@ components:
           - string
           - 'null'
           description: Session-bound CSRF value returned only to its authenticated browser.
+    SourceAlbum:
+      type: object
+      description: A discoverable iCloud album path and display name.
+      required:
+      - path
+      - name
+      properties:
+        name:
+          type: string
+          description: Display label for the source.
+        path:
+          type: string
+          description: Complete provider path to persist with a mapping.
     StorageInfo:
       type: object
       description: Safe storage summary; credential values are never returned.
@@ -1296,6 +1674,85 @@ components:
       - unconfigured
       - amazon_s3
       - test
+    SyncActivity:
+      type: string
+      description: Current activity of the persisted synchronization queue.
+      enum:
+      - idle
+      - queued
+      - running
+    SyncStatus:
+      type: object
+      description: Status visible only to the signed-in Mori administrator.
+      required:
+      - enabled
+      - account
+      - needs_auth
+      - activity
+      - schedule
+      - upload_optimization
+      - albums
+      - next_sync
+      - last_sync
+      - last_error
+      - imported
+      - skipped
+      - failed
+      properties:
+        account:
+          type:
+          - string
+          - 'null'
+          description: Connected Apple account email, when available.
+        activity:
+          $ref: '#/components/schemas/SyncActivity'
+          description: Current activity of the import queue.
+        albums:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlbumRule'
+          description: Selected mappings.
+        enabled:
+          type: boolean
+          description: Whether this deployment enables the optional connector.
+        failed:
+          type: integer
+          format: int64
+          description: Number of failed items in the last run.
+        imported:
+          type: integer
+          format: int64
+          description: Number of newly imported items in the last run.
+        last_error:
+          type:
+          - string
+          - 'null'
+          description: Sanitized last-run or authentication message.
+        last_sync:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          description: Last completed run.
+        needs_auth:
+          type: boolean
+          description: Whether the Apple session needs user attention.
+        next_sync:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          description: Next automatic run, if enabled.
+        schedule:
+          $ref: '#/components/schemas/ScheduleInput'
+          description: Current periodic schedule.
+        skipped:
+          type: integer
+          format: int64
+          description: Number of skipped items in the last run.
+        upload_optimization:
+          $ref: '#/components/schemas/Optimization'
+          description: Current default optimization when inheriting the account preference.
     UnfinishedUpload:
       type: object
       description: Non-secret queue metadata remains available after browser storage has been cleared.
@@ -1389,6 +1846,17 @@ components:
           type: integer
           format: int64
           description: Maximum accepted video length in bytes.
+    UploadPreference:
+      type: object
+      description: Shared preference, absent until an existing browser preference is saved.
+      required:
+      - optimization
+      properties:
+        optimization:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/Optimization'
+            description: The account's selected default.
     UploadedPart:
       type: object
       description: S3-confirmed part metadata used to resume an interrupted upload.
@@ -1520,6 +1988,17 @@ components:
           items:
             $ref: '#/components/schemas/Video'
           description: Visibility-filtered page of video records.
+    Weekday:
+      type: string
+      description: Local weekday for a weekly calendar rule.
+      enum:
+      - monday
+      - tuesday
+      - wednesday
+      - thursday
+      - friday
+      - saturday
+      - sunday
   securitySchemes:
     csrf:
       type: apiKey

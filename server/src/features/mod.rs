@@ -7,6 +7,8 @@
 pub mod albums;
 /// Single-administrator sessions, password verification, and CSRF.
 pub mod auth;
+/// Optional, administrator-configured import from iCloud Photos.
+pub mod icloud;
 /// Resumable S3 multipart sessions and server-generated names.
 pub mod uploads;
 /// Video metadata, visibility, and stable delivery links.

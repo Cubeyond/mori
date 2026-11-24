@@ -6,7 +6,7 @@
 use clap::{Parser, Subcommand};
 use mori::{
     app::{AppState, Config},
-    features::auth,
+    features::{auth, icloud},
     http,
     infra::db,
     jobs,
@@ -92,6 +92,11 @@ SET password_hash=excluded.password_hash",
             let mut terminate =
                 tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
             let worker = tokio::spawn(jobs::run(state.clone()));
+            let sync = state
+                .config
+                .icloud_dir
+                .is_some()
+                .then(|| tokio::spawn(icloud::run(state.clone())));
             axum::serve(listener, http::router(state))
                 .with_graceful_shutdown(async move {
                     #[cfg(unix)]
@@ -105,6 +110,9 @@ SET password_hash=excluded.password_hash",
                 })
                 .await?;
             worker.abort();
+            if let Some(sync) = sync {
+                sync.abort();
+            }
         }
     }
     Ok(())

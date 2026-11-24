@@ -108,3 +108,19 @@ docker compose up -d --pull always
 Keep the `metadata` data volume when updating. Back up both this volume and your S3 bucket: Mori needs its saved library information and encryption key to restore your connection.
 
 The default upload limits are **1 GB per video** and **100 MiB per image**. You can change them in your `.env` file. Mori currently supports a single administrator; images and videos are stored in Amazon S3.
+
+### Import iCloud Photos
+
+From a checkout of this release, start Mori with the optional importer using the same Compose project and `.env` as your regular deployment.
+
+```sh
+docker compose -f compose.yml -f compose.icloud.yml up -d --pull always
+```
+
+When trying an unpublished checkout, build the app with `docker build -t mori:local .` and the worker with `docker build -f sync/Dockerfile -t mori:icloud-local .`. Set `MORI_IMAGE=mori:local` and `MORI_ICLOUD_IMAGE=mori:icloud-local` in `.env`, then start the stack without `--pull always`.
+
+Open **Settings → iCloud Photos**, connect your Apple Account and enter the verification code. If Apple requests approval for iCloud web access, approve Photos on a trusted device and try again. Create any destination albums in **Albums**, then select which iCloud albums to import and assign each to an existing Mori album. Use **Sync now** or turn on a schedule. A session that expires can be reconnected from the same page.
+
+For weekly sync, choose a day of the week and a local time. When you save, Mori uses your device's time zone for background runs and displays the next run in that zone. If Mori was offline at the scheduled time, it checks the selected albums once after startup.
+
+The importer copies media into Mori's private S3 storage and retains imported items when they disappear from iCloud. It uses the upload optimization preference unless you select another preset for sync. The worker processes one asset at a time and uses a separate disk volume for temporary media. The defaults are 0.75 vCPU, 768 MiB of memory, and an 8 GiB staging budget. Set `MORI_ICLOUD_CPUS`, `MORI_ICLOUD_MEMORY`, or `MORI_ICLOUD_WORK_BYTES` in `.env` to tune those limits.

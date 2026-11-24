@@ -14,8 +14,12 @@
   import MobileNavigation from '#lib/components/MobileNavigation.svelte';
   import AuthControl from '#lib/components/AuthControl.svelte';
   import UploadController from '#lib/components/library/UploadController.svelte';
-  import { loadSession, session } from '#lib/api/client';
-  import { loadPreferences } from '#lib/features/preferences';
+  import { api, apiData, loadSession, session } from '#lib/api/client';
+  import {
+    loadPreferences,
+    preferences,
+    savePreferences,
+  } from '#lib/features/preferences';
   import { bootstrap } from '#lib/api/bootstrap';
   import BackgroundLayer from '#lib/components/BackgroundLayer.svelte';
   import { hasBackground } from '#lib/features/background';
@@ -36,10 +40,28 @@
   let sessionReady = $state(bootstrap !== null);
   onMount(() => {
     loadPreferences();
-    if (bootstrap !== null) return;
-    void loadSession()
-      .catch(() => undefined)
-      .finally(() => (sessionReady = true));
+    const unsubscribe = session.subscribe(({ authenticated }) => {
+      if (!authenticated) return;
+      const before = $preferences.uploadOptimization;
+      void apiData(api.GET('/v1/admin/upload-preference'))
+        .then(({ optimization }) => {
+          if (
+            optimization !== null &&
+            optimization !== before &&
+            $preferences.uploadOptimization === before
+          )
+            savePreferences({
+              ...$preferences,
+              uploadOptimization: optimization,
+            });
+        })
+        .catch(() => undefined);
+    });
+    if (bootstrap === null)
+      void loadSession()
+        .catch(() => undefined)
+        .finally(() => (sessionReady = true));
+    return unsubscribe;
   });
   afterNavigate(() => {
     navigationOpen = false;

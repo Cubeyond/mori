@@ -89,7 +89,11 @@ pub async fn cancel(
 }
 
 /// Persist cancellation before S3 operations so the cleanup worker can retry after a process crash.
-async fn cancel_one(s: &AppState, id: &str, expired_only: bool) -> Result<()> {
+pub(in crate::features) async fn cancel_one(
+    s: &AppState,
+    id: &str,
+    expired_only: bool,
+) -> Result<()> {
     let reservation = record(s, id).await?;
     let _transition = s.upload_lifecycle.lock(&reservation.video_id).await;
     let reservation = record(s, id).await?;

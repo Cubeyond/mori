@@ -4,7 +4,7 @@
 <script lang="ts">
   /** The desktop sidebar and full-page mobile navigation share destinations and active-route semantics. */
   import { resolve } from '$app/paths';
-  import { Images, Library, Settings2, HardDrive } from '@lucide/svelte';
+  import { Images, Library, Settings2, HardDrive, Cloud } from '@lucide/svelte';
   /** Mobile navigation follows the same routes with larger touch rows. */
   let {
     path,
@@ -50,6 +50,13 @@
       onclick={onfollow}
     >
       <HardDrive size={22} /><span>Storage</span>
+    </a>
+    <a
+      href={resolve('/settings/icloud')}
+      aria-current={path === '/settings/icloud' ? 'page' : undefined}
+      onclick={onfollow}
+    >
+      <Cloud size={22} /><span>iCloud Photos</span>
     </a>
   </nav>
 </div>

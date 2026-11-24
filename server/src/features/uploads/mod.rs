@@ -196,12 +196,30 @@ pub async fn create(
     _admin: Admin,
     Json(input): Json<CreateUpload>,
 ) -> Result<(StatusCode, Json<Upload>)> {
+    let upload = reserve(&s, input, None).await?;
+    Ok((StatusCode::CREATED, Json(upload)))
+}
+
+/// Reserve a verified upload for a browser or a local import.
+pub(super) async fn reserve(
+    s: &AppState,
+    input: CreateUpload,
+    import_prefix: Option<&str>,
+) -> Result<Upload> {
     let storage = s.storage.get()?;
-    let kind = validate_input(&s, &input)?;
+    let kind = validate_input(s, &input)?;
     let name = random_id();
     let video_id = random_id();
     let token = random_id();
-    let source_key = Storage::private(&token, &input.extension);
+    let source_key = import_prefix.map_or_else(
+        || Storage::private(&token, &input.extension),
+        |prefix| {
+            format!(
+                "private/imports/icloud/{prefix}/{token}.{}",
+                input.extension
+            )
+        },
+    );
     let poster_key = Storage::private_preview(&token);
     let id = random_id();
     let expires_at = now() + 86400;
@@ -267,19 +285,16 @@ created_at,extension,width,height,duration,media_prefix,source_key,poster_key,ki
         let _ = storage.abort(&source_key, &upload_id).await;
         return Err(e.into());
     }
-    Ok((
-        StatusCode::CREATED,
-        Json(Upload {
-            id,
-            video_id,
-            name,
-            part_size: PART_SIZE,
-            part_count: i32::try_from((input.size + PART_SIZE - 1) / PART_SIZE)
-                .map_err(|_| bad("Too many upload parts"))?,
-            expires_at,
-            parts: Vec::new(),
-        }),
-    ))
+    Ok(Upload {
+        id,
+        video_id,
+        name,
+        part_size: PART_SIZE,
+        part_count: i32::try_from((input.size + PART_SIZE - 1) / PART_SIZE)
+            .map_err(|_| bad("Too many upload parts"))?,
+        expires_at,
+        parts: Vec::new(),
+    })
 }
 /// Issue a short-lived signature for one checksummed multipart part.
 ///
@@ -339,11 +354,17 @@ pub async fn complete(
     _admin: Admin,
     Path(id): Path<String>,
 ) -> Result<(StatusCode, Json<Accepted>)> {
-    let r = record(&s, &id).await?;
+    let job = finalize(&s, &id).await?;
+    Ok((StatusCode::ACCEPTED, Json(job)))
+}
+
+/// Queue the same S3 integrity check for browser uploads and imports.
+pub(super) async fn finalize(s: &AppState, id: &str) -> Result<Accepted> {
+    let r = record(s, id).await?;
     let _transition = s.upload_lifecycle.lock(&r.video_id).await;
-    let r = record(&s, &id).await?;
+    let r = record(s, id).await?;
     if r.state == "complete" {
-        return Ok((StatusCode::ACCEPTED, Json(Accepted { job_id: None })));
+        return Ok(Accepted { job_id: None });
     }
     if r.expires_at <= now() {
         return Err(bad("Upload expired"));
@@ -352,7 +373,7 @@ pub async fn complete(
     let mut tx = s.db.begin().await?;
     let changed =
         sqlx::query("UPDATE uploads SET state='verifying' WHERE id=? AND state='uploading'")
-            .bind(&id)
+            .bind(id)
             .execute(&mut *tx)
             .await?
             .rows_affected();
@@ -374,7 +395,7 @@ pub async fn complete(
         .await?;
     tx.commit().await?;
     s.job_wakeup.notify_one();
-    Ok((StatusCode::ACCEPTED, Json(Accepted { job_id: Some(job) })))
+    Ok(Accepted { job_id: Some(job) })
 }
 /// Serve or store a bounded authenticated JPEG poster.
 ///
@@ -394,8 +415,14 @@ pub async fn poster(
     Path(id): Path<String>,
     body: Bytes,
 ) -> Result<StatusCode> {
-    let _transition = s.upload_lifecycle.lock(&id).await;
-    let v = videos::get(&s, &id).await?;
+    store_poster(&s, &id, body).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Store a JPEG alongside a still-uploading source.
+pub(super) async fn store_poster(s: &AppState, id: &str, body: Bytes) -> Result<()> {
+    let _transition = s.upload_lifecycle.lock(id).await;
+    let v = videos::get(s, id).await?;
     if v.state != "uploading" {
         return Err(Error(
             StatusCode::CONFLICT,
@@ -420,7 +447,7 @@ pub async fn poster(
         .bind(id)
         .execute(&s.db)
         .await?;
-    Ok(StatusCode::NO_CONTENT)
+    Ok(())
 }
 /// Return authenticated progress for a durable upload or background job.
 ///
@@ -473,4 +500,87 @@ pub async fn status(
         expires_at: r.expires_at,
         parts,
     }))
+}
+
+/// Transfer one local file through the ordinary multipart reservation and checksums.
+pub(super) async fn transfer_file(s: &AppState, id: &str, path: &std::path::Path) -> Result<()> {
+    use base64::Engine as _;
+    use sha2::{Digest, Sha256};
+    use tokio::io::AsyncReadExt as _;
+
+    let initial = record(s, id).await?;
+    let _transition = s.upload_lifecycle.lock(&initial.video_id).await;
+    let r = record(s, id).await?;
+    if r.state != "uploading" || r.expires_at <= now() {
+        return Err(bad("Upload expired or no longer accepts parts"));
+    }
+    let v = videos::get(s, &r.video_id).await?;
+    let storage = s.storage.get()?;
+    let key = v.private_source();
+    let parts = storage
+        .s3
+        .list_parts()
+        .bucket(&storage.bucket)
+        .key(&key)
+        .upload_id(&r.upload_id)
+        .max_parts(1000)
+        .send()
+        .await
+        .map_err(anyhow::Error::from)?;
+    let mut file = tokio::fs::File::open(path)
+        .await
+        .map_err(anyhow::Error::from)?;
+    if file.metadata().await.map_err(anyhow::Error::from)?.len()
+        != u64::try_from(v.size).map_err(anyhow::Error::from)?
+    {
+        return Err(bad("Prepared file length changed"));
+    }
+    let mut remaining = v.size;
+    let mut number = 1;
+    while remaining > 0 {
+        let size = remaining.min(PART_SIZE);
+        let mut data = vec![0; usize::try_from(size).map_err(anyhow::Error::from)?];
+        file.read_exact(&mut data)
+            .await
+            .map_err(anyhow::Error::from)?;
+        let checksum = base64::engine::general_purpose::STANDARD.encode(Sha256::digest(&data));
+        if !parts.parts().iter().any(|part| {
+            part.part_number == Some(number)
+                && part.size == Some(size)
+                && part.checksum_sha256.as_deref() == Some(checksum.as_str())
+        }) {
+            storage
+                .s3
+                .upload_part()
+                .bucket(&storage.bucket)
+                .key(&key)
+                .upload_id(&r.upload_id)
+                .part_number(number)
+                .checksum_sha256(checksum)
+                .body(aws_sdk_s3::primitives::ByteStream::from(data))
+                .send()
+                .await
+                .map_err(anyhow::Error::from)?;
+        }
+        remaining -= size;
+        number += 1;
+    }
+    Ok(())
+}
+
+/// Allow the import spool to survive until normal verification confirms the S3 object.
+pub(super) async fn await_verification(s: &AppState, id: &str) -> Result<()> {
+    tokio::time::timeout(std::time::Duration::from_secs(90), async {
+        loop {
+            match record(s, id).await?.state.as_str() {
+                "complete" => return Ok(()),
+                "verifying" | "uploaded" => {
+                    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                }
+                _ => return Err(bad("Import did not pass upload verification")),
+            }
+        }
+    })
+    .await
+    .map_err(anyhow::Error::from)?
 }

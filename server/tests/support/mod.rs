@@ -120,6 +120,7 @@ pub async fn setup() -> (AppState, Router, tempfile::TempDir) {
             "dng".into(),
         ],
         origin_secret_file: None,
+        icloud_dir: None,
     };
     let state = AppState::new(config).await.unwrap();
     state

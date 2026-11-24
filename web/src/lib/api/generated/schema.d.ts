@@ -56,6 +56,121 @@ export interface paths {
         patch: operations["patch_v1_admin_albums_id"];
         trace?: never;
     };
+    "/v1/admin/icloud": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read connection, schedule, selected albums and last-run feedback.
+         *     # Errors
+         *     Returns administrator authentication or database failures.
+         */
+        get: operations["get_v1_admin_icloud"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/icloud/albums": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the currently connected iCloud account's album paths.
+         *     # Errors
+         *     Returns administrator, connection, or provider failures.
+         */
+        get: operations["get_v1_admin_icloud_albums"];
+        /**
+         * Validate and atomically replace album mappings. An initial import is queued on change.
+         *     # Errors
+         *     Returns invalid input, administrator, connection, or database failures.
+         */
+        put: operations["put_v1_admin_icloud_albums"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/icloud/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bind an Apple account through a short-lived interactive challenge.
+         *     # Errors
+         *     Returns administrator, validation, provider, encryption or database failures.
+         */
+        post: operations["post_v1_admin_icloud_connect"];
+        /**
+         * Forget the saved session and stop pending jobs without deleting gallery items.
+         *     # Errors
+         *     Returns administrator, worker availability or database failures.
+         */
+        delete: operations["delete_v1_admin_icloud_connect"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/icloud/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save an opt-in schedule and an optional optimization override.
+         *     # Errors
+         *     Returns administrator, connection, scheduling or database failures.
+         */
+        put: operations["put_v1_admin_icloud_schedule"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/icloud/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue a manual run without creating overlapping requests for the same account.
+         *     # Errors
+         *     Returns administrator, connection, storage or database failures.
+         */
+        post: operations["post_v1_admin_icloud_sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/jobs/{id}": {
         parameters: {
             query?: never;
@@ -138,6 +253,32 @@ export interface paths {
          */
         get: operations["get_v1_admin_upload_policy"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/upload-preference": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the account's cross-device upload preset.
+         *     # Errors
+         *     Returns administrator or database failures.
+         */
+        get: operations["get_v1_admin_upload_preference"];
+        /**
+         * Change the account's preset for new manual uploads and inherited syncs.
+         *     # Errors
+         *     Returns administrator authentication or database failures.
+         */
+        put: operations["put_v1_admin_upload_preference"];
         post?: never;
         delete?: never;
         options?: never;
@@ -547,6 +688,18 @@ export interface components {
             /** @description Same-origin authenticated JPEG endpoint, never a signed S3 address. */
             poster_url: string;
         };
+        /** @description One source album assigned to an existing Mori album. */
+        AlbumRule: {
+            /** @description Existing Mori album identifier. */
+            album_id: string;
+            /** @description Complete path returned by iCloud discovery. */
+            source: string;
+        };
+        /** @description Replace the selected albums in one transaction. */
+        AlbumSelection: {
+            /** @description Selected sources and their existing destinations. */
+            albums: components["schemas"]["AlbumRule"][];
+        };
         /** @description Album metadata with a bounded, administrator-only set of completed media covers. */
         AlbumSummary: components["schemas"]["Album"] & {
             /** @description Up to three recent posters; originals and incomplete uploads are never returned. */
@@ -586,6 +739,53 @@ export interface components {
         CancelUploads: {
             /** @description Exact multipart reservations explicitly cancelled by the administrator. */
             ids: string[];
+        };
+        /**
+         * @description Verification states displayed by Mori.
+         * @enum {string}
+         */
+        ChallengeKind: "code" | "phone" | "sms";
+        /** @description Start an Apple login or answer the current verification challenge. */
+        ConnectInput: {
+            /** @description Apple account email. */
+            account: string;
+            /** @enum {string} */
+            action: "start";
+            /** @description Apple account password, held only during verification. */
+            password: string;
+            /** @description Existing browser upload preference to migrate on first use. */
+            upload_optimization: components["schemas"]["Optimization"];
+        } | {
+            /** @enum {string} */
+            action: "answer";
+            /** @description Code, SMS request, or trusted phone choice. */
+            answer: string;
+            /** @description Opaque challenge identifier. */
+            challenge: string;
+        } | {
+            /** @enum {string} */
+            action: "cancel";
+            /** @description Opaque challenge identifier. */
+            challenge: string;
+        };
+        /** @description Public authentication response, with private session material stripped. */
+        ConnectResult: {
+            /** @description Opaque challenge identifier. */
+            id: string;
+            /** @description Verification step to render. */
+            kind: components["schemas"]["ChallengeKind"];
+            /** @description Masked choices for the phone selection step. */
+            phones: components["schemas"]["PhoneChoice"][];
+            /** @description Whether the provider rejected the preceding answer. */
+            retry: boolean;
+            /** @enum {string} */
+            state: "challenge";
+        } | {
+            /** @enum {string} */
+            state: "connected";
+        } | {
+            /** @enum {string} */
+            state: "canceled";
         };
         /** @description Successful S3 write/read/delete probe, independent of `CloudFront` setup. */
         ConnectionCheck: {
@@ -666,6 +866,11 @@ export interface components {
             /** @description Requested public or private access policy. */
             visibility: string;
         };
+        /**
+         * @description Supported automatic synchronization intervals.
+         * @enum {string}
+         */
+        Frequency: "hourly" | "six_hours" | "daily" | "weekly";
         /** @description Persisted storage operation with revision guards, retry state, and CDN progress. */
         Job: {
             /**
@@ -713,6 +918,11 @@ export interface components {
          * @enum {string}
          */
         MediaKind: "image" | "video";
+        /**
+         * @description Shared upload optimization preset.
+         * @enum {string}
+         */
+        Optimization: "original" | "balanced" | "quality";
         /** @description Checksum required to authorize a single multipart part. */
         PartInput: {
             /** @description Base64 SHA-256 checksum of a single uploaded part. */
@@ -723,12 +933,44 @@ export interface components {
             /** @description Short-lived presigned URL scoped to one upload part. */
             url: string;
         };
+        /** @description One trusted phone option, identified by the worker's opaque value. */
+        PhoneChoice: {
+            /** @description Masked trusted phone description. */
+            label: string;
+            /** @description Opaque provider choice. */
+            value: string;
+        };
+        /** @description Update the default for subsequent manual uploads and inherited imports. */
+        PreferenceInput: {
+            /** @description The new default preset. */
+            optimization: components["schemas"]["Optimization"];
+        };
+        /** @description Schedule and the optional per-integration optimization override. */
+        ScheduleInput: {
+            /** @description Start background jobs at the specified frequency. */
+            automatic: boolean;
+            /** @description How often to check selected albums. */
+            frequency: components["schemas"]["Frequency"];
+            /** @description Local calendar time in 24-hour HH:MM format. */
+            local_time: string;
+            optimization: null | components["schemas"]["Optimization"];
+            /** @description IANA time zone for calendar scheduling. */
+            timezone: string;
+            weekday?: null | components["schemas"]["Weekday"];
+        };
         /** @description Session discovery response, including CSRF only for authenticated callers. */
         Session: {
             /** @description Whether the supplied administrator session is valid. */
             authenticated: boolean;
             /** @description Session-bound CSRF value returned only to its authenticated browser. */
             csrf: string | null;
+        };
+        /** @description A discoverable iCloud album path and display name. */
+        SourceAlbum: {
+            /** @description Display label for the source. */
+            name: string;
+            /** @description Complete provider path to persist with a mapping. */
+            path: string;
         };
         /** @description Safe storage summary; credential values are never returned. */
         StorageInfo: {
@@ -771,6 +1013,55 @@ export interface components {
          * @enum {string}
          */
         StorageMode: "unconfigured" | "amazon_s3" | "test";
+        /**
+         * @description Current activity of the persisted synchronization queue.
+         * @enum {string}
+         */
+        SyncActivity: "idle" | "queued" | "running";
+        /** @description Status visible only to the signed-in Mori administrator. */
+        SyncStatus: {
+            /** @description Connected Apple account email, when available. */
+            account: string | null;
+            /** @description Current activity of the import queue. */
+            activity: components["schemas"]["SyncActivity"];
+            /** @description Selected mappings. */
+            albums: components["schemas"]["AlbumRule"][];
+            /** @description Whether this deployment enables the optional connector. */
+            enabled: boolean;
+            /**
+             * Format: int64
+             * @description Number of failed items in the last run.
+             */
+            failed: number;
+            /**
+             * Format: int64
+             * @description Number of newly imported items in the last run.
+             */
+            imported: number;
+            /** @description Sanitized last-run or authentication message. */
+            last_error: string | null;
+            /**
+             * Format: int64
+             * @description Last completed run.
+             */
+            last_sync: number | null;
+            /** @description Whether the Apple session needs user attention. */
+            needs_auth: boolean;
+            /**
+             * Format: int64
+             * @description Next automatic run, if enabled.
+             */
+            next_sync: number | null;
+            /** @description Current periodic schedule. */
+            schedule: components["schemas"]["ScheduleInput"];
+            /**
+             * Format: int64
+             * @description Number of skipped items in the last run.
+             */
+            skipped: number;
+            /** @description Current default optimization when inheriting the account preference. */
+            upload_optimization: components["schemas"]["Optimization"];
+        };
         /** @description Non-secret queue metadata remains available after browser storage has been cleared. */
         UnfinishedUpload: {
             /** @description Album whose deletion may be blocked by this upload. */
@@ -829,6 +1120,10 @@ export interface components {
              * @description Maximum accepted video length in bytes.
              */
             max_upload_bytes: number;
+        };
+        /** @description Shared preference, absent until an existing browser preference is saved. */
+        UploadPreference: {
+            optimization: null | components["schemas"]["Optimization"];
         };
         /** @description S3-confirmed part metadata used to resume an interrupted upload. */
         UploadedPart: {
@@ -917,6 +1212,11 @@ export interface components {
             /** @description Visibility-filtered page of video records. */
             videos: components["schemas"]["Video"][];
         };
+        /**
+         * @description Local weekday for a weekly calendar rule.
+         * @enum {string}
+         */
+        Weekday: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
     };
     responses: never;
     parameters: never;
@@ -1088,6 +1388,147 @@ export interface operations {
             };
         };
     };
+    get_v1_admin_icloud: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+        };
+    };
+    get_v1_admin_icloud_albums: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceAlbum"][];
+                };
+            };
+        };
+    };
+    put_v1_admin_icloud_albums: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlbumSelection"];
+            };
+        };
+        responses: {
+            /** @description Mappings saved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post_v1_admin_icloud_connect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectInput"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectResult"];
+                };
+            };
+        };
+    };
+    delete_v1_admin_icloud_connect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Disconnected */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    put_v1_admin_icloud_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleInput"];
+            };
+        };
+        responses: {
+            /** @description Schedule saved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post_v1_admin_icloud_sync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_v1_admin_jobs_id: {
         parameters: {
             query?: never;
@@ -1197,6 +1638,47 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UploadPolicy"];
                 };
+            };
+        };
+    };
+    get_v1_admin_upload_preference: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadPreference"];
+                };
+            };
+        };
+    };
+    put_v1_admin_upload_preference: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferenceInput"];
+            };
+        };
+        responses: {
+            /** @description Preference saved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

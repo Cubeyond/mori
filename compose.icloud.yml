@@ -1,0 +1,33 @@
+# Optional iCloud importer for an existing Mori Compose deployment.
+services:
+  mori:
+    depends_on:
+      icloud:
+        condition: service_started
+    environment:
+      MORI_ICLOUD_DIR: /icloud
+    volumes:
+      - icloud-work:/icloud
+  icloud:
+    image: ${MORI_ICLOUD_IMAGE:-ghcr.io/cubeyond/mori:icloud}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    user: "10001:10001"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: "${MORI_ICLOUD_CPUS:-0.75}"
+    mem_limit: "${MORI_ICLOUD_MEMORY:-768m}"
+    pids_limit: 64
+    environment:
+      MORI_ICLOUD_WORK_BYTES: "${MORI_ICLOUD_WORK_BYTES:-8589934592}"
+    volumes:
+      - icloud-work:/icloud
+    tmpfs:
+      - /run/mori-icloud:size=16m,uid=10001,gid=10001,mode=0700,noexec,nosuid
+      - /tmp:size=32m,uid=10001,gid=10001,mode=0700,noexec,nosuid
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+volumes:
+  icloud-work:

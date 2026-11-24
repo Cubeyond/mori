@@ -11,9 +11,11 @@
   import BackgroundSettings from '#lib/components/settings/BackgroundSettings.svelte';
   import ThumbnailSettings from '#lib/components/settings/ThumbnailSettings.svelte';
   import PreferenceFeedback from '#lib/components/settings/PreferenceFeedback.svelte';
+  import { api, apiData, message } from '#lib/api/client';
   import {
     optimizationModes,
     parseOptimizationMode,
+    type OptimizationMode,
   } from '#lib/features/optimization/model';
   import { themes, parseTheme, accents } from '#lib/features/theme';
   import {
@@ -26,6 +28,8 @@
   /** Persistent-storage failure remains visible instead of pretending the change was saved. */
   let notice = $state(''),
     persisted = $state(true);
+  let savingOptimization = $state(false);
+  let optimizationError = $state('');
   /** Rapid changes replace one acknowledgement without stacking timers. */
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   onDestroy(() => {
@@ -41,6 +45,24 @@
     notice = persisted ? 'Saved' : 'Applied for this visit';
     if (noticeTimer !== undefined) clearTimeout(noticeTimer);
     if (persisted) noticeTimer = setTimeout(() => (notice = ''), 2400);
+  }
+
+  /** Keep the preference available to unattended uploads and other browsers. */
+  async function saveOptimization(
+    optimization: OptimizationMode,
+  ): Promise<void> {
+    savingOptimization = true;
+    optimizationError = '';
+    try {
+      await apiData(
+        api.PUT('/v1/admin/upload-preference', { body: { optimization } }),
+      );
+      update('uploadOptimization', optimization);
+    } catch (failure) {
+      optimizationError = message(failure);
+    } finally {
+      savingOptimization = false;
+    }
   }
 </script>
 
@@ -169,11 +191,11 @@
                 id="preference-optimization"
                 aria-labelledby="preference-optimization-label"
                 value={$preferences.uploadOptimization}
+                disabled={savingOptimization}
                 onchange={(
                   event: Event & { currentTarget: HTMLSelectElement },
                 ) => {
-                  update(
-                    'uploadOptimization',
+                  void saveOptimization(
                     parseOptimizationMode(event.currentTarget.value),
                   );
                 }}
@@ -193,6 +215,12 @@
                 (mode) => mode.value === $preferences.uploadOptimization,
               )?.description}
             </p>
+            {#if optimizationError}<p
+                class="optimization-hint error"
+                role="alert"
+              >
+                {optimizationError}
+              </p>{/if}
           </div>
         </div>
         <div class="setting-row">

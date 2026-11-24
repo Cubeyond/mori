@@ -49,6 +49,10 @@ impl StorageManager {
             vault: Arc::new(vault),
         }
     }
+    /// Share authenticated encryption with other write-only instance credentials.
+    pub(crate) fn vault(&self) -> &Vault {
+        &self.vault
+    }
     /// Load the saved encrypted configuration, or start unconfigured.
     ///
     /// # Errors
@@ -63,7 +67,10 @@ impl StorageManager {
             .get_filename()
             .parent()
             .unwrap_or_else(|| std::path::Path::new("."));
-        let vault = Vault::open(&parent.join("storage.key"), bytes.is_some())?;
+        let has_icloud: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM icloud_connection)")
+            .fetch_one(pool)
+            .await?;
+        let vault = Vault::open(&parent.join("storage.key"), bytes.is_some() || has_icloud)?;
         let settings = if let Some(bytes) = bytes {
             Some(serde_json::from_slice::<StorageSettings>(
                 &vault.open_bytes(&bytes)?,

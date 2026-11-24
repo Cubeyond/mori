@@ -129,6 +129,7 @@ fn page_title(path: &str, album: Option<&AlbumPage>) -> String {
         "/albums" => Some("Albums"),
         "/settings/preferences" => Some("Preferences"),
         "/settings/storage" => Some("Storage"),
+        "/settings/icloud" => Some("iCloud Photos"),
         _ => album.map(|page| page.album.name.as_str()),
     };
     label.map_or_else(

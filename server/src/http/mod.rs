@@ -16,7 +16,7 @@ pub mod pagination;
 pub mod schema;
 use crate::{
     app::{AppState, valid_token},
-    features::{albums, auth, storage, uploads, videos},
+    features::{albums, auth, icloud, storage, uploads, videos},
     jobs,
 };
 use axum::{
@@ -39,6 +39,15 @@ fn api() -> OpenApiRouter<AppState> {
         .routes(routes!(auth::logout))
         .routes(routes!(storage::get, storage::save))
         .routes(routes!(storage::test))
+        .routes(routes!(icloud::status))
+        .routes(routes!(icloud::connect, icloud::disconnect))
+        .routes(routes!(icloud::discover, icloud::save_albums))
+        .routes(routes!(icloud::save_schedule))
+        .routes(routes!(icloud::sync_now))
+        .routes(routes!(
+            icloud::upload_preference,
+            icloud::save_upload_preference
+        ))
         .routes(routes!(albums::list, albums::create))
         .routes(routes!(albums::detail, albums::edit, albums::delete))
         .routes(routes!(albums::public))
@@ -189,6 +198,7 @@ pub fn router(s: AppState) -> Router {
         .route("/settings", get(legacy_preferences))
         .route("/settings/preferences", get(index))
         .route("/settings/storage", get(index))
+        .route("/settings/icloud", get(index))
         .route("/files/{filename}", get(videos::public_file))
         .route("/posters/{filename}", get(videos::public_preview))
         .route("/{prefix}/{filename}", get(videos::shared_resource))

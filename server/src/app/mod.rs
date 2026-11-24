@@ -81,6 +81,9 @@ pub struct Config {
     /// Optional path to the `CloudFront` origin-header secret.
     #[arg(long, env = "MORI_ORIGIN_SECRET_FILE")]
     pub origin_secret_file: Option<String>,
+    /// Shared disk directory and local socket for the optional iCloud worker.
+    #[arg(long, env = "MORI_ICLOUD_DIR")]
+    pub icloud_dir: Option<std::path::PathBuf>,
 }
 
 impl Config {
@@ -196,6 +199,8 @@ pub struct AppState {
     pub login_backoff: Arc<tokio::sync::Mutex<(u32, i64)>>,
     /// Wake the single storage worker when an HTTP mutation schedules new work.
     pub job_wakeup: Arc<tokio::sync::Notify>,
+    /// Serializes iCloud control changes and synchronization runs.
+    pub icloud: crate::features::icloud::SyncControl,
 }
 
 impl AppState {
@@ -227,6 +232,7 @@ impl AppState {
             .await?;
         let storage = StorageManager::load(&db, &config).await?;
         Ok(Self {
+            icloud: crate::features::icloud::SyncControl::default(),
             request_slots: Arc::new(Semaphore::new(16)),
             upload_lifecycle: crate::features::uploads::lifecycle::Lifecycle::default(),
             script_csp,

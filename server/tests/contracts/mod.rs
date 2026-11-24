@@ -43,3 +43,7 @@ mod search;
 
 /// Anonymous access to the terms accompanying the browser distribution.
 mod licensing;
+
+/// Optional iCloud binding, mapping, and additive private import.
+#[cfg(unix)]
+mod icloud;
