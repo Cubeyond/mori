@@ -41,6 +41,14 @@ class Failure(Exception):
     """A sanitized error code returned to the Mori API."""
 
 
+def provider_session(config):
+    """Keep credentials and the region rclone needs to reopen the session."""
+    session = {key: config.get(key, "") for key in ("cookies", "trust_token")}
+    if config.get("region") == "china":
+        session["region"] = "china"
+    return session
+
+
 class Remote:
     """One loopback-only rclone instance and its volatile credentials."""
 
@@ -195,7 +203,7 @@ class Connector:
             remote = pending["remote"]
             try:
                 data = remote.call("config/get", {"name": "pending"})
-                session = {key: data[key] for key in ("cookies", "trust_token")}
+                session = provider_session(data)
                 if not session["trust_token"] or not session["cookies"]:
                     raise Failure("auth")
                 return {"state": "connected", "account": pending["account"], "session": session}
@@ -223,6 +231,9 @@ class Connector:
         if operation == "start":
             self.discard_challenge()
             remote = Remote("auth")
+            parameters = {"service": "photos", "apple_id": request["account"], "password": request["password"]}
+            if request.get("region") == "china":
+                parameters["region"] = "china"
             self.pending = {
                 "id": request["challenge"], "account": request["account"], "remote": remote,
                 "expires": time.monotonic() + REAUTH_TIMEOUT,
@@ -232,7 +243,7 @@ class Connector:
                     "config/create",
                     {
                         "name": "pending", "type": "iclouddrive",
-                        "parameters": {"service": "photos", "apple_id": request["account"], "password": request["password"]},
+                        "parameters": parameters,
                         "opt": {"nonInteractive": True, "obscure": True},
                     },
                 ))
@@ -276,21 +287,24 @@ class Connector:
                 for work in STAGE.iterdir():
                     if work.is_dir() and time.time() - work.stat().st_mtime > RETAIN_SECONDS:
                         shutil.rmtree(work, ignore_errors=True)
-            namespace = hashlib.sha256(connection["account"].encode()).hexdigest()
+            session = connection["session"]
+            account = connection["account"]
+            identity = f"china:{account}" if session.get("region") == "china" else account
+            namespace = hashlib.sha256(identity.encode()).hexdigest()
             self.active = Remote("photos", {
-                "type": "iclouddrive", "service": "photos", "apple_id": connection["account"],
-                **connection["session"],
+                "type": "iclouddrive", "service": "photos", "apple_id": account,
+                **session,
                 # Keep slash-containing album or asset names inside each path component.
                 "encoding": "Slash,BackSlash,Del,Ctl,InvalidUtf8,Dot",
             }, cache_namespace=namespace)
             self.generation = generation
-            self.saved_session = connection["session"]
+            self.saved_session = session
         return self.active
 
     def response(self, value):
         """Return refreshed cookies only when rclone changes the private session."""
         config = self.active.call("config/get", {"name": "photos"})
-        session = {key: config.get(key, "") for key in ("cookies", "trust_token")}
+        session = provider_session(config)
         changed = None
         if session["cookies"] and session["trust_token"] and session != self.saved_session:
             self.saved_session = session

@@ -9,9 +9,9 @@ mod worker;
 
 use self::{
     model::{
-        AlbumRule, AlbumSelection, ChallengeKind, ConnectInput, ConnectResult, Frequency,
-        Optimization, PhoneChoice, PreferenceInput, Schedule, ScheduleInput, SourceAlbum,
-        SyncActivity, SyncStatus, UploadPreference,
+        AccountRegion, AlbumRule, AlbumSelection, ChallengeKind, ConnectInput, ConnectResult,
+        Frequency, Optimization, PhoneChoice, PreferenceInput, Schedule, ScheduleInput,
+        SourceAlbum, SyncActivity, SyncStatus, UploadPreference,
     },
     worker::{WorkerError, call, directory},
 };
@@ -66,6 +66,9 @@ struct ProviderSession {
     cookies: String,
     /// Provider trust token.
     trust_token: String,
+    /// Region selected by rclone for the saved Apple session.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    region: Option<AccountRegion>,
 }
 
 /// A worker result may also contain a renewed Apple session.
@@ -241,6 +244,7 @@ pub async fn connect(
         ConnectInput::Start {
             account,
             password,
+            region,
             upload_optimization,
         } => {
             let account = account.trim().to_lowercase();
@@ -254,7 +258,7 @@ pub async fn connect(
                 return Err(bad("Enter a valid Apple Account and password"));
             }
             (
-                json!({"op":"start","challenge":random_id(),"account":account,"password":password}),
+                json!({"op":"start","challenge":random_id(),"account":account,"password":password,"region":region}),
                 Some(upload_optimization),
             )
         }

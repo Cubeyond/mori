@@ -5,8 +5,10 @@
 
 import io
 import json
+from pathlib import Path
+import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 
 import icloud
@@ -32,3 +34,43 @@ class AlbumAuthenticationTests(unittest.TestCase):
         with patch.object(icloud, "urlopen", side_effect=provider_error):
             with self.assertRaisesRegex(icloud.Failure, f"^{expected}$"):
                 icloud.list_remote(remote, "", {"dirsOnly": True})
+
+
+class RegionalAuthenticationTests(unittest.TestCase):
+    def test_china_is_passed_to_rclone_before_sending_a_verification_code(self):
+        connector = icloud.Connector()
+        with patch.object(icloud, "Remote") as factory:
+            remote = factory.return_value
+            remote.call.return_value = {"State": "2fa_do", "Option": {"Name": "config_2fa"}}
+            challenge = connector.authenticate({
+                "op": "start", "challenge": "fixture", "account": "tester@example.invalid",
+                "password": "fixture", "region": "china",
+            })
+        self.assertEqual(challenge["kind"], "code")
+        self.assertEqual(remote.call.call_args.args[1]["parameters"]["region"], "china")
+
+    def test_discovered_china_region_survives_binding_restart_and_cookie_rotation(self):
+        connector = icloud.Connector()
+        verified = Mock()
+        verified.call.return_value = {
+            "cookies": "fixture-cookie", "trust_token": "fixture-token", "region": "china",
+            "password": "fixture-password",
+        }
+        connector.pending = {"account": "tester@example.invalid", "remote": verified}
+        result = connector.challenge_result({"State": ""})
+        self.assertEqual(result["session"], {
+            "cookies": "fixture-cookie", "trust_token": "fixture-token", "region": "china",
+        })
+        verified.close.assert_called_once()
+
+        restarted = icloud.Connector()
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(icloud, "STAGE", Path(folder)), patch.object(icloud, "Remote") as factory:
+                remote = restarted.reader({
+                    "generation": "fixture", "account": result["account"], "session": result["session"],
+                })
+        self.assertEqual(factory.call_args.args[1]["region"], "china")
+        remote.call.return_value = {**result["session"], "cookies": "renewed"}
+        self.assertEqual(restarted.response([])["session"], {
+            "cookies": "renewed", "trust_token": "fixture-token", "region": "china",
+        })

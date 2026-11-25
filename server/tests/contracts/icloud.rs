@@ -39,16 +39,18 @@ async fn provider(
         let response = match request["op"].as_str().unwrap() {
             "start" => {
                 assert_eq!(request["password"], "apple-password-only-for-test");
+                assert_eq!(request["region"], "china");
                 json!({"state":"challenge","id":request["challenge"],"kind":"code","phones":[],"retry":false})
             }
             "answer" => {
                 assert_eq!(request["answer"], "123456");
-                json!({"state":"connected","account":"owner@example.com","session":{"cookies":"test-cookies","trust_token":"test-token"}})
+                json!({"state":"connected","account":"owner@example.com","session":{"cookies":"test-cookies","trust_token":"test-token","region":"china"}})
             }
             "albums" if web_access_missing.load(Ordering::SeqCst) => {
                 json!({"error":"web_access"})
             }
             "albums" => {
+                assert_eq!(request["connection"]["session"]["region"], "china");
                 json!({"value":[{"path":"PrimarySync/Trips","name":"Trips"}],"session":null})
             }
             "files" => {
@@ -258,7 +260,7 @@ async fn bind_account<'a>(
     assert_eq!(initial["schedule"]["frequency"], "weekly");
     assert_eq!(initial["schedule"]["weekday"], "sunday");
     let challenge = admin.request("POST", connect, json!({
-        "action":"start","account":"owner@example.com","password":"apple-password-only-for-test","upload_optimization":"quality"
+        "action":"start","account":"owner@example.com","password":"apple-password-only-for-test","region":"china","upload_optimization":"quality"
     })).await;
     assert_eq!(challenge.status, StatusCode::OK);
     assert_eq!(challenge.body["state"], "challenge");

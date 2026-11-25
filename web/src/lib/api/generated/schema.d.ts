@@ -642,6 +642,11 @@ export interface components {
             /** @description Optional durable task identifier for an asynchronous transition. */
             job_id: string | null;
         };
+        /**
+         * @description Explicit Apple service region choice. Omission allows rclone to detect it.
+         * @enum {string}
+         */
+        AccountRegion: "china";
         /** @description Explicitly created album with an editable URL slug and display label. */
         Album: {
             /**
@@ -753,6 +758,7 @@ export interface components {
             action: "start";
             /** @description Apple account password, held only during verification. */
             password: string;
+            region?: null | components["schemas"]["AccountRegion"];
             /** @description Existing browser upload preference to migrate on first use. */
             upload_optimization: components["schemas"]["Optimization"];
         } | {

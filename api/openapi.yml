@@ -945,6 +945,11 @@ components:
           - string
           - 'null'
           description: Optional durable task identifier for an asynchronous transition.
+    AccountRegion:
+      type: string
+      description: Explicit Apple service region choice. Omission allows rclone to detect it.
+      enum:
+      - china
     Album:
       type: object
       description: Explicitly created album with an editable URL slug and display label.
@@ -1185,6 +1190,11 @@ components:
           password:
             type: string
             description: Apple account password, held only during verification.
+          region:
+            oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/AccountRegion'
+              description: Override automatic region detection for Mainland China accounts.
           upload_optimization:
             $ref: '#/components/schemas/Optimization'
             description: Existing browser upload preference to migrate on first use.

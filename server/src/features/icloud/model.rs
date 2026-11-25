@@ -216,6 +216,8 @@ pub enum ConnectInput {
         account: String,
         /// Apple account password, held only during verification.
         password: String,
+        /// Override automatic region detection for Mainland China accounts.
+        region: Option<AccountRegion>,
         /// Existing browser upload preference to migrate on first use.
         upload_optimization: Optimization,
     },
@@ -231,6 +233,14 @@ pub enum ConnectInput {
         /// Opaque challenge identifier.
         challenge: String,
     },
+}
+
+/// Explicit Apple service region choice. Omission allows rclone to detect it.
+#[derive(Clone, Copy, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AccountRegion {
+    /// iCloud in China mainland, operated by GCBD.
+    China,
 }
 
 /// One trusted phone option, identified by the worker's opaque value.

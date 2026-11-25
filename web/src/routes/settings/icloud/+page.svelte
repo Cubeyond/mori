@@ -54,6 +54,7 @@
   let deviceTimeZone = $state(Intl.DateTimeFormat().resolvedOptions().timeZone);
   let account = $state('');
   let password = $state('');
+  let accountRegion = $state<components['schemas']['AccountRegion'] | ''>('');
   let challenge = $state<Challenge>();
   let answer = $state('');
   let sources = $state<Source[]>();
@@ -405,6 +406,7 @@
               action: 'start',
               account,
               password,
+              region: accountRegion === '' ? null : accountRegion,
               upload_optimization: $preferences.uploadOptimization,
             });
           }}
@@ -440,6 +442,21 @@
                 bind:value={password}
                 disabled={busy}
               />
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-content">
+              <label for="icloud-account-region">iCloud region</label>
+              <div class="setting-control">
+                <NativeSelect
+                  id="icloud-account-region"
+                  bind:value={accountRegion}
+                  disabled={busy}
+                >
+                  <option value="">Automatic</option>
+                  <option value="china">China mainland (GCBD)</option>
+                </NativeSelect>
+              </div>
             </div>
           </div>
           <div class="setting-row">
