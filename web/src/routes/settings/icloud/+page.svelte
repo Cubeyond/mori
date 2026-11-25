@@ -191,7 +191,7 @@
       destinations = albums;
     } catch (failure) {
       await refresh().catch(() => undefined);
-      if (current?.needs_auth) {
+      if (current?.needs_auth === true) {
         panel = 'settings';
         return;
       }
