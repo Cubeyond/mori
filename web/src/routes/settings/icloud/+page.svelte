@@ -182,12 +182,21 @@
 
   /** Read source paths and existing destination albums without reserving any uploads. */
   async function listAlbums(): Promise<void> {
-    const [catalog, albums] = await Promise.all([
-      apiData(api.GET('/v1/admin/icloud/albums')),
-      apiData(api.GET('/v1/admin/albums')),
-    ]);
-    sources = catalog;
-    destinations = albums;
+    try {
+      const [catalog, albums] = await Promise.all([
+        apiData(api.GET('/v1/admin/icloud/albums')),
+        apiData(api.GET('/v1/admin/albums')),
+      ]);
+      sources = catalog;
+      destinations = albums;
+    } catch (failure) {
+      await refresh().catch(() => undefined);
+      if (current?.needs_auth) {
+        panel = 'settings';
+        return;
+      }
+      throw failure;
+    }
   }
 
   /** Edit the currently persisted mappings on a separate page state. */

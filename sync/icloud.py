@@ -50,6 +50,8 @@ class Remote:
             self.port = listener.getsockname()[1]
         password = secrets.token_urlsafe(32)
         self.authorization = "Basic " + base64.b64encode(f"mori:{password}".encode()).decode()
+        cookies = config.get("cookies", "") if config else ""
+        self.has_web_token = bool(re.search(r"(?:^|;\s*)X-APPLE-WEBAUTH-TOKEN=[^;\s]", cookies))
         self.cache = WORK / "rclone-cache" / (cache_namespace or label)
         self.path = RUNTIME / f"{label}.conf"
         self.path.unlink(missing_ok=True)
@@ -113,15 +115,18 @@ class Remote:
                 return json.loads(data)
         except HTTPError as error:
             # The upstream response can include Apple identifiers or signed URLs.
-            message = error.read(8192).decode("utf-8", errors="replace").lower()
+            with error:
+                message = error.read(8192).decode("utf-8", errors="replace").lower()
             if any(part in message for part in ("requestpcs", "pcs cookies", "consent required", "web access")):
                 raise Failure("approval") from None
             if any(part in message for part in ("trust token expired", "missing icloud trust token", "invalid session", "reauth", "empty password", "password is required", "password required")):
                 raise Failure("auth") from None
             if not operation.startswith("config/") and any(
-                part in message for part in ("srp authentication failed", "invalid account or password", "401 unauthorized")
+                part in message for part in (
+                    "sign in failed: 401", "srp authentication failed", "invalid account or password", "401 unauthorized",
+                )
             ):
-                raise Failure("auth") from None
+                raise Failure("auth" if self.has_web_token else "web_access") from None
             if operation.startswith("config/") and any(
                 part in message for part in ("invalid", "incorrect", "verification", "password", "authentication failed")
             ):

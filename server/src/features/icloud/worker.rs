@@ -17,11 +17,19 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 /// Maximum worker message size, including lists from large selected albums.
 const MESSAGE_LIMIT: usize = 32 * 1024 * 1024;
 
+/// Guidance for sessions that need another Apple verification.
+const RECONNECT: &str = "Reconnect your Apple Account";
+/// Guidance when Apple has not issued a token for iCloud Photos on the web.
+const WEB_ACCESS: &str =
+    "Open Photos on iCloud.com and check web access or pending Apple terms, then reconnect in Mori";
+
 /// Explicit worker error categories translated without forwarding provider diagnostics.
 #[derive(Debug)]
 pub(super) enum WorkerError {
     /// The saved session must be renewed.
     Auth,
+    /// Apple did not grant a usable web session after account verification.
+    WebAccess,
     /// iCloud requires approval for access to Photos on the web.
     Approval,
     /// CPU, memory or disk pressure prevents the next task.
@@ -38,12 +46,22 @@ pub(super) enum WorkerError {
     Unavailable,
 }
 
+impl WorkerError {
+    /// Problems that require reconnecting instead of retrying the saved session.
+    pub(super) const fn reconnect_hint(&self) -> Option<&'static str> {
+        match self {
+            Self::Auth => Some(RECONNECT),
+            Self::WebAccess => Some(WEB_ACCESS),
+            _ => None,
+        }
+    }
+}
+
 impl From<WorkerError> for Error {
     fn from(value: WorkerError) -> Self {
         match value {
-            WorkerError::Auth | WorkerError::Expired => {
-                Self(StatusCode::CONFLICT, "Reconnect your Apple Account")
-            }
+            WorkerError::Auth | WorkerError::Expired => Self(StatusCode::CONFLICT, RECONNECT),
+            WorkerError::WebAccess => Self(StatusCode::CONFLICT, WEB_ACCESS),
             WorkerError::Approval => Self(
                 StatusCode::CONFLICT,
                 "Approve iCloud web access on a trusted device, then try again",
@@ -111,6 +129,7 @@ pub(super) async fn call<T: DeserializeOwned>(
     }
     Err(match reply.error.as_deref() {
         Some("auth") => WorkerError::Auth,
+        Some("web_access") => WorkerError::WebAccess,
         Some("approval") => WorkerError::Approval,
         Some("resources") => WorkerError::Resources,
         Some("too_large") => WorkerError::TooLarge,

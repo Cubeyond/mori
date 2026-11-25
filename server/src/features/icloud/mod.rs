@@ -350,8 +350,8 @@ pub async fn discover(State(s): State<AppState>, _admin: Admin) -> Result<Json<V
     let result = current
         .request_provider(&s, json!({"op":"albums"}), 130)
         .await;
-    if matches!(result, Err(WorkerError::Auth)) {
-        mark_auth(&s).await?;
+    if let Some(message) = result.as_ref().err().and_then(WorkerError::reconnect_hint) {
+        mark_auth(&s, message).await?;
     }
     Ok(Json(result?))
 }
@@ -501,13 +501,13 @@ pub async fn save_upload_preference(
 }
 
 /// Disable unattended retries of expired sessions while preserving the configured cadence.
-async fn mark_auth(s: &AppState) -> Result<()> {
+async fn mark_auth(s: &AppState, message: &str) -> Result<()> {
     let mut tx = s.db.begin_with("BEGIN IMMEDIATE").await?;
     sqlx::query("UPDATE icloud_connection SET needs_auth=1 WHERE id=1")
         .execute(&mut *tx)
         .await?;
     sqlx::query("UPDATE icloud_schedule SET last_error=?,retries=0 WHERE id=1")
-        .bind("Reconnect your Apple Account")
+        .bind(message)
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
@@ -568,8 +568,8 @@ async fn due_run(s: &AppState) -> Result<()> {
     s.icloud.running.store(true, Ordering::Relaxed);
     let result = import::sync(s, &mut current, &selected, optimization).await;
     s.icloud.running.store(false, Ordering::Relaxed);
-    if matches!(result, Err(WorkerError::Auth)) {
-        return mark_auth(s).await;
+    if let Some(message) = result.as_ref().err().and_then(WorkerError::reconnect_hint) {
+        return mark_auth(s, message).await;
     }
     let completed = now();
     let settings = schedule(s).await?;

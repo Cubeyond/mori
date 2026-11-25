@@ -108,7 +108,9 @@ pub(super) async fn sync(
                 report.deferred = true;
                 break;
             }
-            Err(error @ (WorkerError::Auth | WorkerError::Approval)) => return Err(error),
+            Err(error @ (WorkerError::Auth | WorkerError::WebAccess | WorkerError::Approval)) => {
+                return Err(error);
+            }
             Err(_) => report.failed += 1,
         }
     }
@@ -143,7 +145,10 @@ async fn sync_album(
                 Ok(true) => report.imported += 1,
                 Ok(false) | Err(WorkerError::TooLarge) => report.skipped += 1,
                 Err(
-                    error @ (WorkerError::Resources | WorkerError::Auth | WorkerError::Approval),
+                    error @ (WorkerError::Resources
+                    | WorkerError::Auth
+                    | WorkerError::WebAccess
+                    | WorkerError::Approval),
                 ) => return Err(error),
                 Err(_) => report.failed += 1,
             }

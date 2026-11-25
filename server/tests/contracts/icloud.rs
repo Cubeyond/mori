@@ -12,7 +12,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         Arc,
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     },
     time::Duration,
 };
@@ -22,7 +22,12 @@ use tokio::{
 };
 
 /// A read-only source distinct from the destination's real S3 protocol fixture.
-async fn provider(listener: UnixListener, root: PathBuf, downloads: Arc<AtomicUsize>) {
+async fn provider(
+    listener: UnixListener,
+    root: PathBuf,
+    downloads: Arc<AtomicUsize>,
+    web_access_missing: Arc<AtomicBool>,
+) {
     let bytes = include_bytes!("../fixtures/image.jpg");
     let digest = hex::encode(Sha256::digest(bytes));
     loop {
@@ -39,6 +44,9 @@ async fn provider(listener: UnixListener, root: PathBuf, downloads: Arc<AtomicUs
             "answer" => {
                 assert_eq!(request["answer"], "123456");
                 json!({"state":"connected","account":"owner@example.com","session":{"cookies":"test-cookies","trust_token":"test-token"}})
+            }
+            "albums" if web_access_missing.load(Ordering::SeqCst) => {
+                json!({"error":"web_access"})
             }
             "albums" => {
                 json!({"value":[{"path":"PrimarySync/Trips","name":"Trips"}],"session":null})
@@ -70,7 +78,11 @@ async fn provider(listener: UnixListener, root: PathBuf, downloads: Arc<AtomicUs
             "forget" => json!({}),
             _ => panic!("unexpected worker request"),
         };
-        let reply = serde_json::to_vec(&json!({"result":response})).unwrap();
+        let reply = if response.get("error").is_some() {
+            serde_json::to_vec(&response).unwrap()
+        } else {
+            serde_json::to_vec(&json!({"result":response})).unwrap()
+        };
         socket
             .write_u32(u32::try_from(reply.len()).unwrap())
             .await
@@ -100,10 +112,12 @@ async fn icloud_import_uses_existing_album_and_durable_deduplication() {
     Arc::make_mut(&mut state.config).icloud_dir = Some(folder.path().to_path_buf());
     let listener = UnixListener::bind(folder.path().join("worker.sock")).unwrap();
     let downloads = Arc::new(AtomicUsize::new(0));
+    let web_access_missing = Arc::new(AtomicBool::new(false));
     let provider = tokio::spawn(provider(
         listener,
         folder.path().to_path_buf(),
         downloads.clone(),
+        web_access_missing.clone(),
     ));
     let worker = tokio::spawn(icloud::run(state.clone()));
     let router = http::router(state.clone());
@@ -161,6 +175,8 @@ async fn icloud_import_uses_existing_album_and_durable_deduplication() {
     let _ = worker.await;
     verify_schedule(&admin, &state, top).await;
     assert_eq!(downloads.load(Ordering::SeqCst), 1);
+    web_access_missing.store(true, Ordering::SeqCst);
+    verify_web_access_error(&admin, top, albums).await;
 
     assert_eq!(
         admin.request("DELETE", connect, Value::Null).await.status,
@@ -173,6 +189,21 @@ async fn icloud_import_uses_existing_album_and_durable_deduplication() {
         .unwrap();
     assert_eq!(count, 1);
     provider.abort();
+}
+
+/// The first rejected album read exposes reconnect guidance and pauses background sync.
+async fn verify_web_access_error(admin: &Client<'_>, top: &str, albums: &str) {
+    let problem = admin.request("GET", albums, Value::Null).await;
+    assert_eq!(problem.status, StatusCode::CONFLICT);
+    assert!(
+        problem.body["error"]
+            .as_str()
+            .unwrap()
+            .contains("iCloud.com")
+    );
+    let state = admin.request("GET", top, Value::Null).await.body;
+    assert_eq!(state["needs_auth"], true);
+    assert_eq!(state["last_error"], problem.body["error"]);
 }
 
 /// A due persisted schedule is consumed by the worker without a manual sync request.
